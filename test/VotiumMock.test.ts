@@ -1,6 +1,6 @@
 import { ethers, network } from "hardhat";
 import { VotiumPosition } from "../typechain-types";
-import { CVX_ADDRESS, CVX_WHALE } from "./helpers/constants";
+import { CVX_ADDRESS, CVX_WHALE } from "./constants";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { expect } from "chai";
 

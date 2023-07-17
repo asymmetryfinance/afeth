@@ -2,8 +2,8 @@
 pragma solidity 0.8.19;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/ISnapshotDelegationRegistry.sol";
-import "../interfaces/convex/ILockedCvx.sol";
-import "../interfaces/votium/IVotiumMerkleStash.sol";
+import "../interfaces/ILockedCvx.sol";
+import "../interfaces/IVotiumMerkleStash.sol";
 
 contract VotiumPosition is Ownable {
     constructor() {

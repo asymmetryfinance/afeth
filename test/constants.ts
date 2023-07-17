@@ -1,0 +1,2 @@
+export const CVX_ADDRESS = "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b";
+export const CVX_WHALE = "0x28c6c06298d514db089934071355e5743bf21d60";

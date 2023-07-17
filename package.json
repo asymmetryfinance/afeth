@@ -1,15 +1,13 @@
 {
   "name": "@asymmetryfinance/votium-nft",
   "version": "1.0.3",
-  "description": "Participate in curve wars through staked ETH derivatives and CVX",
+  "description": "Nft wrapper around votium rewards",
   "private": false,
   "scripts": {
     "compile": "yarn hardhat compile",
     "console": "yarn hardhat console",
     "coverage": "yarn hardhat coverage",
-    "deploy": "yarn hardhat run scripts/deploy.ts",
     "deployVotiumMock": "yarn hardhat run scripts/deployVotiumMock.ts",
-    "monitor:safEth": "yarn hardhat run scripts/monitorSafEth.ts",
     "lint": "yarn lint:ts && yarn lint:solidity && yarn lint:prettier",
     "lint:ts": "yarn eslint '**/*.{js,ts}'",
     "lint:solidity": "yarn solhint **/*.sol",
@@ -17,10 +15,7 @@
     "lint:fix": "yarn solhint **/*.sol --fix && yarn eslint '**/*.{js,ts}' --fix",
     "prettier": "prettier '**/*.{json,sol,md}' --write",
     "clean": "rm .openzeppelin/unknown-*.json | rm -rf node_modules artifacts cache typechain-types deployments",
-    "test": "yarn hardhat test",
-    "local-node": "dotenv cross-var yarn hardhat node --fork %MAINNET_URL%",
-    "local-init": "yarn hardhat run --network localhost scripts/local-init.ts",
-    "local-mine": "yarn hardhat run --network localhost scripts/mine-to-next-cycle.ts"
+    "test": "yarn hardhat test"
   },
   "repository": {
     "type": "git",
@@ -66,7 +61,6 @@
     "hardhat": "^2.9.1",
     "hardhat-contract-sizer": "^2.3.0",
     "hardhat-deploy": "^0.9.22",
-    "hardhat-ethernal": "^3.1.0",
     "hardhat-gas-reporter": "^1.0.6",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
