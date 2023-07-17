@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/ISnapshotDelegationRegistry.sol";
-import "../interfaces/ILockedCvx.sol";
-import "../interfaces/IVotiumMerkleStash.sol";
+import "../external_interfaces/ISnapshotDelegationRegistry.sol";
+import "../external_interfaces/ILockedCvx.sol";
+import "../external_interfaces/IVotiumMerkleStash.sol";
 
 contract VotiumPosition is Ownable {
     constructor() {
