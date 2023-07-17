@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./INftStrategy.sol";
 
 /// For private internal functions and anything not exposed via the interface
 contract VotiumStrategyCore is

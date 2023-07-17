@@ -1,10 +1,10 @@
 import "./VotiumStrategyCore.sol";
-import "./INftStrategy.sol";
+import "../../NftStrategy.sol";
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-contract VotiumStrategy is VotiumStrategyCore, INftStrategy {
+contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
     function mint() external payable override returns (uint256) {}
 
     function requestClose(uint256 positionId) external override {}
