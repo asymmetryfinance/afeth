@@ -1,8 +1,8 @@
-# [Asymmetry Finance](https://www.asymmetry.finance/) • ![solidity](https://img.shields.io/badge/solidity-0.8.19-lightgrey)
+# [Asymmetry Finance Strategy Manager](https://www.asymmetry.finance/) • ![solidity](https://img.shields.io/badge/solidity-0.8.19-lightgrey)
 
 ## About
 
-An nft wrapper around votium reward. This will used in conjunction with safEth to create afEth.
+Monorepo containing a strategy manager contract and nft-wrapped strategies that can be mixed and matched in various combinations. This will be used to create afEth by combining votium and safEth strategies in the manager
 
 ## Local Development
 
