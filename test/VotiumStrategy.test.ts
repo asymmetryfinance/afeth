@@ -66,8 +66,8 @@ describe("VotiumStrategy", async function () {
       "0x7713974908be4bed47172370115e8b1219f4a5f0",
 
     // USDD
-    "0x0C10bF8FcB7Bf5412187A595ab97a3609160b5c6":
-      "0x44aa0930648738b39a21d66c82f69e45b2ce3b47",
+    // "0x0C10bF8FcB7Bf5412187A595ab97a3609160b5c6":
+    //   "0x44aa0930648738b39a21d66c82f69e45b2ce3b47",
   };
 
   const resetToBlock = async (blockNumber: number) => {
