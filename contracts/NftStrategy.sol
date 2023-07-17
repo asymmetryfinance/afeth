@@ -5,9 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 abstract contract NftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgradeable {
     struct Position {
-        uint256 startEarnTime; // when it starts earning
-        uint256 stopEarnTime; // when it stops earning
-        uint256 unlockTime; // when it can be burned
+        uint256 unlockTime; // when it can be burned. 0 if requestUnlock() hasn't been called
         uint256 ethClaimed; // how much eth value has been claimed from this position so far
         uint256 ethBurned; // how much eth was received by burning tokens from this position
         uint256 startingValue; // how much eth value was locked up when the position was created
@@ -30,6 +28,9 @@ abstract contract NftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgra
 
     /// how much rewards can be claimed right now
     function claimableNow(uint256 positionId) virtual external view returns (uint256 ethAmountClaimable);
+
+    /// when is the next reward distrubution and how much eth value is expected
+    function nextRewardInfo(uint256) virtual external view returns (uint256 timestamp, uint256 expectedEthAmount);
 
     /// how much eth value is locked up
     function lockedValue(uint256 positionId) virtual external view returns (uint256 ethValue);

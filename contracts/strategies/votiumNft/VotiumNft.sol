@@ -9,14 +9,14 @@ contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
     uint256 public positionDivisibility = 10e18;
 
     function mint() external payable override returns (uint256) {
-        positions[positionCount] = Position(0, 0, 0, 0, 0, 0);
+        positions[positionCount] = Position(0, 0, 0, 0);
         _mint(msg.sender, positionCount, positionDivisibility, "");
         positionCount++;
         return positionCount;
     }
 
     function requestClose(uint256 positionId) external override {
-        positions[positionId] = Position(0, 0, 0, 0, 0, 0);
+        positions[positionId] = Position(0, 0, 0, 0);
     }
 
     function burn(uint256 positionId) external override {
@@ -24,7 +24,7 @@ contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
     }
 
     function claimRewards(uint256 positionId) external override {
-        require (this.claimableNow(positionId) > 0, "nothing to claim");
+        require(this.claimableNow(positionId) > 0, "nothing to claim");
     }
 
     function claimableNow(
@@ -37,5 +37,17 @@ contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
         uint256 positionId
     ) external view override returns (uint256 ethValue) {
         return 0;
+    }
+
+    function nextRewardInfo(
+        uint256
+    )
+        external
+        view
+        virtual
+        override
+        returns (uint256 timestamp, uint256 expectedEthAmount)
+    {
+        return (0, 0);
     }
 }
