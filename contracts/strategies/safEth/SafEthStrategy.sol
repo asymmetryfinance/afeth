@@ -4,7 +4,7 @@ import "../../NftStrategy.sol";
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-contract SafEthNft is NftStrategy, SafEthStrategyCore {
+contract SafEthStrategy is NftStrategy, SafEthStrategyCore {
     // how many individual tokens to mint per erc1155 position
     uint256 public positionDivisibility = 10e18;
 
@@ -37,17 +37,5 @@ contract SafEthNft is NftStrategy, SafEthStrategyCore {
         uint256 positionId
     ) external view override returns (uint256 ethValue) {
         return 0;
-    }
-
-    function nextRewardInfo(
-        uint256
-    )
-        external
-        view
-        virtual
-        override
-        returns (uint256 timestamp, uint256 expectedEthAmount)
-    {
-        return (0, 0);
     }
 }
