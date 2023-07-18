@@ -14,13 +14,16 @@ abstract contract NftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgra
     uint256 public positionCount;
     mapping(uint => Position) public positions;
 
-    /// open new position, returns positionId
-    function mint() virtual external payable returns (uint256 positionCount);
+    // approximately how often claimable rewards are updated
+    uint256 public rewardFrequency;
 
-    /// request to close a position
+    /// open new position, returns positionId
+    function mint() virtual external payable returns (uint256 positionId);
+
+    /// request to close a position so it can be burned later
     function requestClose(uint256 positionId) virtual external;
 
-    /// burn token to receive all locked value and rewards
+    /// burn token to receive all locked value and rewards (position must be fully closed)
     function burn(uint256 positionId) virtual external;
 
     /// Withdraw any rewards from the position that can be claimed right now
@@ -28,9 +31,6 @@ abstract contract NftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgra
 
     /// how much rewards can be claimed right now
     function claimableNow(uint256 positionId) virtual external view returns (uint256 ethAmountClaimable);
-
-    /// when is the next reward distrubution and how much eth value is expected
-    function nextRewardInfo(uint256) virtual external view returns (uint256 timestamp, uint256 expectedEthAmount);
 
     /// how much eth value is locked up
     function lockedValue(uint256 positionId) virtual external view returns (uint256 ethValue);

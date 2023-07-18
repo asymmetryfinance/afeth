@@ -38,16 +38,4 @@ contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
     ) external view override returns (uint256 ethValue) {
         return 0;
     }
-
-    function nextRewardInfo(
-        uint256
-    )
-        external
-        view
-        virtual
-        override
-        returns (uint256 timestamp, uint256 expectedEthAmount)
-    {
-        return (0, 0);
-    }
 }
