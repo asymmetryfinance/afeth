@@ -53,11 +53,21 @@ contract VotiumVlcvxManager {
         ILockedCvx(vlCVX).lock(address(this), cvxAmount, 0);
     }
 
+    /// Called by our oracle at the beginning of each new epoch
+    /// relocks cvx and claim rewards if possible
+    function oracleUpdate() public {
+        relockCvx();
+        claimRewards();
+    }
+
+    function claimRewards() private {
+
+    }
 
     /// Called by our oracle at the beginning of each new epoch
     /// Leaves cvx unlocked for any that have requested to close their position
     /// Relocks any unlocked cvx from positions that have not requested to close
-    function relockCvx() public {
+    function relockCvx() private {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
         if (lastRelockEpoch == currentEpoch) return;
 
