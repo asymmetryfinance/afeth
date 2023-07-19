@@ -1,15 +1,28 @@
 import "./VotiumStrategyCore.sol";
-import "../../NftStrategy.sol";
+import "../../AbstractNftStrategy.sol";
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
+contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
 
     function mint() external payable override returns (uint256) {
-        _mint(msg.sender, positionCount, 1e18, "");
+        uint256 cvxAmount = buyCvx(msg.value);
+        IERC20(CVX).approve(vlCVX, cvxAmount);
+        uint256 newPositionId = positionCount;
         positionCount++;
-        return positionCount;
+        lockCvx(cvxAmount, newPositionId);
+        _mint(msg.sender, newPositionId, 1e18, "");
+
+                // storage of individual balances associated w/ user deposit
+        positions[newPositionId] = Position({
+            owner: msg.sender,
+            unlockTime: 0,
+            ethClaimed: 0,
+            ethBurned: 0,
+            startingValue: msg.value
+        });
+        return newPositionId;
     }
 
     function requestClose(uint256 positionId) external override onlyPositionOwner(positionId) {

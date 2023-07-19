@@ -1,10 +1,10 @@
 import "./SafEthStrategyCore.sol";
-import "../../NftStrategy.sol";
+import "../../AbstractNftStrategy.sol";
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-contract SafEthStrategy is NftStrategy, SafEthStrategyCore {
+contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
     function mint() external payable override returns (uint256) {
     }
 

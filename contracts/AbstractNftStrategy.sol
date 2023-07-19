@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-abstract contract NftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgradeable {
+abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgradeable {
     struct Position {
         address owner;
         uint256 unlockTime; // when it can be burned. 0 if requestUnlock() hasn't been called
