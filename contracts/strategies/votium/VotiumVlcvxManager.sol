@@ -25,13 +25,13 @@ contract VotiumVlcvxManager {
     mapping(uint256 => uint256) public rewardsClaimedPerEpoch;
 
     // what is the last epoch for which rewards have been fully claimed
-    uint256 public lastRewardEpochClaimed;
+    uint256 public lastRewardEpochFullyClaimed;
 
     struct VlCvxPosition {
         uint256 cvxAmount; // amount of cvx locked in this position
         uint256 firstRelockEpoch; // first epoch in which funds are automatically relocked or eligible for unlock (if previously requested)
         uint256 firstRewardEpoch; // first epoch that will earn votium rewards for this locked position
-        uint256 lastRewardEpochClaimed; // last epoch that rewards were claimed for this position
+        uint256 lastRewardEpochFullyClaimed; // last epoch that rewards were claimed for this position
     }
 
     mapping(uint256 => VlCvxPosition) public vlCvxPositions;
@@ -59,7 +59,7 @@ contract VotiumVlcvxManager {
         );
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
         lastRelockEpoch = currentEpoch;
-        lastRewardEpochClaimed = currentEpoch - 1;
+        lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
 
     function lockCvx(
@@ -129,10 +129,14 @@ contract VotiumVlcvxManager {
         );
     }
 
+    function canClaimOracleRewards() public view returns (bool) {
+        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        return (lastRewardEpochFullyClaimed < currentEpoch - 1) && currentEpoch % 2 == 0;
+    }
+
     function oracleClaimRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) public {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-        if(lastRewardEpochClaimed == currentEpoch - 1) revert("already called claim");
-        if(currentEpoch % 2 == 0) revert("Can only claim every other epoch");
+        require(canClaimOracleRewards(), "cant claim rewards");
 
         uint256 balanceBefore = address(this).balance;
         oracleClaimVotiumRewards(claimProofs);
@@ -141,14 +145,14 @@ contract VotiumVlcvxManager {
 
         uint256 claimed = balanceAfter - balanceBefore;
 
-        uint256 unclaimedEpochCount = currentEpoch - lastRewardEpochClaimed - 1;
+        uint256 unclaimedEpochCount = currentEpoch - lastRewardEpochFullyClaimed - 1;
         uint256 rewardsPerCompletedEpoch = claimed / unclaimedEpochCount;
 
-        for (uint256 i = lastRewardEpochClaimed + 1; i < currentEpoch; i++) {
+        for (uint256 i = lastRewardEpochFullyClaimed + 1; i < currentEpoch; i++) {
             rewardsClaimedPerEpoch[i] = rewardsPerCompletedEpoch;
         }
 
-        lastRewardEpochClaimed = currentEpoch - 1;
+        lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
 
     /// Called by our oracle at the beginning of each new epoch
