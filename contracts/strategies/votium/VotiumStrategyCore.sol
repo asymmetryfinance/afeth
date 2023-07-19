@@ -5,6 +5,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../../external_interfaces/IWETH.sol";
 import "../../external_interfaces/ISwapRouter.sol";
+import "../../external_interfaces/IVotiumMerkleStash.sol";
+import "../../external_interfaces/ISnapshotDelegationRegistry.sol";
+import "../../external_interfaces/ILockedCvx.sol";
+import "../../external_interfaces/IClaimZap.sol";
 
 /// For private internal functions and anything not exposed via the interface
 contract VotiumStrategyCore is
