@@ -9,15 +9,40 @@ contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
     uint256 public positionDivisibility = 10e18;
 
     function mint() external payable override returns (uint256) {
-        positions[positionCount] = Position(0, 0, 0, 0);
         _mint(msg.sender, positionCount, positionDivisibility, "");
         positionCount++;
         return positionCount;
     }
 
     function requestClose(uint256 positionId) external override {
-        positions[positionId] = Position(0, 0, 0, 0);
+        require(positions[positionId].owner == msg.sender, "Not owner");
+        require(positions[positionId].unlockTime != 0, "Not open");
+
+        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+
+        uint256 firstRelockEpoch = vlCvxPositions[positionId].firstRelockEpoch;
+
+        // when cvx is fully unlocked and can be withdrawn
+        uint256 unlockEpoch;
+
+        // position has been relocked since the originalUnlockEpoch passed
+        // calculate its new unlock epoch
+        if (currentEpoch >= firstRelockEpoch) {
+            uint256 epochDifference = currentEpoch - firstRelockEpoch;
+            uint256 extraLockLengths = (epochDifference / 16) + 1;
+            unlockEpoch = firstRelockEpoch + extraLockLengths * 16;
+        } else {
+            unlockEpoch = firstRelockEpoch;
+        }
+
+        (uint256 _unused2, uint256 unlockEpochStartingTime) = ILockedCvx(vlCVX)
+            .epochs(unlockEpoch);
+
+        positions[positionId].unlockTime = unlockEpochStartingTime;
+        unlockSchedule[unlockEpoch] += vlCvxPositions[positionId].cvxAmount;
+
     }
+    
 
     function burn(uint256 positionId) external override {
         _burn(msg.sender, positionId, balanceOf(msg.sender, positionId));

@@ -28,7 +28,6 @@ contract VotiumVlcvxManager {
     uint256 public lastRewardEpochClaimed;
 
     struct VlCvxPosition {
-        address owner;
         uint256 cvxAmount; // amount of cvx locked in this position
         uint256 firstRelockEpoch; // first epoch in which funds are automatically relocked or eligible for unlock (if previously requested)
         uint256 firstRewardEpoch; // first epoch that will earn votium rewards for this locked position
@@ -40,7 +39,7 @@ contract VotiumVlcvxManager {
     // epoch at which amount should be unlocked
     mapping(uint256 => uint256) public unlockSchedule;
 
-        error SwapFailed(uint256 index);
+    error SwapFailed(uint256 index);
 
     struct SwapData {
         address sellToken;
@@ -63,11 +62,9 @@ contract VotiumVlcvxManager {
 
     function lockCvx(
         uint256 cvxAmount,
-        uint256 positionId,
-        address owner
+        uint256 positionId
     ) internal {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-        vlCvxPositions[positionId].owner = owner;
         vlCvxPositions[positionId].cvxAmount = cvxAmount;
         vlCvxPositions[positionId].firstRelockEpoch = currentEpoch + 17;
         vlCvxPositions[positionId].firstRewardEpoch = currentEpoch % 2 == 0
@@ -135,12 +132,12 @@ contract VotiumVlcvxManager {
 
         if(lastRewardEpochClaimed == currentEpoch - 1) revert("already called claim");
 
-        uint256 balanceBeforeClaim = address(this).balance;
+        uint256 balanceBefore = address(this).balance;
         oracleClaimVotiumRewards(claimProofs);
         oracleClaimvlCvxRewards();
-        uint256 balanceAfterClaim = address(this).balance;
+        uint256 balanceAfter = address(this).balance;
 
-        uint256 claimed = (balanceAfterClaim - balanceBeforeClaim);
+        uint256 claimed = balanceAfter - balanceBefore;
 
         uint256 unclaimedEpochCount = currentEpoch - lastRewardEpochClaimed - 1;
         uint256 rewardsPerCompletedEpoch = claimed / unclaimedEpochCount;

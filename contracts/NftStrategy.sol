@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 abstract contract NftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgradeable {
     struct Position {
+        address owner;
         uint256 unlockTime; // when it can be burned. 0 if requestUnlock() hasn't been called
         uint256 ethClaimed; // how much eth value has been claimed from this position so far
         uint256 ethBurned; // how much eth was received by burning tokens from this position
