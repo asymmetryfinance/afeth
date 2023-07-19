@@ -22,7 +22,8 @@ contract VotiumVlcvxManager {
     struct VlCvxPosition {
         address owner;
         uint256 cvxAmount; // amount of cvx locked in this position
-        uint256 firstRelockEpoch; // first epoch in which funds are relocked or eligible for unlock (if previously requested)
+        uint256 firstRelockEpoch; // first epoch in which funds are automatically relocked or eligible for unlock (if previously requested)
+        uint256 firstRewardEpoch; // first epoch that will earn votium rewards for this locked position
     }
 
     mapping(uint256 => VlCvxPosition) public vlCvxPositions;
@@ -46,9 +47,14 @@ contract VotiumVlcvxManager {
         uint256 positionId,
         address owner
     ) internal {
+        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
         vlCvxPositions[positionId].owner = owner;
         vlCvxPositions[positionId].cvxAmount = cvxAmount;
-        vlCvxPositions[positionId].firstRelockEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp) + 17;
+        vlCvxPositions[positionId].firstRelockEpoch = currentEpoch + 17;
+        vlCvxPositions[positionId].firstRewardEpoch = currentEpoch % 2 == 0
+            ? currentEpoch + 2
+            : currentEpoch + 1;
+
         IERC20(CVX).approve(vlCVX, cvxAmount);
         ILockedCvx(vlCVX).lock(address(this), cvxAmount, 0);
     }
