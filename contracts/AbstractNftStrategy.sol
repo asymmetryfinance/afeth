@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC721Upgradeable {
     struct Position {
-        uint256 unlockTime; // when it can be burned. 0 if requestUnlock() hasn't been called
+        uint256 unlockTime; // when it can be burned. 0 if requestClose() hasn't been called
         uint256 ethClaimed; // how much eth value has been claimed from this position so far
         uint256 ethBurned; // how much eth was received by burning tokens from this position
         uint256 startingValue; // how much eth value was locked up when the position was created
@@ -13,9 +13,6 @@ abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC7
 
     uint256 public positionCount;
     mapping(uint => Position) public positions;
-
-    // approximately how often claimable rewards are updated
-    uint256 public rewardFrequency;
 
     modifier onlyPositionOwner(uint256 positionId) {
         require(ownerOf(positionId) == msg.sender, "Not owner");
