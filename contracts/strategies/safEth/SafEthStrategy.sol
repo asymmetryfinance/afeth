@@ -5,9 +5,6 @@ import "../../NftStrategy.sol";
 pragma solidity 0.8.19;
 
 contract SafEthStrategy is NftStrategy, SafEthStrategyCore {
-    // how many individual tokens to mint per erc1155 position
-    uint256 public positionDivisibility = 10e18;
-
     function mint() external payable override returns (uint256) {
     }
 

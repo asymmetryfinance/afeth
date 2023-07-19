@@ -25,6 +25,7 @@ contract VotiumStrategyCore is
     function initialize() external initializer {
         _transferOwnership(msg.sender);
     }
+    
 
     receive() external payable {}
 }

@@ -18,6 +18,11 @@ abstract contract NftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgra
     // approximately how often claimable rewards are updated
     uint256 public rewardFrequency;
 
+    modifier onlyPositionOwner(uint256 positionId) {
+        require(positions[positionId].owner == msg.sender, "Not owner");
+        _;
+    }
+
     /// open new position, returns positionId
     function mint() virtual external payable returns (uint256 positionId);
 
