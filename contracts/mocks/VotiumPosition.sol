@@ -5,6 +5,9 @@ import "../external_interfaces/ISnapshotDelegationRegistry.sol";
 import "../external_interfaces/ILockedCvx.sol";
 import "../external_interfaces/IVotiumMerkleStash.sol";
 
+// This mock contract is for test purposes to show we can claim votium rewards from the contract with merkle proofs
+// it is deployed here https://etherscan.io/address/0xbbba116ef0525cd5ea9f4a9c1f628c3bfc343261#code
+// elmutt has the private key for the owner of this contract
 contract VotiumPosition is Ownable {
     constructor() {
         _transferOwnership(msg.sender);
