@@ -57,7 +57,9 @@ contract VotiumVlcvxManager {
             VotiumVoteDelegationId,
             votiumVoteProxyAddress
         );
-        lastRelockEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        lastRelockEpoch = currentEpoch;
+        lastRewardEpochClaimed = currentEpoch - 1;
     }
 
     function lockCvx(
@@ -129,8 +131,8 @@ contract VotiumVlcvxManager {
 
     function oracleClaimRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) public {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-
         if(lastRewardEpochClaimed == currentEpoch - 1) revert("already called claim");
+        if(currentEpoch % 2 == 0) revert("Can only claim every other epoch");
 
         uint256 balanceBefore = address(this).balance;
         oracleClaimVotiumRewards(claimProofs);

@@ -22,7 +22,6 @@ contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
 
         uint256 firstRelockEpoch = vlCvxPositions[positionId].firstRelockEpoch;
 
-        // when cvx is fully unlocked and can be withdrawn
         uint256 unlockEpoch;
 
         // position has been relocked since the originalUnlockEpoch passed
@@ -40,7 +39,6 @@ contract VotiumStrategy is VotiumStrategyCore, NftStrategy {
 
         positions[positionId].unlockTime = unlockEpochStartingTime;
         unlockSchedule[unlockEpoch] += vlCvxPositions[positionId].cvxAmount;
-
     }
     
 
