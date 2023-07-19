@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC1155Upgradeable {
+abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC721Upgradeable {
     struct Position {
-        address owner;
         uint256 unlockTime; // when it can be burned. 0 if requestUnlock() hasn't been called
         uint256 ethClaimed; // how much eth value has been claimed from this position so far
         uint256 ethBurned; // how much eth was received by burning tokens from this position
@@ -19,7 +18,7 @@ abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC1
     uint256 public rewardFrequency;
 
     modifier onlyPositionOwner(uint256 positionId) {
-        require(positions[positionId].owner == msg.sender, "Not owner");
+        require(ownerOf(positionId) == msg.sender, "Not owner");
         _;
     }
 

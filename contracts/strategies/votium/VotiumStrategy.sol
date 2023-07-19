@@ -12,11 +12,10 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         uint256 newPositionId = positionCount;
         positionCount++;
         lockCvx(cvxAmount, newPositionId);
-        _mint(msg.sender, newPositionId, 1e18, "");
+        _mint(msg.sender, newPositionId);
 
-                // storage of individual balances associated w/ user deposit
+        // storage of individual balances associated w/ user deposit
         positions[newPositionId] = Position({
-            owner: msg.sender,
             unlockTime: 0,
             ethClaimed: 0,
             ethBurned: 0,
@@ -26,7 +25,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     }
 
     function requestClose(uint256 positionId) external override onlyPositionOwner(positionId) {
-        require(positions[positionId].owner == msg.sender, "Not owner");
+        require(ownerOf(positionId) == msg.sender, "Not owner");
         require(positions[positionId].unlockTime != 0, "Not open");
 
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
@@ -54,14 +53,17 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     
 
     function burn(uint256 positionId) external override onlyPositionOwner(positionId) {
-        _burn(msg.sender, positionId, balanceOf(msg.sender, positionId));
+        require(positions[positionId].unlockTime != 0, "requestClose() not called");
+        require(positions[positionId].unlockTime > block.timestamp, "still locked");
+        require(ownerOf(positionId) == msg.sender, "Not owner");
+        _burn(positionId);
+        // TODO - sell cvx for eth, claim rewards and send user their $
     }
 
     function claimRewards(uint256 positionId) external override onlyPositionOwner(positionId) {
         require(this.claimableNow(positionId) > 0, "nothing to claim");
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
 
-        uint256 firstRewardEpoch = lastRewardEpochFullyClaimed != 0 ? lastRewardEpochFullyClaimed : vlCvxPositions[positionId].firstRewardEpoch;
+        uint256 firstRewardEpoch = vlCvxPositions[positionId].lastRewardEpochFullyClaimed != 0 ?  vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1 : vlCvxPositions[positionId].firstRewardEpoch;
 
         uint256 unlockEpoch = ILockedCvx(vlCVX).findEpochId(positions[positionId].unlockTime);
 
@@ -83,6 +85,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
                 10 ** 18;
             totalRewards += claimed;
         }
+
+        vlCvxPositions[positionId].lastRewardEpochFullyClaimed= unlockEpoch - 1;
+
         // solhint-disable-next-line
         (bool sent, ) = address(msg.sender).call{value: totalRewards}("");
         require(sent, "Failed to send Ether");
@@ -91,12 +96,12 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function claimableNow(
         uint256 positionId
     ) public view override returns (uint256 ethAmount) {
-        return 0;
+        return 0; // TODO
     }
 
     function lockedValue(
         uint256 positionId
     ) public view override returns (uint256 ethValue) {
-        return 0;
+        return 0; // TODO
     }
 }

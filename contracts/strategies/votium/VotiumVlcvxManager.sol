@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../../external_interfaces/ILockedCvx.sol";
 import "../../external_interfaces/ISnapshotDelegationRegistry.sol";
@@ -129,14 +129,9 @@ contract VotiumVlcvxManager {
         );
     }
 
-    function canClaimOracleRewards() public view returns (bool) {
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-        return (lastRewardEpochFullyClaimed < currentEpoch - 1) && currentEpoch % 2 == 0;
-    }
-
     function oracleClaimRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) public {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-        require(canClaimOracleRewards(), "cant claim rewards");
+        require(lastRewardEpochFullyClaimed < currentEpoch - 1 && currentEpoch % 2 == 0, "cant claim rewards");
 
         uint256 balanceBefore = address(this).balance;
         oracleClaimVotiumRewards(claimProofs);

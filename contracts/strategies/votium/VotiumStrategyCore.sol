@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./VotiumVlcvxManager.sol";
 import "../../external_interfaces/IWETH.sol";
@@ -11,7 +11,7 @@ import "../../external_interfaces/ISwapRouter.sol";
 contract VotiumStrategyCore is
     Initializable,
     OwnableUpgradeable,
-    ERC1155Upgradeable,
+    ERC721Upgradeable,
     VotiumVlcvxManager
 {
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
