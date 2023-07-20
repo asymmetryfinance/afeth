@@ -9,6 +9,7 @@ import "../../external_interfaces/IVotiumMerkleStash.sol";
 import "../../external_interfaces/ISnapshotDelegationRegistry.sol";
 import "../../external_interfaces/ILockedCvx.sol";
 import "../../external_interfaces/IClaimZap.sol";
+import "../../external_interfaces/ICrvEthPool.sol";
 
 /// For private internal functions and anything not exposed via the interface
 contract VotiumStrategyCore is
@@ -16,6 +17,8 @@ contract VotiumStrategyCore is
     OwnableUpgradeable,
     ERC721Upgradeable
 {
+    address constant cvxAddress = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -31,25 +34,35 @@ contract VotiumStrategyCore is
         initializeLockManager();
     }
 
-    function buyCvx(uint256 amount) internal returns (uint256 amountOut) {
-        address swapRouterAddress = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
-        address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-        address cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-        IWETH(weth).deposit{value: amount}();
-        IERC20(weth).approve(swapRouterAddress, amount);
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
-            .ExactInputSingleParams({
-                tokenIn: weth,
-                tokenOut: cvx,
-                fee: 10000,
-                recipient: address(this),
-                amountIn: amount,
-                amountOutMinimum: 1, // TODO: fix slippage
-                sqrtPriceLimitX96: 0
-            });
-        uint256 cvxAmountOut = ISwapRouter(swapRouterAddress).exactInputSingle(params);
-        return cvxAmountOut;
+    function buyCvx(uint256 ethAmountIn) internal returns (uint256 cvxAmountOut) {
+        address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
+        // eth -> cvx
+        uint256 cvxBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
+        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
+            0,
+            1,
+            ethAmountIn,
+            0 // TODO minout to something
+        );
+        uint256 cvxBalanceAfter = IERC20(cvxAddress).balanceOf(address(this));
+        cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;
     }
+
+    function sellCvx(uint256 cvxAmountIn) internal returns (uint256 ethAmountOut) {
+        address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
+        // cvx -> eth
+        uint256 ethBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
+        IERC20(cvxAddress).approve(CVX_ETH_CRV_POOL_ADDRESS, cvxAmountIn);
+        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
+            1,
+            0,
+            cvxAmountIn,
+            0 // TODO minout to something
+        );
+        uint256 ethBalanceAfter = IERC20(cvxAddress).balanceOf(address(this));
+        ethAmountOut = ethBalanceAfter - ethBalanceBefore;
+    }
+
 
     receive() external payable {}
 
@@ -196,7 +209,7 @@ contract VotiumStrategyCore is
     /// Called by our oracle at the beginning of each new epoch
     /// Leaves cvx unlocked for any that have requested to close their position
     /// Relocks any unlocked cvx from positions that have not requested to close
-    function oracleRelockCvx() private {
+    function oracleRelockCvx() public {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
         if (lastRelockEpoch == currentEpoch) return;
 
