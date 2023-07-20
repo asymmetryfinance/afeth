@@ -141,8 +141,7 @@ contract VotiumStrategyCore is
     /// its also not a huge deal because vlCvx is a much smaller part of the overall rewards
     function oracleUpdateAll(IVotiumMerkleStash.ClaimParam[] calldata claimProofs, SwapData[] calldata swapsData) public {
         oracleRelockCvx();
-        oracleClaimRewards(claimProofs);
-        oracleSellRewards(swapsData);
+        oracleClaimRewards(claimProofs, swapsData);
     }
 
     /// sell any number of erc20's via 0x in a single tx
@@ -165,12 +164,12 @@ contract VotiumStrategyCore is
         ethReceived = ethBalanceAfter - ethBalanceBefore;
     }
 
-    function oracleClaimVotiumRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) public {
+    function oracleClaimVotiumRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) private {
         IVotiumMerkleStash(0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A)
             .claimMulti(address(this), claimProofs);
     }
 
-    function oracleClaimvlCvxRewards() public {
+    function oracleClaimvlCvxRewards() private {
         address[] memory emptyArray;
         IClaimZap(0x3f29cB4111CbdA8081642DA1f75B3c12DECf2516).claimRewards(
             emptyArray,
@@ -185,16 +184,13 @@ contract VotiumStrategyCore is
         );
     }
 
-    function oracleClaimRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) public {
+    function oracleClaimRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs, SwapData[] calldata swapsData) public {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
         require(lastRewardEpochFullyClaimed < currentEpoch - 1 && currentEpoch % 2 == 0, "cant claim rewards");
 
-        uint256 balanceBefore = address(this).balance;
         oracleClaimVotiumRewards(claimProofs);
         oracleClaimvlCvxRewards();
-        uint256 balanceAfter = address(this).balance;
-
-        uint256 claimed = balanceAfter - balanceBefore;
+        uint256 claimed = oracleSellRewards(swapsData);
 
         uint256 unclaimedEpochCount = currentEpoch - lastRewardEpochFullyClaimed - 1;
         uint256 rewardsPerCompletedEpoch = claimed / unclaimedEpochCount;
