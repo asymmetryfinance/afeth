@@ -14,11 +14,6 @@ abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC7
     uint256 public positionCount;
     mapping(uint => Position) public positions;
 
-    modifier onlyPositionOwner(uint256 positionId) {
-        require(ownerOf(positionId) == msg.sender, "Not owner");
-        _;
-    }
-
     /// open new position (mint nft), returns positionId
     function mint() virtual external payable returns (uint256 positionId);
 

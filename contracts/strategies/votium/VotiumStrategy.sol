@@ -1,5 +1,5 @@
 import "./VotiumStrategyCore.sol";
-import "../../AbstractNftStrategy.sol";
+import "../AbstractNftStrategy.sol";
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
@@ -23,10 +23,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         return newPositionId;
     }
 
-    function requestClose(uint256 positionId) external override onlyPositionOwner(positionId) {
-        require(ownerOf(positionId) == msg.sender, "Not owner");
+    function requestClose(uint256 positionId) external override {
+        require(ownerOf(positionId) == msg.sender, "Not owner"); // TODO this shouldnt use msg sender. msg sender will always be the manager contract. the original sender should be passed through
         require(positions[positionId].unlockTime != 0, "Not open");
-
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
 
         uint256 firstRelockEpoch = vlCvxPositions[positionId].firstRelockEpoch;
@@ -51,15 +50,14 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     }
     
 
-    function burn(uint256 positionId) external override onlyPositionOwner(positionId) {
+    function burn(uint256 positionId) external override{
         require(positions[positionId].unlockTime != 0, "requestClose() not called");
         require(positions[positionId].unlockTime > block.timestamp, "still locked");
-        require(ownerOf(positionId) == msg.sender, "Not owner");
         _burn(positionId);
         // TODO - sell cvx for eth, claim remaimning rewards and send user eth
     }
 
-    function claimRewards(uint256 positionId) external override onlyPositionOwner(positionId) {
+    function claimRewards(uint256 positionId) external override {
         require(this.claimableNow(positionId) > 0, "nothing to claim");
 
         uint256 firstRewardEpoch = vlCvxPositions[positionId].lastRewardEpochFullyClaimed != 0 ?  vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1 : vlCvxPositions[positionId].firstRewardEpoch;
@@ -88,7 +86,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         vlCvxPositions[positionId].lastRewardEpochFullyClaimed= unlockEpoch - 1;
 
         // solhint-disable-next-line
-        (bool sent, ) = address(msg.sender).call{value: totalRewards}("");
+        (bool sent, ) = address(ownerOf(positionId)).call{value: totalRewards}("");
         require(sent, "Failed to send Ether");
     }
 
