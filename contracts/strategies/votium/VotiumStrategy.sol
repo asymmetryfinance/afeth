@@ -49,29 +49,46 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         positions[positionId].unlockTime = unlockEpochStartingTime;
         unlockSchedule[unlockEpoch] += vlCvxPositions[positionId].cvxAmount;
     }
-    
 
     function burn(uint256 positionId) public override {
-        require(positions[positionId].unlockTime != 0, "requestClose() not called");
-        require(positions[positionId].unlockTime > block.timestamp, "still locked");
-        _burn(positionId);        
+        require(
+            positions[positionId].unlockTime != 0,
+            "requestClose() not called"
+        );
+        require(
+            positions[positionId].unlockTime > block.timestamp,
+            "still locked"
+        );
+        _burn(positionId);
         this.claimRewards(positionId);
         uint256 ethReceived = sellCvx(vlCvxPositions[positionId].cvxAmount);
         // solhint-disable-next-line
-        (bool sent, ) = address(ownerOf(positionId)).call{value: ethReceived}("");
+        (bool sent, ) = address(ownerOf(positionId)).call{value: ethReceived}(
+            ""
+        );
         require(sent, "Failed to send Ether");
     }
 
     function claimRewards(uint256 positionId) public override {
-        uint256 firstRewardEpoch = vlCvxPositions[positionId].lastRewardEpochFullyClaimed != 0 ?  vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1 : vlCvxPositions[positionId].firstRewardEpoch;
-        require(firstRewardEpoch <= lastRewardEpochFullyClaimed, "call claim on oracle");
+        uint256 firstRewardEpoch = vlCvxPositions[positionId]
+            .lastRewardEpochFullyClaimed != 0
+            ? vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1
+            : vlCvxPositions[positionId].firstRewardEpoch;
+        require(
+            firstRewardEpoch <= lastRewardEpochFullyClaimed,
+            "call claim on oracle"
+        );
 
         uint256 positionAmount = vlCvxPositions[positionId].cvxAmount;
 
         uint256 claimable = 0;
 
         // add up total rewards for a position up until the last epoch claimed via the oracle
-        for (uint256 i = firstRewardEpoch; i < lastRewardEpochFullyClaimed + 1; i++) {
+        for (
+            uint256 i = firstRewardEpoch;
+            i < lastRewardEpochFullyClaimed + 1;
+            i++
+        ) {
             uint256 balanceAtEpoch = ILockedCvx(vlCVX).balanceAtEpochOf(
                 i,
                 address(this)
@@ -84,10 +101,11 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
                 10 ** 18;
             claimable += claimed;
         }
-        
+
         require(claimable > 0, "no rewards to claim");
 
-        vlCvxPositions[positionId].lastRewardEpochFullyClaimed = lastRewardEpochFullyClaimed;
+        vlCvxPositions[positionId]
+            .lastRewardEpochFullyClaimed = lastRewardEpochFullyClaimed;
         // solhint-disable-next-line
         (bool sent, ) = address(ownerOf(positionId)).call{value: claimable}("");
         require(sent, "Failed to send Ether");
@@ -96,16 +114,23 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function claimableNow(
         uint256 positionId
     ) public view override returns (uint256 ethAmount) {
-        uint256 firstRewardEpoch = vlCvxPositions[positionId].lastRewardEpochFullyClaimed != 0 ?  vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1 : vlCvxPositions[positionId].firstRewardEpoch;
+        uint256 firstRewardEpoch = vlCvxPositions[positionId]
+            .lastRewardEpochFullyClaimed != 0
+            ? vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1
+            : vlCvxPositions[positionId].firstRewardEpoch;
 
-        if(firstRewardEpoch > lastRewardEpochFullyClaimed) return 0;
+        if (firstRewardEpoch > lastRewardEpochFullyClaimed) return 0;
 
         uint256 positionAmount = vlCvxPositions[positionId].cvxAmount;
 
         uint256 totalRewards = 0;
 
         // add up total rewards for a position up until unlock epoch -1
-        for (uint256 i = firstRewardEpoch; i < lastRewardEpochFullyClaimed + 1; i++) {
+        for (
+            uint256 i = firstRewardEpoch;
+            i < lastRewardEpochFullyClaimed + 1;
+            i++
+        ) {
             uint256 balanceAtEpoch = ILockedCvx(vlCVX).balanceAtEpochOf(
                 i,
                 address(this)
@@ -120,14 +145,18 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         }
 
         return totalRewards;
-
     }
 
     function lockedValue(
         uint256 positionId
     ) public view override returns (uint256 ethValue) {
-        AggregatorV3Interface chainLinkCvxEthFeed = AggregatorV3Interface(0xC9CbF687f43176B302F03f5e58470b77D07c61c6);
-        (, int256 chainLinkCvxEthPrice, , , ) = chainLinkCvxEthFeed.latestRoundData();
-        return vlCvxPositions[positionId].cvxAmount * uint256(chainLinkCvxEthPrice); // TODO does this need to be divided by 1 e18?
+        AggregatorV3Interface chainLinkCvxEthFeed = AggregatorV3Interface(
+            0xC9CbF687f43176B302F03f5e58470b77D07c61c6
+        );
+        (, int256 chainLinkCvxEthPrice, , , ) = chainLinkCvxEthFeed
+            .latestRoundData();
+        return
+            vlCvxPositions[positionId].cvxAmount *
+            uint256(chainLinkCvxEthPrice); // TODO does this need to be divided by 1 e18?
     }
 }

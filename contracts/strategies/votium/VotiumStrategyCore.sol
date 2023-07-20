@@ -19,7 +19,7 @@ contract VotiumStrategyCore is
 {
     address constant cvxAddress = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
-    0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+        0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address constant vlCVX = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
@@ -82,24 +82,36 @@ contract VotiumStrategyCore is
         lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
 
-
-    // TODO: NEED 2 different oracles to update the below oracle functions. one every 2 weeks and the other every week.
+    // TODO: We need 2 different oracles to update the below oracle functions. one every 2 weeks and the other every week.
 
     /// this should be called around the same time every other epoch
     /// because vlCvx rewards are constant it would be unfair/inconsistent to claim at different times the way it distributes rewards into epochs
     /// but its also not a huge deal because vlCvx is a much smaller part of the overall rewards
-    function oracleClaimRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs, SwapData[] calldata swapsData) public {
+    function oracleClaimRewards(
+        IVotiumMerkleStash.ClaimParam[] calldata claimProofs,
+        SwapData[] calldata swapsData
+    ) public {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-        require(lastRewardEpochFullyClaimed < currentEpoch - 1 && currentEpoch % 2 == 0, "cant claim rewards");
+        require(
+            lastRewardEpochFullyClaimed < currentEpoch - 1 &&
+                currentEpoch % 2 == 0,
+            "cant claim rewards"
+        );
 
         claimVotiumRewards(claimProofs);
         claimvlCvxRewards();
         uint256 claimed = sellRewards(swapsData);
 
-        uint256 unclaimedEpochCount = currentEpoch - lastRewardEpochFullyClaimed - 1;
+        uint256 unclaimedEpochCount = currentEpoch -
+            lastRewardEpochFullyClaimed -
+            1;
         uint256 rewardsPerCompletedEpoch = claimed / unclaimedEpochCount;
 
-        for (uint256 i = lastRewardEpochFullyClaimed + 1; i < currentEpoch; i++) {
+        for (
+            uint256 i = lastRewardEpochFullyClaimed + 1;
+            i < currentEpoch;
+            i++
+        ) {
             rewardsClaimedPerEpoch[i] = rewardsPerCompletedEpoch;
         }
 
@@ -147,10 +159,7 @@ contract VotiumStrategyCore is
         lastRelockEpoch = currentEpoch;
     }
 
-    function lockCvx(
-        uint256 cvxAmount,
-        uint256 positionId
-    ) internal {
+    function lockCvx(uint256 cvxAmount, uint256 positionId) internal {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
         vlCvxPositions[positionId].cvxAmount = cvxAmount;
         vlCvxPositions[positionId].firstRelockEpoch = currentEpoch + 17;
@@ -162,7 +171,9 @@ contract VotiumStrategyCore is
         ILockedCvx(vlCVX).lock(address(this), cvxAmount, 0);
     }
 
-        function buyCvx(uint256 ethAmountIn) internal returns (uint256 cvxAmountOut) {
+    function buyCvx(
+        uint256 ethAmountIn
+    ) internal returns (uint256 cvxAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
         uint256 cvxBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
@@ -176,7 +187,9 @@ contract VotiumStrategyCore is
         cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;
     }
 
-    function sellCvx(uint256 cvxAmountIn) internal returns (uint256 ethAmountOut) {
+    function sellCvx(
+        uint256 cvxAmountIn
+    ) internal returns (uint256 ethAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
         uint256 ethBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
@@ -190,7 +203,6 @@ contract VotiumStrategyCore is
         uint256 ethBalanceAfter = IERC20(cvxAddress).balanceOf(address(this));
         ethAmountOut = ethBalanceAfter - ethBalanceBefore;
     }
-
 
     /// sell any number of erc20's via 0x in a single tx
     function sellRewards(
@@ -212,7 +224,9 @@ contract VotiumStrategyCore is
         ethReceived = ethBalanceAfter - ethBalanceBefore;
     }
 
-    function claimVotiumRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) private {
+    function claimVotiumRewards(
+        IVotiumMerkleStash.ClaimParam[] calldata claimProofs
+    ) private {
         IVotiumMerkleStash(0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A)
             .claimMulti(address(this), claimProofs);
     }
