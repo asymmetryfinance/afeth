@@ -24,7 +24,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     }
 
     function requestClose(uint256 positionId) external override {
-        require(ownerOf(positionId) == msg.sender, "Not owner"); // TODO this shouldnt use msg sender. msg sender will always be the manager contract. the original sender should be passed through
+        require(ownerOf(positionId) == msg.sender, "Not owner");
         require(positions[positionId].unlockTime != 0, "Not open");
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
 
@@ -50,15 +50,18 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     }
     
 
-    function burn(uint256 positionId) external override{
+    function burn(uint256 positionId) external override {
         require(positions[positionId].unlockTime != 0, "requestClose() not called");
         require(positions[positionId].unlockTime > block.timestamp, "still locked");
+        this.claimRewards(positionId);
+        sellCvx(vlCvxPositions[positionId].cvxAmount);
         _burn(positionId);
-        // TODO - sell cvx for eth, claim remaimning rewards and send user eth
+        
+        // TODO - claim remaimning rewards and send user eth
     }
 
-    function claimRewards(uint256 positionId, address originalCaller) external override onlyManager {
-        require(originalCaller == ownerOf(positionId), "originalCaller not owner");
+    function claimRewards(uint256 positionId) external override {
+        require(msg.sender == ownerOf(positionId), "originalCaller not owner");
         require(this.claimableNow(positionId) > 0, "nothing to claim");
 
         uint256 firstRewardEpoch = vlCvxPositions[positionId].lastRewardEpochFullyClaimed != 0 ?  vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1 : vlCvxPositions[positionId].firstRewardEpoch;

@@ -14,19 +14,6 @@ abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC7
     uint256 public positionCount;
     mapping(uint => Position) public positions;
 
-    address manager;
-
-    error Unauthorized();
-
-    modifier onlyManager() {
-        if (msg.sender != manager) revert Unauthorized();
-        _;
-    }
-
-    function setManager(address newManager) public onlyOwner {
-        manager = newManager;
-    }
-
     /// open new position (mint nft), returns positionId
     function mint() virtual external payable returns (uint256 positionId);
 
@@ -37,7 +24,7 @@ abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable, ERC7
     function burn(uint256 positionId) virtual external;
 
     /// Withdraw any rewards from the position that can be claimed right now
-    function claimRewards(uint256 positionId, address originalCaller) virtual external;
+    function claimRewards(uint256 positionId) virtual external;
 
     /// how much rewards can be claimed right now
     function claimableNow(uint256 positionId) virtual external view returns (uint256 ethAmountClaimable);

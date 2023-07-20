@@ -16,7 +16,7 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
 
     }
 
-    function claimRewards(uint256 positionId, address originalCaller) external override {
+    function claimRewards(uint256 positionId) external override {
 
     }
 
