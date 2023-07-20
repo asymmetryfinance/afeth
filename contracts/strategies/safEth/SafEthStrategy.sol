@@ -1,5 +1,5 @@
 import "./SafEthStrategyCore.sol";
-import "../../AbstractNftStrategy.sol";
+import "../AbstractNftStrategy.sol";
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
@@ -16,7 +16,7 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
 
     }
 
-    function claimRewards(uint256 positionId) external override {
+    function claimRewards(uint256 positionId, address originalCaller) external override {
 
     }
 

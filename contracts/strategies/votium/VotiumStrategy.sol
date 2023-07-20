@@ -57,7 +57,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         // TODO - sell cvx for eth, claim remaimning rewards and send user eth
     }
 
-    function claimRewards(uint256 positionId) external override {
+    function claimRewards(uint256 positionId, address originalCaller) external override onlyManager {
+        require(originalCaller == ownerOf(positionId), "originalCaller not owner");
         require(this.claimableNow(positionId) > 0, "nothing to claim");
 
         uint256 firstRewardEpoch = vlCvxPositions[positionId].lastRewardEpochFullyClaimed != 0 ?  vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1 : vlCvxPositions[positionId].firstRewardEpoch;
