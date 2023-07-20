@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.19;
+
 import "./VotiumStrategyCore.sol";
 import "../AbstractNftStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
 
 contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function mint() public payable override returns (uint256) {
