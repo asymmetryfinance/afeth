@@ -53,15 +53,15 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function burn(uint256 positionId) external override {
         require(positions[positionId].unlockTime != 0, "requestClose() not called");
         require(positions[positionId].unlockTime > block.timestamp, "still locked");
+        _burn(positionId);        
         this.claimRewards(positionId);
-        sellCvx(vlCvxPositions[positionId].cvxAmount);
-        _burn(positionId);
-        
-        // TODO - claim remaimning rewards and send user eth
+        uint256 ethReceived = sellCvx(vlCvxPositions[positionId].cvxAmount);
+        // solhint-disable-next-line
+        (bool sent, ) = address(ownerOf(positionId)).call{value: ethReceived}("");
+        require(sent, "Failed to send Ether");
     }
 
     function claimRewards(uint256 positionId) external override {
-        require(msg.sender == ownerOf(positionId), "originalCaller not owner");
         require(this.claimableNow(positionId) > 0, "nothing to claim");
 
         uint256 firstRewardEpoch = vlCvxPositions[positionId].lastRewardEpochFullyClaimed != 0 ?  vlCvxPositions[positionId].lastRewardEpochFullyClaimed + 1 : vlCvxPositions[positionId].firstRewardEpoch;
