@@ -5,7 +5,6 @@ import "../../AbstractNftStrategy.sol";
 pragma solidity 0.8.19;
 
 contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
-
     function mint() external payable override returns (uint256) {
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX).approve(vlCVX, cvxAmount);
@@ -57,7 +56,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         require(positions[positionId].unlockTime > block.timestamp, "still locked");
         require(ownerOf(positionId) == msg.sender, "Not owner");
         _burn(positionId);
-        // TODO - sell cvx for eth, claim rewards and send user their $
+        // TODO - sell cvx for eth, claim remaimning rewards and send user eth
     }
 
     function claimRewards(uint256 positionId) external override onlyPositionOwner(positionId) {
