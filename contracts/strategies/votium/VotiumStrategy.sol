@@ -1,5 +1,6 @@
 import "./VotiumStrategyCore.sol";
 import "../AbstractNftStrategy.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
@@ -125,6 +126,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function lockedValue(
         uint256 positionId
     ) public view override returns (uint256 ethValue) {
-        return 0; // TODO
+        AggregatorV3Interface chainLinkCvxEthFeed = AggregatorV3Interface(0xC9CbF687f43176B302F03f5e58470b77D07c61c6);
+        (, int256 chainLinkCvxEthPrice, , , ) = chainLinkCvxEthFeed.latestRoundData();
+        return vlCvxPositions[positionId].cvxAmount * uint256(chainLinkCvxEthPrice); // TODO does this need to be divided by 1 e18?
     }
 }
