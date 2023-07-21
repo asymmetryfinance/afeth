@@ -2,7 +2,9 @@
 
 ## About
 
-Monorepo containing a strategy manager contract and nft-wrapped strategies that can be mixed and matched in various combinations. This will be used to create afEth by combining votium and safEth strategies in the manager
+AfEth implementations (managers) built using different earning strategy nfts (votium, safEth, etc) by using a common interface to combine each strategy in any ratio
+
+AfEth V1 will work by wrapping / managing the underlying votium & safEth strategies into a new nft.
 
 ## Local Development
 
@@ -33,19 +35,3 @@ Or for complete coverage:
 ```
 yarn coverage
 ```
-
-### Local Node
-
-Run the following command to spin up your local node
-
-```
-yarn local:node
-```
-
-In another terminal run this command to deploy the contracts to your local node
-
-```
-yarn deploy --network localhost
-```
-
-Once deployed you can interact with your local contracts through Ethernal or scripts/tests
