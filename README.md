@@ -2,7 +2,7 @@
 
 ## About
 
-AfEth implementations (managers) built using different earning strategy nfts (votium, safEth, etc) by using a common interface to combine each strategy in any ratio
+AfEth implementations built using different earning strategy nfts (votium, safEth, etc) by using a common interface to combine each strategy in any ratio
 
 AfEth V1 will work by wrapping / managing the underlying votium & safEth strategies into a new nft.
 
