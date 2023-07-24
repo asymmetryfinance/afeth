@@ -116,4 +116,8 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
       "VM Exception while processing transaction: reverted with reason string 'Not owner'"
     );
   });
+
+  it("Should allow user to transfer minted nft to another user who is able to use it", async function () {
+    // TODO
+  });
 });
