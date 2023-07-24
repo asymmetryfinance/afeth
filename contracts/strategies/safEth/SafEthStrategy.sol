@@ -5,6 +5,8 @@ import "./SafEthStrategyCore.sol";
 import "../AbstractNftStrategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
+import "hardhat/console.sol";
+
 contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
     function mint() external payable override returns (uint256) {
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
@@ -43,6 +45,8 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
         positions[positionId].ethBurned += ethReceived;
+        safEthPositions[positionId].safEthAmount = 0;
+
         // solhint-disable-next-line
         (bool sent, ) = positionOwner.call{value: ethReceived}(
             ""
@@ -63,6 +67,6 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
     function lockedValue(
         uint256 positionId
     ) external view override returns (uint256 ethValue) {
-        return ISafEth(safEthAddress).approxPrice() * safEthPositions[positionId].safEthAmount;
+        return (ISafEth(safEthAddress).approxPrice() * safEthPositions[positionId].safEthAmount) / 1e18;
     }
 }
