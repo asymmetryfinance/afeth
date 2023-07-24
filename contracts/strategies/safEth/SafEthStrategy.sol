@@ -35,16 +35,18 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
 
     function burn(uint256 positionId) external override {
         require(positions[positionId].unlockTime != 0, "requestClose() not called");
+        address positionOwner = ownerOf(positionId);
         _burn(positionId);
         uint256 ethBalanceBefore = address(this).balance;
         ISafEth(safEthAddress).unstake(safEthPositions[positionId].safEthAmount, 0); // TODO do we need minout here?
-
         uint256 ethBalanceAfter = address(this).balance;
-
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
+        positions[positionId].ethBurned += ethReceived;
+        safEthPositions[positionId].safEthAmount = 0;
+
         // solhint-disable-next-line
-        (bool sent, ) = address(ownerOf(positionId)).call{value: ethReceived}(
+        (bool sent, ) = positionOwner.call{value: ethReceived}(
             ""
         );
         require(sent, "Failed to send Ether");
@@ -63,6 +65,6 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
     function lockedValue(
         uint256 positionId
     ) external view override returns (uint256 ethValue) {
-        return ISafEth(safEthAddress).approxPrice() * safEthPositions[positionId].safEthAmount;
+        return (ISafEth(safEthAddress).approxPrice() * safEthPositions[positionId].safEthAmount) / 1e18;
     }
 }

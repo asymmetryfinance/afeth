@@ -4,7 +4,19 @@ import axios from "axios";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { expect } from "chai";
 
-describe("VotiumStrategy", async function () {
+// Votium tests are hard for 2 reasons:
+// 1) they require 2 types of oracle updates -- once a week to relock cvx and another every 2 weeks to claim rewards
+// 2) We may need to impersonate accounts to update the merkle root and generate/simulate our own reward merkle proofs
+describe("Test Votium Strategy Specific Functionality", async function () {
+  it("Should test some things (TODO)", async function () {
+    // TODO
+  });
+});
+
+// TODO
+// figure out some way to always use latest block but also use a valid token whale for that block
+// this test is skipped because its always breaking because the whale balances change
+describe.skip("Test selling votium rewards via 0x", async function () {
   let votiumStrategy: any;
 
   // mapping of token address to whale address
@@ -210,3 +222,4 @@ describe("VotiumStrategy", async function () {
     expect(ethBalanceAfter).to.be.gt(ethBalanceBefore);
   });
 });
+

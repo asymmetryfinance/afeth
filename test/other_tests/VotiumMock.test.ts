@@ -3,7 +3,10 @@ import { VotiumPosition } from "../typechain-types";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { expect } from "chai";
 import axios from "axios";
-describe("VotiumPosition", async function () {
+
+// Forks mainnet to test our mainnet deployed, locked and delegated votium vlcvx positions thats accumulating rewards
+// so we can test our logic locally and be sure it works as expected without having to create our own mock merkle proof data
+describe("VotiumMock", async function () {
   let votiumMockForked: VotiumPosition; // existing mock from forked mainnet
 
   before(async () => {
