@@ -4,6 +4,7 @@ import axios from "axios";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { expect } from "chai";
 
+// TODO move this into votium strategy test
 describe("Sell Votium Rewards", async function () {
   let votiumStrategy: any;
 
