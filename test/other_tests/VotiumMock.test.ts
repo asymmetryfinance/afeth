@@ -3,6 +3,7 @@ import { VotiumPosition } from "../typechain-types";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { expect } from "chai";
 import axios from "axios";
+
 describe("VotiumPosition", async function () {
   let votiumMockForked: VotiumPosition; // existing mock from forked mainnet
 
