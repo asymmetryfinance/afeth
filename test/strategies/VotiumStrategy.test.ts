@@ -3,6 +3,8 @@ import { VotiumStrategy } from "../typechain-types";
 import axios from "axios";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { expect } from "chai";
+import { votiumStashControllerAbi } from "../abis/votiumStashControllerAbi";
+import { parseBalanceMap } from "../merkle_helpers/parse-balance-map";
 
 // Votium tests are hard for 2 reasons:
 // 1) they require 2 types of oracle updates -- once a week to relock cvx and another every 2 weeks to claim rewards
@@ -10,6 +12,82 @@ import { expect } from "chai";
 describe("Test Votium Strategy Specific Functionality", async function () {
   it("Should test some things (TODO)", async function () {
     // TODO
+  });
+});
+
+// TODO change this to "Test oracleClaimRewards" and make claimVotiumRewards() private
+describe("Test claimVotiumRewards()", async function () {
+  it.only("Should mock merkle data & impersonate account to set merkle root & claim rewards", async function () {
+    const votiumStashControllerAddress =
+      "0x9d37A22cEc2f6b3635c61C253D192E68e85b1790";
+    const votiumStashControllerOwner =
+      "0xe39b8617D571CEe5e75e1EC6B2bb40DdC8CF6Fa3";
+
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [votiumStashControllerOwner],
+    });
+    const impersonatedOwnerSigner = await ethers.getSigner(
+      votiumStashControllerOwner
+    );
+    const votiumStashController = new ethers.Contract(
+      votiumStashControllerAddress,
+      votiumStashControllerAbi,
+      impersonatedOwnerSigner
+    ) as any;
+
+    // give owner some eth to do txs with
+    const accounts = await ethers.getSigners();
+    const tx = await accounts[0].sendTransaction({
+      to: votiumStashControllerOwner,
+      value: "2000000000000000000", // 2 eth
+    });
+    await tx.wait();
+
+    const votiumStrategyFactory = await ethers.getContractFactory(
+      "VotiumStrategy"
+    );
+    const votiumStrategy = (await upgrades.deployProxy(
+      votiumStrategyFactory
+    )) as VotiumStrategy;
+    await votiumStrategy.deployed();
+
+    // set merkle root for crv
+    const crvAddress = "0xD533a949740bb3306d119CC777fa900bA034cd52";
+
+    // generate a merkle tree of rewards with our contract address and some other random addresses to make it realistic
+    const proofData = await parseBalanceMap({
+      [votiumStrategy.address]: "150",
+      "0x8a65ac0E23F31979db06Ec62Af62b132a6dF4741": "160",
+      "0x0000462df2438f7b39577917374b1565c306b908": "170",
+      "0x000051d46ff97559ed5512ac9d2d95d0ef1140e1": "180",
+    });
+
+    const merkleRoot = proofData.merkleRoot;
+
+    await votiumStashController.multiFreeze([crvAddress]);
+
+    await votiumStashController.multiSet([crvAddress], [merkleRoot]);
+
+    const claimProof = [
+      crvAddress,
+      proofData.claims[votiumStrategy.address].index,
+      proofData.claims[votiumStrategy.address].amount,
+      proofData.claims[votiumStrategy.address].proof,
+    ];
+
+    const crvContract = new ethers.Contract(crvAddress, ERC20.abi, accounts[0]);
+    const crvBalanceBeforeClaim = await crvContract.balanceOf(
+      votiumStrategy.address
+    );
+
+    const tx2 = await votiumStrategy.claimVotiumRewards([claimProof]);
+    await tx2.wait();
+    const crvBalanceAfterClaim = await crvContract.balanceOf(
+      votiumStrategy.address
+    );
+
+    expect(crvBalanceAfterClaim).gt(crvBalanceBeforeClaim);
   });
 });
 
@@ -222,4 +300,3 @@ describe.skip("Test selling votium rewards via 0x", async function () {
     expect(ethBalanceAfter).to.be.gt(ethBalanceBefore);
   });
 });
-

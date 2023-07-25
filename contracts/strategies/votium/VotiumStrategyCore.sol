@@ -227,7 +227,7 @@ contract VotiumStrategyCore is
 
     function claimVotiumRewards(
         IVotiumMerkleStash.ClaimParam[] calldata claimProofs
-    ) private {
+    ) public { // TODO make this private. I made it temporarily public for testing during dev
         IVotiumMerkleStash(0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A)
             .claimMulti(address(this), claimProofs);
     }
