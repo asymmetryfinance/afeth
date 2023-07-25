@@ -52,7 +52,6 @@ describe("Test claimVotiumRewards()", async function () {
     )) as VotiumStrategy;
     await votiumStrategy.deployed();
 
-    // set merkle root for crv
     const crvAddress = "0xD533a949740bb3306d119CC777fa900bA034cd52";
 
     // generate a merkle tree of rewards with our contract address and some other random addresses to make it realistic
