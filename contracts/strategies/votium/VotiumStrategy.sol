@@ -43,7 +43,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             unlockEpoch = firstRelockEpoch;
         }
 
-        (uint256 _unused2, uint256 unlockEpochStartingTime) = ILockedCvx(vlCVX)
+        (, uint256 unlockEpochStartingTime) = ILockedCvx(vlCVX)
             .epochs(unlockEpoch);
 
         positions[positionId].unlockTime = unlockEpochStartingTime;
