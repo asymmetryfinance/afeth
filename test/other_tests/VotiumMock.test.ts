@@ -10,13 +10,17 @@ describe("VotiumMock", async function () {
   let votiumMockForked: VotiumPosition; // existing mock from forked mainnet
 
   before(async () => {
+    const result = await axios.get(
+      `https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=${process.env.ETHERSCAN_API_KEY}`
+    );
+
     await network.provider.request({
       method: "hardhat_reset",
       params: [
         {
           forking: {
             jsonRpcUrl: process.env.MAINNET_URL,
-            blockNumber: Number(process.env.BLOCK_NUMBER),
+            blockNumber: Number(result.data.result) - 6,
           },
         },
       ],

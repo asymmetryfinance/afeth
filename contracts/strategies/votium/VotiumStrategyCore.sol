@@ -13,7 +13,6 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 
 /// For private internal functions and anything not exposed via the interface
-import "hardhat/console.sol";
 
 contract VotiumStrategyCore is
     Initializable,

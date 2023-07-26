@@ -13,7 +13,7 @@ import { BigNumber } from "ethers";
 // 1) they require 2 types of oracle updates -- once a week to relock cvx and another every 2 weeks to claim rewards
 // 2) We may need to impersonate accounts to update the merkle root and generate/simulate our own reward merkle proofs
 
-describe.only("Test Votium Cvx Lock & Unlock Logic", async function () {
+describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   const epochDuration = 60 * 60 * 24 * 7;
 
   let votiumStrategy: any;
@@ -28,7 +28,7 @@ describe.only("Test Votium Cvx Lock & Unlock Logic", async function () {
     await votiumStrategy.deployed();
   });
 
-  it("Should update lastEpochLocksProcessed if oracleRelockCvx() is called & there is cvx to relock", async function () {
+  it("Should update values correctly if requestClose() is called followed by oracleRelockCvx() 17 weeks later", async function () {
     const mintTx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -56,6 +56,8 @@ describe.only("Test Votium Cvx Lock & Unlock Logic", async function () {
     // 16 epochs isnt enough to be eligible to relock so it wont have relocked
     expect(await votiumStrategy.lastEpochLocksProcessed()).eq(firstRelockEpoch);
 
+    expect(await votiumStrategy.cvxToLeaveUnlocked()).eq(0);
+
     // wait 1 more epoch and it will have unlocked so can be relocked
     await incrementVlcvxEpoch();
     await oracleRelockCvx();
@@ -68,13 +70,12 @@ describe.only("Test Votium Cvx Lock & Unlock Logic", async function () {
       await votiumStrategy.lastEpochLocksProcessed();
     const currentEpoch = await getCurrentEpoch();
 
+    expect(await votiumStrategy.cvxToLeaveUnlocked()).gt(0);
+
     expect(lastEpochLocksProcessed).eq(currentEpoch);
     expect(lastEpochLocksProcessed).eq(
       BigNumber.from(firstRelockEpoch).add(17)
     );
-  });
-  it("Should update cvxToLeaveUnlocked if oracleRelockCvx() after calling", async function () {
-    // TODO
   });
 
   const getCurrentEpoch = async () => {
