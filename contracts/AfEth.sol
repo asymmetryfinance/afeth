@@ -19,7 +19,7 @@ contract AfEth {
         strategies = [votium, safEth];
     }
 
-    function stake(uint256 _amount, uint256[] memory _ratios) external payable {
+    function mint(uint256 _amount, uint256[] memory _ratios) external payable {
         uint256 totalRatio;
         for (uint256 i = 0; i < _ratios.length; i++) {
             totalRatio += _ratios[i];
@@ -29,26 +29,25 @@ contract AfEth {
         }
 
         for (uint256 i = 0; i < strategies.length; i++) {
-            strategies[i].mint{value: _amount * (_ratios[i] / 100)}(); // TODO: fix broken math
+            strategies[i].mint{value: (_amount * _ratios[i]) / 100}();
         }
     }
 
-    function unstake(
-        uint256 _amount,
-        uint256[] memory _ratios
-    ) external payable {
-        uint256 totalRatio;
-        for (uint256 i = 0; i < _ratios.length; i++) {
-            totalRatio += _ratios[i];
-        }
-        if (totalRatio != 100) {
-            revert InvalidRatios();
-        }
-
+    function burn(uint256 _positionId) external {
         for (uint256 i = 0; i < strategies.length; i++) {
-            // strategies[i].requestClose{value: _amount * (_ratios[i] / 100)}();
+            strategies[i].burn(_positionId);
         }
     }
 
-    function claim() external {}
+    function requestClose(uint256 _positionId) external payable {
+        for (uint256 i = 0; i < strategies.length; i++) {
+            strategies[i].requestClose(_positionId);
+        }
+    }
+
+    function claimRewards(uint256 _positionId) external {
+        for (uint256 i = 0; i < strategies.length; i++) {
+            strategies[i].claimRewards(_positionId);
+        }
+    }
 }
