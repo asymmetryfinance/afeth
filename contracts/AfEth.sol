@@ -6,7 +6,7 @@ import "./strategies/votium/VotiumStrategy.sol";
 import "./strategies/safEth/SafEthStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
-contract AfEth is Initializable {
+contract AfEth is Initializable, ERC721Upgradeable {
     AbstractNftStrategy votium;
     AbstractNftStrategy safEth;
     AbstractNftStrategy[] strategies;
