@@ -13,6 +13,7 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 
 /// For private internal functions and anything not exposed via the interface
+
 contract VotiumStrategyCore is
     Initializable,
     OwnableUpgradeable,
@@ -24,8 +25,8 @@ contract VotiumStrategyCore is
     address constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address constant vlCVX = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
-    // last epoch in which relock was called
-    uint256 public lastRelockEpoch;
+    // last epoch in which expired locks were processed with vlcvx.processExpiredLocks()
+    uint256 public lastEpochLocksProcessed;
 
     // cvx amount we cant relock because users have closed the positions and can now withdraw
     uint256 public cvxToLeaveUnlocked;
@@ -79,7 +80,7 @@ contract VotiumStrategyCore is
             votiumVoteProxyAddress
         );
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-        lastRelockEpoch = currentEpoch;
+        lastEpochLocksProcessed = currentEpoch;
         lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
 
@@ -124,7 +125,7 @@ contract VotiumStrategyCore is
     /// Relocks any unlocked cvx from positions that have not requested to close
     function oracleRelockCvx() public {
         uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-        if (lastRelockEpoch == currentEpoch) return;
+        if (lastEpochLocksProcessed == currentEpoch) return;
 
         (, uint256 unlockable, , ) = ILockedCvx(vlCVX).lockedBalances(
             address(this)
@@ -133,6 +134,7 @@ contract VotiumStrategyCore is
         if (unlockable == 0) return;
         // unlock all (theres no way to unlock individual locks)
         ILockedCvx(vlCVX).processExpiredLocks(false);
+        lastEpochLocksProcessed = currentEpoch;
 
         uint256 unlockedCvxBalance = IERC20(CVX).balanceOf(address(this));
 
@@ -143,7 +145,7 @@ contract VotiumStrategyCore is
         // we overlap with the previous relock by 1 epoch
         // to make sure we dont miss any if they requested an unlock on the same epoch but after relockCvx() was called
         // TODO put more tests around this logic
-        for (uint256 i = currentEpoch; i > lastRelockEpoch - 1; i--) {
+        for (uint256 i = currentEpoch; i > lastEpochLocksProcessed - 1; i--) {
             toUnlock += unlockSchedule[i];
             unlockSchedule[i] = 0;
         }
@@ -157,7 +159,6 @@ contract VotiumStrategyCore is
 
         IERC20(CVX).approve(vlCVX, cvxAmountToRelock);
         ILockedCvx(vlCVX).lock(address(this), cvxAmountToRelock, 0);
-        lastRelockEpoch = currentEpoch;
     }
 
     function lockCvx(uint256 cvxAmount, uint256 positionId) internal {
@@ -178,11 +179,11 @@ contract VotiumStrategyCore is
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
         uint256 cvxBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
-        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
+        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{value: ethAmountIn}(
             0,
             1,
             ethAmountIn,
-            0 // TODO minout to something
+            99879689261 // TODO minout to something
         );
         uint256 cvxBalanceAfter = IERC20(cvxAddress).balanceOf(address(this));
         cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;

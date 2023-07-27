@@ -15,7 +15,7 @@ interface ICrvEthPool {
         uint256 j,
         uint256 dx,
         uint256 min_dy
-    ) external;
+    ) external payable;
 
     function get_virtual_price() external view returns (uint256);
 
