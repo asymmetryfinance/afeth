@@ -143,7 +143,6 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
                 10 ** 18;
             totalRewards += claimed;
         }
-
         return totalRewards;
     }
 
