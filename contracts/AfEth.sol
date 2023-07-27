@@ -50,7 +50,7 @@ contract AfEth is Initializable {
 
     /**
         @notice - Burns based on position id
-        @dev - This will b
+        @dev - This will only be able to be burned once the unlock time is completed
         @param _positionId - Position id to burn
     */
     function burn(uint256 _positionId) external {
@@ -59,12 +59,20 @@ contract AfEth is Initializable {
         }
     }
 
+    /**
+        @notice - Request to close position
+        @param _positionId - Position id to request to close
+    */
     function requestClose(uint256 _positionId) external payable {
         for (uint256 i = 0; i < strategies.length; i++) {
             strategies[i].requestClose(_positionId);
         }
     }
 
+    /**
+        @notice - Claim reward of position
+        @param _positionId - Position id to claim reward
+    */
     function claimRewards(uint256 _positionId) external {
         for (uint256 i = 0; i < strategies.length; i++) {
             strategies[i].claimRewards(_positionId);
