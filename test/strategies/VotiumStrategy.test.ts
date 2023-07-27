@@ -17,7 +17,7 @@ describe("Test Votium Strategy Specific Functionality", async function () {
 
 // TODO change this to "Test oracleClaimRewards" and make claimVotiumRewards() private
 describe("Test claimVotiumRewards()", async function () {
-  it.only("Should mock merkle data & impersonate account to set merkle root & claim rewards", async function () {
+  it("Should mock merkle data & impersonate account to set merkle root & claim rewards", async function () {
     const votiumStashControllerAddress =
       "0x9d37A22cEc2f6b3635c61C253D192E68e85b1790";
     const votiumStashControllerOwner =
