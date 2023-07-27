@@ -6,7 +6,7 @@ import "../AbstractNftStrategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
 contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
-    function mint() external payable override returns (uint256) {
+    function mint() external payable override onlyOwner returns (uint256) {
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
         );
@@ -28,12 +28,12 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         return newPositionId;
     }
 
-    function requestClose(uint256 positionId) external override {
+    function requestClose(uint256 positionId) external override onlyOwner{
         require(ownerOf(positionId) == msg.sender, "Not owner");
         positions[positionId].unlockTime = block.timestamp;
     }
 
-    function burn(uint256 positionId) external override {
+    function burn(uint256 positionId) external override onlyOwner{
         require(positions[positionId].unlockTime != 0, "requestClose() not called");
         address positionOwner = ownerOf(positionId);
         _burn(positionId);
@@ -52,7 +52,7 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         require(sent, "Failed to send Ether");
     }
 
-    function claimRewards(uint256 positionId) external override {
+    function claimRewards(uint256 positionId) external override onlyOwner{
         // noop for safEth. rewards are built accured with price going up between minting and burning
     }
 

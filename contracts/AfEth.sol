@@ -31,7 +31,7 @@ contract AfEth is Initializable {
 
     /**
         @notice - Mints through each strategy
-        @param _amount - Total amount to ming
+        @param _amount - Total amount to mint
         @param _ratios - Ratio of each strategy to mint (Must equal 100)
     */
     function mint(uint256 _amount, uint256[] memory _ratios) external payable {

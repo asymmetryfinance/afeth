@@ -47,9 +47,9 @@ describe("Test claimVotiumRewards()", async function () {
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
     );
-    const votiumStrategy = (await upgrades.deployProxy(
-      votiumStrategyFactory
-    )) as VotiumStrategy;
+    const votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
+      accounts[0].address,
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
     const crvAddress = "0xD533a949740bb3306d119CC777fa900bA034cd52";
@@ -174,9 +174,11 @@ describe.skip("Test selling votium rewards via 0x", async function () {
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
     );
-    votiumStrategy = (await upgrades.deployProxy(
-      votiumStrategyFactory
-    )) as VotiumStrategy;
+    const accounts = await ethers.getSigners();
+
+    votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
+      accounts[0].address,
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
   };
 

@@ -67,9 +67,10 @@ contract VotiumStrategyCore is
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
+        @param _manager - Address of the manager contract
     */
-    function initialize() external initializer {
-        _transferOwnership(msg.sender);
+    function initialize(address _manager) external initializer {
+        _transferOwnership(_manager);
 
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;

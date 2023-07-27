@@ -21,9 +21,9 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     const safEthStrategyFactory = await ethers.getContractFactory(
       "SafEthStrategy"
     );
-    safEthStrategy = (await upgrades.deployProxy(
-      safEthStrategyFactory
-    )) as SafEthStrategy;
+    safEthStrategy = (await upgrades.deployProxy(safEthStrategyFactory, [
+      accounts[0].address,
+    ])) as SafEthStrategy;
     await safEthStrategy.deployed();
     accounts = await ethers.getSigners();
   });
