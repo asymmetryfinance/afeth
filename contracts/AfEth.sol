@@ -7,9 +7,9 @@ import "./strategies/safEth/SafEthStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, ERC721Upgradeable {
-    AbstractNftStrategy votium;
-    AbstractNftStrategy safEth;
-    AbstractNftStrategy[] strategies;
+    address votium;
+    address safEth;
+    address[] strategies;
 
     error InvalidRatios();
 
@@ -22,10 +22,15 @@ contract AfEth is Initializable, ERC721Upgradeable {
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
+        @param _votiumStrategy - Address of the votium strategy contract
+        @param _safEthStrategy - Address of the safEth strategy contract
     */
-    function initialize() external initializer {
-        votium = new VotiumStrategy();
-        safEth = new SafEthStrategy();
+    function initialize(
+        address _votiumStrategy,
+        address _safEthStrategy
+    ) external initializer {
+        votium = _votiumStrategy;
+        safEth = _safEthStrategy;
         strategies = [votium, safEth];
     }
 
@@ -44,7 +49,7 @@ contract AfEth is Initializable, ERC721Upgradeable {
         }
 
         for (uint256 i = 0; i < strategies.length; i++) {
-            strategies[i].mint{value: (_amount * _ratios[i]) / 100}();
+            AbstractNftStrategy(strategies[i]).mint{value: (_amount * _ratios[i]) / 100}();
         }
     }
 
@@ -55,7 +60,7 @@ contract AfEth is Initializable, ERC721Upgradeable {
     */
     function burn(uint256 _positionId) external {
         for (uint256 i = 0; i < strategies.length; i++) {
-            strategies[i].burn(_positionId);
+            AbstractNftStrategy(strategies[i]).burn(_positionId);
         }
     }
 
@@ -65,7 +70,7 @@ contract AfEth is Initializable, ERC721Upgradeable {
     */
     function requestClose(uint256 _positionId) external payable {
         for (uint256 i = 0; i < strategies.length; i++) {
-            strategies[i].requestClose(_positionId);
+            AbstractNftStrategy(strategies[i]).requestClose(_positionId);
         }
     }
 
@@ -75,7 +80,7 @@ contract AfEth is Initializable, ERC721Upgradeable {
     */
     function claimRewards(uint256 _positionId) external {
         for (uint256 i = 0; i < strategies.length; i++) {
-            strategies[i].claimRewards(_positionId);
+            AbstractNftStrategy(strategies[i]).claimRewards(_positionId);
         }
     }
 }

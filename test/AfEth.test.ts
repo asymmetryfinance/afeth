@@ -1,12 +1,35 @@
 import { ethers, upgrades } from "hardhat";
 import { AfEth } from "../typechain-types";
+import { VotiumStrategy } from "../typechain-types";
+import { SafEthStrategy } from "../typechain-types";
 
 describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
   let afEthManager: AfEth;
 
   before(async () => {
+    const accounts = await ethers.getSigners();
+
+    const votiumStrategyFactory = await ethers.getContractFactory(
+      "VotiumStrategy"
+    );
+    const votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
+      accounts[0].address,
+    ])) as VotiumStrategy;
+    await votiumStrategy.deployed();
+
+    const safEthStrategyFactory = await ethers.getContractFactory(
+      "SafEthStrategy"
+    );
+    const safEthStrategy = (await upgrades.deployProxy(safEthStrategyFactory, [
+      accounts[0].address,
+    ])) as SafEthStrategy;
+    await safEthStrategy.deployed();
+
     const afEthFactory = await ethers.getContractFactory("AfEth");
-    afEthManager = (await upgrades.deployProxy(afEthFactory)) as AfEth;
+    afEthManager = (await upgrades.deployProxy(afEthFactory, [
+      votiumStrategy,
+      safEthStrategy,
+    ])) as AfEth;
     await afEthManager.deployed();
   });
 
