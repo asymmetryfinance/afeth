@@ -32,14 +32,14 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     await afEthManager.addStrategy(safEthStrategy.address);
   });
   it("Should mint with uneven ratios", async function () {
-    await afEthManager.mint(ethers.utils.parseEther("1"), [30, 70]);
+    await afEthManager.mint([30, 70], { value: ethers.utils.parseEther("1") });
   });
   it("Should mint with even ratios", async function () {
-    await afEthManager.mint(ethers.utils.parseEther("1"), [50, 50]);
+    await afEthManager.mint([50, 50], { value: ethers.utils.parseEther("1") });
   });
   it("Should fail to mint with wrong ratios", async function () {
     await expect(
-      afEthManager.mint(ethers.utils.parseEther("1"), [51, 50])
+      afEthManager.mint([51, 50], { value: ethers.utils.parseEther("1") })
     ).to.be.revertedWith("InvalidRatio");
   });
   it("Should request to close positions", async function () {
