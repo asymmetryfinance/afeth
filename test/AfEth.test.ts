@@ -1,48 +1,46 @@
 import { ethers, upgrades } from "hardhat";
 import { AfEth } from "../typechain-types";
-import { VotiumStrategy } from "../typechain-types";
-import { SafEthStrategy } from "../typechain-types";
+import { expect } from "chai";
+// import { VotiumStrategy } from "../typechain-types";
+// import { SafEthStrategy } from "../typechain-types";
 
-describe("Test AfEth (Votium + SafEth Strategies)", async function () {
+describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
   let afEthManager: AfEth;
 
   before(async () => {
-    console.log(1);
+    const afEthFactory = await ethers.getContractFactory("AfEth");
+    afEthManager = (await upgrades.deployProxy(afEthFactory)) as AfEth;
+    await afEthManager.deployed();
 
-    const accounts = await ethers.getSigners();
-    console.log(1);
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
     );
-    const votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
-      accounts[0].address,
-    ])) as VotiumStrategy;
+    const votiumStrategy = await upgrades.deployProxy(votiumStrategyFactory, [
+      "0x2498e8059929e18e2a2cED4e32ef145fa2F4a744",
+    ]);
     await votiumStrategy.deployed();
-    console.log(1);
 
     const safEthStrategyFactory = await ethers.getContractFactory(
       "SafEthStrategy"
     );
-    const safEthStrategy = (await upgrades.deployProxy(safEthStrategyFactory, [
-      accounts[0].address,
-    ])) as SafEthStrategy;
+    const safEthStrategy = await upgrades.deployProxy(safEthStrategyFactory, [
+      "0x2498e8059929e18e2a2cED4e32ef145fa2F4a744",
+    ]);
     await safEthStrategy.deployed();
-    console.log(1);
 
-    const afEthFactory = await ethers.getContractFactory("AfEth");
-    afEthManager = (await upgrades.deployProxy(afEthFactory, [
-      votiumStrategy,
-      safEthStrategy,
-    ])) as AfEth;
-    await afEthManager.deployed();
-    console.log(1);
+    await afEthManager.addStrategy(votiumStrategy.address);
+    await afEthManager.addStrategy(safEthStrategy.address);
   });
-
   it("Should mint with uneven ratios", async function () {
     await afEthManager.mint(ethers.utils.parseEther("1"), [30, 70]);
   });
   it("Should mint with even ratios", async function () {
-    // TODO
+    await afEthManager.mint(ethers.utils.parseEther("1"), [50, 50]);
+  });
+  it("Should fail to mint with wrong ratios", async function () {
+    await expect(
+      afEthManager.mint(ethers.utils.parseEther("1"), [51, 50])
+    ).to.be.revertedWith("InvalidRatio");
   });
   it("Should request to close positions", async function () {
     // TODO

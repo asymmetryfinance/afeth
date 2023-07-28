@@ -4,11 +4,10 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "./strategies/votium/VotiumStrategy.sol";
 import "./strategies/safEth/SafEthStrategy.sol";
+import "hardhat/console.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
-contract AfEth is Initializable, ERC721Upgradeable {
-    address votium;
-    address safEth;
+contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     address[] strategies;
 
     error InvalidRatios();
@@ -22,16 +21,17 @@ contract AfEth is Initializable, ERC721Upgradeable {
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
-        @param _votiumStrategy - Address of the votium strategy contract
-        @param _safEthStrategy - Address of the safEth strategy contract
     */
-    function initialize(
-        address _votiumStrategy,
-        address _safEthStrategy
-    ) external initializer {
-        votium = _votiumStrategy;
-        safEth = _safEthStrategy;
-        strategies = [votium, safEth];
+    function initialize() external initializer {
+        _transferOwnership(msg.sender);
+    }
+
+    /**
+        @notice - Function to add strategies to the strategies array
+        @param _strategy - Address of the strategy contract
+    */
+    function addStrategy(address _strategy) external onlyOwner {
+        strategies.push(_strategy);
     }
 
     /**
@@ -49,7 +49,10 @@ contract AfEth is Initializable, ERC721Upgradeable {
         }
 
         for (uint256 i = 0; i < strategies.length; i++) {
-            AbstractNftStrategy(strategies[i]).mint{value: (_amount * _ratios[i]) / 100}();
+            AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
+            console.log("Address: ", strategies[i]);
+            console.log("This: ", address(this));
+            strategy.mint();
         }
     }
 
@@ -60,7 +63,8 @@ contract AfEth is Initializable, ERC721Upgradeable {
     */
     function burn(uint256 _positionId) external {
         for (uint256 i = 0; i < strategies.length; i++) {
-            AbstractNftStrategy(strategies[i]).burn(_positionId);
+            AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
+            strategy.burn(_positionId);
         }
     }
 
