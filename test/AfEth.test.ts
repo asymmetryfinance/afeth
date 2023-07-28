@@ -3,12 +3,14 @@ import { AfEth } from "../typechain-types";
 import { VotiumStrategy } from "../typechain-types";
 import { SafEthStrategy } from "../typechain-types";
 
-describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
+describe("Test AfEth (Votium + SafEth Strategies)", async function () {
   let afEthManager: AfEth;
 
   before(async () => {
-    const accounts = await ethers.getSigners();
+    console.log(1);
 
+    const accounts = await ethers.getSigners();
+    console.log(1);
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
     );
@@ -16,6 +18,7 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
       accounts[0].address,
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
+    console.log(1);
 
     const safEthStrategyFactory = await ethers.getContractFactory(
       "SafEthStrategy"
@@ -24,6 +27,7 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
       accounts[0].address,
     ])) as SafEthStrategy;
     await safEthStrategy.deployed();
+    console.log(1);
 
     const afEthFactory = await ethers.getContractFactory("AfEth");
     afEthManager = (await upgrades.deployProxy(afEthFactory, [
@@ -31,6 +35,7 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
       safEthStrategy,
     ])) as AfEth;
     await afEthManager.deployed();
+    console.log(1);
   });
 
   it("Should mint with uneven ratios", async function () {
