@@ -44,13 +44,13 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
         for (uint256 i = 0; i < _ratios.length; i++) {
             totalRatio += _ratios[i];
         }
-        if (totalRatio != 100) {
+        if (totalRatio != 1e18) {
             revert InvalidRatios();
         }
 
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
-            strategy.mint{value: (amount * _ratios[i]) / 100}();
+            strategy.mint{value: (amount * _ratios[i]) / 1e18}();
         }
     }
 
