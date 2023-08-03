@@ -2,7 +2,6 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../../external_interfaces/IWETH.sol";
 import "../../external_interfaces/ISwapRouter.sol";
@@ -13,17 +12,11 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 
 /// For private internal functions and anything not exposed via the interface
-
-contract VotiumStrategyCore is
-    Initializable,
-    OwnableUpgradeable,
-    ERC721Upgradeable
-{
-    address constant cvxAddress = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
-    address constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address constant vlCVX = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
+    address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address constant VLCVX_ADDRESS = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
     // last epoch in which expired locks were processed with vlcvx.processExpiredLocks()
     uint256 public lastEpochLocksProcessed;
@@ -68,9 +61,10 @@ contract VotiumStrategyCore is
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
+        @param _manager - Address of the manager contract
     */
-    function initialize() external initializer {
-        _transferOwnership(msg.sender);
+    function initialize(address _manager) external initializer {
+        _transferOwnership(_manager);
 
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -79,7 +73,7 @@ contract VotiumStrategyCore is
             VotiumVoteDelegationId,
             votiumVoteProxyAddress
         );
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
         lastEpochLocksProcessed = currentEpoch;
         lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
@@ -90,19 +84,21 @@ contract VotiumStrategyCore is
     /// because vlCvx rewards are constant it would be unfair/inconsistent to claim at different times the way it distributes rewards into epochs
     /// but its also not a huge deal because vlCvx is a much smaller part of the overall rewards
     function oracleClaimRewards(
-        IVotiumMerkleStash.ClaimParam[] calldata claimProofs,
-        SwapData[] calldata swapsData
+        IVotiumMerkleStash.ClaimParam[] calldata _claimProofs,
+        SwapData[] calldata _swapsData
     ) public {
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
         require(
             lastRewardEpochFullyClaimed < currentEpoch - 1 &&
                 currentEpoch % 2 == 0,
             "cant claim rewards"
         );
 
-        claimVotiumRewards(claimProofs);
+        claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
-        uint256 claimed = sellRewards(swapsData);
+        uint256 claimed = sellRewards(_swapsData);
 
         uint256 unclaimedEpochCount = currentEpoch -
             lastRewardEpochFullyClaimed -
@@ -124,19 +120,21 @@ contract VotiumStrategyCore is
     /// Leaves cvx unlocked for any that have requested to close their position
     /// Relocks any unlocked cvx from positions that have not requested to close
     function oracleRelockCvx() public {
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
         if (lastEpochLocksProcessed == currentEpoch) return;
 
-        (, uint256 unlockable, , ) = ILockedCvx(vlCVX).lockedBalances(
+        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
 
         if (unlockable == 0) return;
         // unlock all (theres no way to unlock individual locks)
-        ILockedCvx(vlCVX).processExpiredLocks(false);
+        ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
         lastEpochLocksProcessed = currentEpoch;
 
-        uint256 unlockedCvxBalance = IERC20(CVX).balanceOf(address(this));
+        uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
+            address(this)
+        );
 
         // nothing to relock
         if (unlockedCvxBalance == 0) return;
@@ -157,67 +155,71 @@ contract VotiumStrategyCore is
         // nothing to relock
         if (cvxAmountToRelock == 0) return;
 
-        IERC20(CVX).approve(vlCVX, cvxAmountToRelock);
-        ILockedCvx(vlCVX).lock(address(this), cvxAmountToRelock, 0);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
     }
 
-    function lockCvx(uint256 cvxAmount, uint256 positionId) internal {
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
-        vlCvxPositions[positionId].cvxAmount = cvxAmount;
-        vlCvxPositions[positionId].firstRelockEpoch = currentEpoch + 17;
-        vlCvxPositions[positionId].firstRewardEpoch = currentEpoch % 2 == 0
+    function lockCvx(uint256 _cvxAmount, uint256 _positionId) internal {
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
+        vlCvxPositions[_positionId].cvxAmount = _cvxAmount;
+        vlCvxPositions[_positionId].firstRelockEpoch = currentEpoch + 17;
+        vlCvxPositions[_positionId].firstRewardEpoch = currentEpoch % 2 == 0
             ? currentEpoch + 2
             : currentEpoch + 1;
 
-        IERC20(CVX).approve(vlCVX, cvxAmount);
-        ILockedCvx(vlCVX).lock(address(this), cvxAmount, 0);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, _cvxAmount);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), _cvxAmount, 0);
     }
 
     function buyCvx(
-        uint256 ethAmountIn
+        uint256 _ethAmountIn
     ) internal returns (uint256 cvxAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
-        uint256 cvxBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
-        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{value: ethAmountIn}(
+        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{
+            value: _ethAmountIn
+        }(
             0,
             1,
-            ethAmountIn,
-            99879689261 // TODO minout to something
+            _ethAmountIn,
+            0 // TODO minout to something
         );
-        uint256 cvxBalanceAfter = IERC20(cvxAddress).balanceOf(address(this));
+        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
         cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;
     }
 
     function sellCvx(
-        uint256 cvxAmountIn
+        uint256 _cvxAmountIn
     ) internal returns (uint256 ethAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
-        uint256 ethBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
-        IERC20(cvxAddress).approve(CVX_ETH_CRV_POOL_ADDRESS, cvxAmountIn);
+        uint256 ethBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
-            cvxAmountIn,
+            _cvxAmountIn,
             0 // TODO minout to something
         );
-        uint256 ethBalanceAfter = IERC20(cvxAddress).balanceOf(address(this));
+        uint256 ethBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
         ethAmountOut = ethBalanceAfter - ethBalanceBefore;
     }
 
     /// sell any number of erc20's via 0x in a single tx
     function sellRewards(
-        SwapData[] calldata swapsData
+        SwapData[] calldata _swapsData
     ) private returns (uint256 ethReceived) {
         uint256 ethBalanceBefore = address(this).balance;
-        for (uint256 i = 0; i < swapsData.length; i++) {
-            IERC20(swapsData[i].sellToken).approve(
-                address(swapsData[i].spender),
+        for (uint256 i = 0; i < _swapsData.length; i++) {
+            IERC20(_swapsData[i].sellToken).approve(
+                address(_swapsData[i].spender),
                 type(uint256).max
             );
-            (bool success, ) = swapsData[i].swapTarget.call(
-                swapsData[i].swapCallData
+            (bool success, ) = _swapsData[i].swapTarget.call(
+                _swapsData[i].swapCallData
             );
             // TODO this line will cause them all to fail. look into how to handle this
             if (!success) revert SwapFailed(i);
@@ -227,10 +229,11 @@ contract VotiumStrategyCore is
     }
 
     function claimVotiumRewards(
-        IVotiumMerkleStash.ClaimParam[] calldata claimProofs
-    ) public { // TODO make this private. I made it temporarily public for testing during dev
+        IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
+    ) public {
+        // TODO make this private. I made it temporarily public for testing during dev
         IVotiumMerkleStash(0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A)
-            .claimMulti(address(this), claimProofs);
+            .claimMulti(address(this), _claimProofs);
     }
 
     function claimvlCvxRewards() private {

@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { SafEthStrategy } from "../../typechain-types";
 import { ethers, upgrades, network } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+
 describe("Test SafEth Strategy Specific Functionality", async function () {
   let safEthStrategy: SafEthStrategy;
   let accounts: any;
@@ -17,15 +18,15 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
         },
       ],
     });
+    accounts = await ethers.getSigners();
 
     const safEthStrategyFactory = await ethers.getContractFactory(
       "SafEthStrategy"
     );
-    safEthStrategy = (await upgrades.deployProxy(
-      safEthStrategyFactory
-    )) as SafEthStrategy;
+    safEthStrategy = (await upgrades.deployProxy(safEthStrategyFactory, [
+      accounts[0].address,
+    ])) as SafEthStrategy;
     await safEthStrategy.deployed();
-    accounts = await ethers.getSigners();
   });
 
   it("Should mint() and be able to immediately requestClose() and burn() the position", async function () {
@@ -100,12 +101,10 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     await requestCloseTx.wait();
     const burnTx = await safEthStrategy.burn(0);
     await burnTx.wait();
-    await expect(safEthStrategy.burn(0)).to.be.revertedWith(
-      "ERC721: invalid token ID"
-    );
+    await expect(safEthStrategy.burn(0)).to.be.reverted; // TODO: Be more specific to revert
   });
 
-  it("Should fail to call requestClose() if no the owner", async function () {
+  it("Should fail to call requestClose() if not the owner", async function () {
     const mintTx = await safEthStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -113,7 +112,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
 
     const nonOwnerSigner = safEthStrategy.connect(accounts[1]);
     await expect(nonOwnerSigner.requestClose(0)).to.be.revertedWith(
-      "VM Exception while processing transaction: reverted with reason string 'Not owner'"
+      "Ownable: caller is not the owner"
     );
   });
 

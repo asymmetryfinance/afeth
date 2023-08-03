@@ -6,5 +6,5 @@ interface ISafEth {
 
     function unstake(uint256 _safEthAmount, uint256 _minOut) external;
 
-    function approxPrice() external view returns (uint256);
+    function approxPrice(bool _validate) external view returns (uint256);
 }
