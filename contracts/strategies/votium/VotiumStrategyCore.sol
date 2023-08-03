@@ -14,11 +14,7 @@ import "../../external_interfaces/ICrvEthPool.sol";
 import "hardhat/console.sol";
 
 /// For private internal functions and anything not exposed via the interface
-contract VotiumStrategyCore is
-    Initializable,
-    OwnableUpgradeable,
-    ERC721Upgradeable
-{
+contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
@@ -79,7 +75,9 @@ contract VotiumStrategyCore is
             VotiumVoteDelegationId,
             votiumVoteProxyAddress
         );
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
         lastRelockEpoch = currentEpoch;
         lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
@@ -93,7 +91,9 @@ contract VotiumStrategyCore is
         IVotiumMerkleStash.ClaimParam[] calldata claimProofs,
         SwapData[] calldata swapsData
     ) public {
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
         require(
             lastRewardEpochFullyClaimed < currentEpoch - 1 &&
                 currentEpoch % 2 == 0,
@@ -124,7 +124,9 @@ contract VotiumStrategyCore is
     /// Leaves cvx unlocked for any that have requested to close their position
     /// Relocks any unlocked cvx from positions that have not requested to close
     function oracleRelockCvx() public {
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
         if (lastRelockEpoch == currentEpoch) return;
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
@@ -135,7 +137,9 @@ contract VotiumStrategyCore is
         // unlock all (theres no way to unlock individual locks)
         ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
 
-        uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
+            address(this)
+        );
 
         // nothing to relock
         if (unlockedCvxBalance == 0) return;
@@ -162,7 +166,9 @@ contract VotiumStrategyCore is
     }
 
     function lockCvx(uint256 cvxAmount, uint256 positionId) internal {
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
         vlCvxPositions[positionId].cvxAmount = cvxAmount;
         vlCvxPositions[positionId].firstRelockEpoch = currentEpoch + 17;
         vlCvxPositions[positionId].firstRewardEpoch = currentEpoch % 2 == 0

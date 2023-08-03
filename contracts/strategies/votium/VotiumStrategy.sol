@@ -9,18 +9,18 @@ import "hardhat/console.sol";
 contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function mint() public payable override onlyOwner returns (uint256) {
         uint256 cvxAmount = buyCvx(msg.value);
-        IERC20(CVX).approve(vlCVX, cvxAmount);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         uint256 newPositionId = positionCount;
         positionCount++;
         lockCvx(cvxAmount, newPositionId);
-        _mint(msg.sender, newPositionId);
 
         // storage of individual balances associated w/ user deposit
         positions[newPositionId] = Position({
             unlockTime: 0,
             ethClaimed: 0,
             ethBurned: 0,
-            startingValue: msg.value
+            startingValue: msg.value,
+            owner: msg.sender
         });
         return newPositionId;
     }
@@ -28,7 +28,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function requestClose(uint256 positionId) public override onlyOwner {
         require(ownerOf(positionId) == msg.sender, "Not owner");
         require(positions[positionId].unlockTime != 0, "Not open");
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
 
         uint256 firstRelockEpoch = vlCvxPositions[positionId].firstRelockEpoch;
 
@@ -44,7 +46,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             unlockEpoch = firstRelockEpoch;
         }
 
-        (, uint256 unlockEpochStartingTime) = ILockedCvx(vlCVX).epochs(
+        (, uint256 unlockEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(
             unlockEpoch
         );
 
@@ -61,9 +63,12 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             positions[positionId].unlockTime > block.timestamp,
             "still locked"
         );
-        _burn(positionId);
         this.claimRewards(positionId);
         uint256 ethReceived = sellCvx(vlCvxPositions[positionId].cvxAmount);
+
+        positions[positionId].ethBurned += ethReceived;
+        vlCvxPositions[positionId].cvxAmount = 0;
+        
         // solhint-disable-next-line
         (bool sent, ) = address(ownerOf(positionId)).call{value: ethReceived}(
             ""
@@ -91,7 +96,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             i < lastRewardEpochFullyClaimed + 1;
             i++
         ) {
-            uint256 balanceAtEpoch = ILockedCvx(vlCVX).balanceAtEpochOf(
+            uint256 balanceAtEpoch = ILockedCvx(VLCVX_ADDRESS).balanceAtEpochOf(
                 i,
                 address(this)
             );
@@ -133,7 +138,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             i < lastRewardEpochFullyClaimed + 1;
             i++
         ) {
-            uint256 balanceAtEpoch = ILockedCvx(vlCVX).balanceAtEpochOf(
+            uint256 balanceAtEpoch = ILockedCvx(VLCVX_ADDRESS).balanceAtEpochOf(
                 i,
                 address(this)
             );

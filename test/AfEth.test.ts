@@ -4,7 +4,7 @@ import { expect } from "chai";
 // import { VotiumStrategy } from "../typechain-types";
 // import { SafEthStrategy } from "../typechain-types";
 
-describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
+describe("Test AfEth (Votium + SafEth Strategies)", async function () {
   let afEthManager: AfEth;
 
   before(async () => {
@@ -45,7 +45,13 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
   it("Should request to close positions", async function () {
     // TODO
   });
+  it("Can't request to close positions if not the owner", async function () {
+    // TODO
+  });
   it("Should burn positions", async function () {
+    // TODO
+  });
+  it("Can't request burn positions if not the owner", async function () {
     // TODO
   });
   it("Should claim all rewards", async function () {

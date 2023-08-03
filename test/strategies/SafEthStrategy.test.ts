@@ -18,6 +18,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
         },
       ],
     });
+    accounts = await ethers.getSigners();
 
     const safEthStrategyFactory = await ethers.getContractFactory(
       "SafEthStrategy"
@@ -26,7 +27,6 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
       accounts[0].address,
     ])) as SafEthStrategy;
     await safEthStrategy.deployed();
-    accounts = await ethers.getSigners();
   });
 
   it("Should mint() and be able to immediately requestClose() and burn() the position", async function () {
@@ -106,7 +106,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     );
   });
 
-  it("Should fail to call requestClose() if no the owner", async function () {
+  it("Should fail to call requestClose() if not the owner", async function () {
     const mintTx = await safEthStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -114,7 +114,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
 
     const nonOwnerSigner = safEthStrategy.connect(accounts[1]);
     await expect(nonOwnerSigner.requestClose(0)).to.be.revertedWith(
-      "VM Exception while processing transaction: reverted with reason string 'Not owner'"
+      "Ownable: caller is not the owner"
     );
   });
 

@@ -19,7 +19,8 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
             unlockTime: 0,
             ethClaimed: 0,
             ethBurned: 0,
-            startingValue: msg.value
+            startingValue: msg.value,
+            owner: msg.sender
         });
 
         safEthPositions[newPositionId] = SafEthPosition({
@@ -70,7 +71,7 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         uint256 positionId
     ) external view override returns (uint256 ethValue) {
         return
-            (ISafEth(safEthAddress).approxPrice() *
+            (ISafEth(safEthAddress).approxPrice(false) *
                 safEthPositions[positionId].safEthAmount) / 1e18;
     }
 }
