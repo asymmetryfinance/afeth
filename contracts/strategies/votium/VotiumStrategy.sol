@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "./VotiumStrategyCore.sol";
 import "../AbstractNftStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "hardhat/console.sol";
 
 contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function mint() public payable override onlyOwner returns (uint256) {
@@ -43,8 +44,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             unlockEpoch = firstRelockEpoch;
         }
 
-        (, uint256 unlockEpochStartingTime) = ILockedCvx(vlCVX)
-            .epochs(unlockEpoch);
+        (, uint256 unlockEpochStartingTime) = ILockedCvx(vlCVX).epochs(
+            unlockEpoch
+        );
 
         positions[positionId].unlockTime = unlockEpochStartingTime;
         unlockSchedule[unlockEpoch] += vlCvxPositions[positionId].cvxAmount;

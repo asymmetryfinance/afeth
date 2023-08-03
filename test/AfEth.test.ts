@@ -16,7 +16,7 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
       "VotiumStrategy"
     );
     const votiumStrategy = await upgrades.deployProxy(votiumStrategyFactory, [
-      "0x2498e8059929e18e2a2cED4e32ef145fa2F4a744",
+      afEthManager.address,
     ]);
     await votiumStrategy.deployed();
 
@@ -24,14 +24,14 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
       "SafEthStrategy"
     );
     const safEthStrategy = await upgrades.deployProxy(safEthStrategyFactory, [
-      "0x2498e8059929e18e2a2cED4e32ef145fa2F4a744",
+      afEthManager.address,
     ]);
     await safEthStrategy.deployed();
 
     await afEthManager.addStrategy(votiumStrategy.address);
     await afEthManager.addStrategy(safEthStrategy.address);
   });
-  it("Should mint with uneven ratios", async function () {
+  it.only("Should mint with uneven ratios", async function () {
     await afEthManager.mint([30, 70], { value: ethers.utils.parseEther("1") });
   });
   it("Should mint with even ratios", async function () {

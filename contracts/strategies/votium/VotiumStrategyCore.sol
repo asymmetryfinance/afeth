@@ -11,6 +11,7 @@ import "../../external_interfaces/ISnapshotDelegationRegistry.sol";
 import "../../external_interfaces/ILockedCvx.sol";
 import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
+import "hardhat/console.sol";
 
 /// For private internal functions and anything not exposed via the interface
 contract VotiumStrategyCore is
@@ -179,7 +180,9 @@ contract VotiumStrategyCore is
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
         uint256 cvxBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
-        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
+        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{
+            value: ethAmountIn
+        }(
             0,
             1,
             ethAmountIn,
@@ -228,7 +231,8 @@ contract VotiumStrategyCore is
 
     function claimVotiumRewards(
         IVotiumMerkleStash.ClaimParam[] calldata claimProofs
-    ) public { // TODO make this private. I made it temporarily public for testing during dev
+    ) public {
+        // TODO make this private. I made it temporarily public for testing during dev
         IVotiumMerkleStash(0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A)
             .claimMulti(address(this), claimProofs);
     }

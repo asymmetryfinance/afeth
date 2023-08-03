@@ -40,7 +40,7 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     */
     function mint(uint256[] memory _ratios) external payable {
         uint256 totalRatio;
-        
+
         uint256 amount = msg.value;
         for (uint256 i = 0; i < _ratios.length; i++) {
             totalRatio += _ratios[i];

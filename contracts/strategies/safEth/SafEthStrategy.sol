@@ -28,17 +28,23 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         return newPositionId;
     }
 
-    function requestClose(uint256 positionId) external override onlyOwner{
+    function requestClose(uint256 positionId) external override onlyOwner {
         require(ownerOf(positionId) == msg.sender, "Not owner");
         positions[positionId].unlockTime = block.timestamp;
     }
 
-    function burn(uint256 positionId) external override onlyOwner{
-        require(positions[positionId].unlockTime != 0, "requestClose() not called");
+    function burn(uint256 positionId) external override onlyOwner {
+        require(
+            positions[positionId].unlockTime != 0,
+            "requestClose() not called"
+        );
         address positionOwner = ownerOf(positionId);
         _burn(positionId);
         uint256 ethBalanceBefore = address(this).balance;
-        ISafEth(safEthAddress).unstake(safEthPositions[positionId].safEthAmount, 0); // TODO do we need minout here?
+        ISafEth(safEthAddress).unstake(
+            safEthPositions[positionId].safEthAmount,
+            0
+        ); // TODO do we need minout here?
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
@@ -46,13 +52,11 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         safEthPositions[positionId].safEthAmount = 0;
 
         // solhint-disable-next-line
-        (bool sent, ) = positionOwner.call{value: ethReceived}(
-            ""
-        );
+        (bool sent, ) = positionOwner.call{value: ethReceived}("");
         require(sent, "Failed to send Ether");
     }
 
-    function claimRewards(uint256 positionId) external override onlyOwner{
+    function claimRewards(uint256 positionId) external override onlyOwner {
         // noop for safEth. rewards are built accured with price going up between minting and burning
     }
 
@@ -65,6 +69,8 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
     function lockedValue(
         uint256 positionId
     ) external view override returns (uint256 ethValue) {
-        return (ISafEth(safEthAddress).approxPrice() * safEthPositions[positionId].safEthAmount) / 1e18;
+        return
+            (ISafEth(safEthAddress).approxPrice() *
+                safEthPositions[positionId].safEthAmount) / 1e18;
     }
 }
