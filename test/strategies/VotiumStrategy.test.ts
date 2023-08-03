@@ -5,14 +5,113 @@ import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { expect } from "chai";
 import { votiumStashControllerAbi } from "../abis/votiumStashControllerAbi";
 import { parseBalanceMap } from "../merkle_helpers/parse-balance-map";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { vlCvxAbi } from "../abis/vlCvxAbi";
+import { BigNumber } from "ethers";
 
 // Votium tests are hard for 2 reasons:
 // 1) they require 2 types of oracle updates -- once a week to relock cvx and another every 2 weeks to claim rewards
 // 2) We may need to impersonate accounts to update the merkle root and generate/simulate our own reward merkle proofs
-describe("Test Votium Strategy Specific Functionality", async function () {
-  it("Should test some things (TODO)", async function () {
-    // TODO
+
+describe("Test Votium Cvx Lock & Unlock Logic", async function () {
+  const epochDuration = 60 * 60 * 24 * 7;
+
+  let votiumStrategy: any;
+
+  before(async () => {
+    const votiumStrategyFactory = await ethers.getContractFactory(
+      "VotiumStrategy"
+    );
+    votiumStrategy = (await upgrades.deployProxy(
+      votiumStrategyFactory
+    )) as VotiumStrategy;
+    await votiumStrategy.deployed();
   });
+
+  it("Should update values correctly if requestClose() is called followed by oracleRelockCvx() 17 weeks later", async function () {
+    const mintTx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await mintTx.wait();
+
+    const unlockTime0 = (await votiumStrategy.positions(0)).unlockTime;
+
+    expect(unlockTime0).eq(0);
+
+    const requestCloseTx = await votiumStrategy.requestClose(0);
+    await requestCloseTx.wait();
+
+    const firstRelockEpoch = await votiumStrategy.lastEpochLocksProcessed();
+    const unlockTimeFinal = (await votiumStrategy.positions(0)).unlockTime;
+
+    // wait 16 epochs and try to relock
+    for (let i = 0; i < 16; i++) {
+      await incrementVlcvxEpoch();
+      const currentBlockTime = (await ethers.provider.getBlock()).timestamp;
+      expect(currentBlockTime).lt(unlockTimeFinal);
+    }
+
+    await oracleRelockCvx();
+
+    // 16 epochs isnt enough to be eligible to relock so it wont have relocked
+    expect(await votiumStrategy.lastEpochLocksProcessed()).eq(firstRelockEpoch);
+
+    expect(await votiumStrategy.cvxToLeaveUnlocked()).eq(0);
+
+    // wait 1 more epoch and it will have unlocked so can be relocked
+    await incrementVlcvxEpoch();
+    await oracleRelockCvx();
+
+    const currentBlockTime = (await ethers.provider.getBlock()).timestamp;
+    // now it should be eligible for relock because some is unlockable
+    expect(currentBlockTime).gt(unlockTimeFinal);
+
+    const lastEpochLocksProcessed =
+      await votiumStrategy.lastEpochLocksProcessed();
+    const currentEpoch = await getCurrentEpoch();
+
+    expect(await votiumStrategy.cvxToLeaveUnlocked()).gt(0);
+
+    expect(lastEpochLocksProcessed).eq(currentEpoch);
+    expect(lastEpochLocksProcessed).eq(
+      BigNumber.from(firstRelockEpoch).add(17)
+    );
+  });
+
+  const getCurrentEpoch = async () => {
+    const accounts = await ethers.getSigners();
+    const vlCvxContract = new ethers.Contract(
+      "0x72a19342e8F1838460eBFCCEf09F6585e32db86E",
+      vlCvxAbi,
+      accounts[0]
+    );
+    return vlCvxContract.findEpochId(await getCurrentBlockTime());
+  };
+
+  const getCurrentBlockTime = async () => {
+    const currentBlock = await ethers.provider.getBlock("latest");
+    return currentBlock.timestamp;
+  };
+
+  // incremement time by 1 epoch and call await vlCvxContract.checkpointEpoch() so vlcv keeps working as time passes
+  // TODO make sure we are calling checkpoint epoch correctly and dont need to call any other functions
+  const incrementVlcvxEpoch = async () => {
+    const block = await ethers.provider.getBlock("latest");
+    const blockTime = block.timestamp;
+    const accounts = await ethers.getSigners();
+    const vlCvxContract = new ethers.Contract(
+      "0x72a19342e8F1838460eBFCCEf09F6585e32db86E",
+      vlCvxAbi,
+      accounts[0]
+    );
+    await time.increaseTo(blockTime + epochDuration);
+    const tx = await vlCvxContract.checkpointEpoch();
+    await tx.wait();
+  };
+
+  const oracleRelockCvx = async () => {
+    await votiumStrategy.oracleRelockCvx();
+  };
 });
 
 // TODO change this to "Test oracleClaimRewards" and make claimVotiumRewards() private
@@ -22,7 +121,6 @@ describe("Test claimVotiumRewards()", async function () {
       "0x9d37A22cEc2f6b3635c61C253D192E68e85b1790";
     const votiumStashControllerOwner =
       "0xe39b8617D571CEe5e75e1EC6B2bb40DdC8CF6Fa3";
-
     await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [votiumStashControllerOwner],
