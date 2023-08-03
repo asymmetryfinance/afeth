@@ -29,49 +29,49 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         return newPositionId;
     }
 
-    function requestClose(uint256 positionId) external override onlyOwner {
-        require(ownerOf(positionId) == msg.sender, "Not owner");
-        positions[positionId].unlockTime = block.timestamp;
+    function requestClose(uint256 _positionId) external override onlyOwner {
+        require(ownerOf(_positionId) == msg.sender, "Not owner");
+        positions[_positionId].unlockTime = block.timestamp;
     }
 
-    function burn(uint256 positionId) external override onlyOwner {
+    function burn(uint256 _positionId) external override onlyOwner {
         require(
-            positions[positionId].unlockTime != 0,
+            positions[_positionId].unlockTime != 0,
             "requestClose() not called"
         );
-        address positionOwner = ownerOf(positionId);
-        _burn(positionId);
+        address positionOwner = ownerOf(_positionId);
+        _burn(_positionId);
         uint256 ethBalanceBefore = address(this).balance;
         ISafEth(safEthAddress).unstake(
-            safEthPositions[positionId].safEthAmount,
+            safEthPositions[_positionId].safEthAmount,
             0
         ); // TODO do we need minout here?
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
-        positions[positionId].ethBurned += ethReceived;
-        safEthPositions[positionId].safEthAmount = 0;
+        positions[_positionId].ethBurned += ethReceived;
+        safEthPositions[_positionId].safEthAmount = 0;
 
         // solhint-disable-next-line
         (bool sent, ) = positionOwner.call{value: ethReceived}("");
         require(sent, "Failed to send Ether");
     }
 
-    function claimRewards(uint256 positionId) external override onlyOwner {
+    function claimRewards(uint256 _positionId) external override onlyOwner {
         // noop for safEth. rewards are built accured with price going up between minting and burning
     }
 
     function claimableNow(
-        uint256 positionId
+        uint256 _positionId
     ) external pure override returns (uint256 ethAmount) {
         return 0; // This strategy gets its rewards from price going up between minting and burning.
     }
 
     function lockedValue(
-        uint256 positionId
+        uint256 _positionId
     ) external view override returns (uint256 ethValue) {
         return
             (ISafEth(safEthAddress).approxPrice(false) *
-                safEthPositions[positionId].safEthAmount) / 1e18;
+                safEthPositions[_positionId].safEthAmount) / 1e18;
     }
 }

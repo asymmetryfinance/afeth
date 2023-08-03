@@ -11,7 +11,6 @@ import "../../external_interfaces/ISnapshotDelegationRegistry.sol";
 import "../../external_interfaces/ILockedCvx.sol";
 import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
-import "hardhat/console.sol";
 
 /// For private internal functions and anything not exposed via the interface
 contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
@@ -88,8 +87,8 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     /// because vlCvx rewards are constant it would be unfair/inconsistent to claim at different times the way it distributes rewards into epochs
     /// but its also not a huge deal because vlCvx is a much smaller part of the overall rewards
     function oracleClaimRewards(
-        IVotiumMerkleStash.ClaimParam[] calldata claimProofs,
-        SwapData[] calldata swapsData
+        IVotiumMerkleStash.ClaimParam[] calldata _claimProofs,
+        SwapData[] calldata _swapsData
     ) public {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
@@ -100,9 +99,9 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
             "cant claim rewards"
         );
 
-        claimVotiumRewards(claimProofs);
+        claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
-        uint256 claimed = sellRewards(swapsData);
+        uint256 claimed = sellRewards(_swapsData);
 
         uint256 unclaimedEpochCount = currentEpoch -
             lastRewardEpochFullyClaimed -
@@ -165,32 +164,32 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         lastRelockEpoch = currentEpoch;
     }
 
-    function lockCvx(uint256 cvxAmount, uint256 positionId) internal {
+    function lockCvx(uint256 _cvxAmount, uint256 _positionId) internal {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
-        vlCvxPositions[positionId].cvxAmount = cvxAmount;
-        vlCvxPositions[positionId].firstRelockEpoch = currentEpoch + 17;
-        vlCvxPositions[positionId].firstRewardEpoch = currentEpoch % 2 == 0
+        vlCvxPositions[_positionId].cvxAmount = _cvxAmount;
+        vlCvxPositions[_positionId].firstRelockEpoch = currentEpoch + 17;
+        vlCvxPositions[_positionId].firstRewardEpoch = currentEpoch % 2 == 0
             ? currentEpoch + 2
             : currentEpoch + 1;
 
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, _cvxAmount);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), _cvxAmount, 0);
     }
 
     function buyCvx(
-        uint256 ethAmountIn
+        uint256 _ethAmountIn
     ) internal returns (uint256 cvxAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
         uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{
-            value: ethAmountIn
+            value: _ethAmountIn
         }(
             0,
             1,
-            ethAmountIn,
+            _ethAmountIn,
             0 // TODO minout to something
         );
         uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
@@ -198,16 +197,16 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     }
 
     function sellCvx(
-        uint256 cvxAmountIn
+        uint256 _cvxAmountIn
     ) internal returns (uint256 ethAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
         uint256 ethBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, cvxAmountIn);
+        IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
-            cvxAmountIn,
+            _cvxAmountIn,
             0 // TODO minout to something
         );
         uint256 ethBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
@@ -216,16 +215,16 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
 
     /// sell any number of erc20's via 0x in a single tx
     function sellRewards(
-        SwapData[] calldata swapsData
+        SwapData[] calldata _swapsData
     ) private returns (uint256 ethReceived) {
         uint256 ethBalanceBefore = address(this).balance;
-        for (uint256 i = 0; i < swapsData.length; i++) {
-            IERC20(swapsData[i].sellToken).approve(
-                address(swapsData[i].spender),
+        for (uint256 i = 0; i < _swapsData.length; i++) {
+            IERC20(_swapsData[i].sellToken).approve(
+                address(_swapsData[i].spender),
                 type(uint256).max
             );
-            (bool success, ) = swapsData[i].swapTarget.call(
-                swapsData[i].swapCallData
+            (bool success, ) = _swapsData[i].swapTarget.call(
+                _swapsData[i].swapCallData
             );
             // TODO this line will cause them all to fail. look into how to handle this
             if (!success) revert SwapFailed(i);
@@ -235,11 +234,11 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     }
 
     function claimVotiumRewards(
-        IVotiumMerkleStash.ClaimParam[] calldata claimProofs
+        IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
     ) public {
         // TODO make this private. I made it temporarily public for testing during dev
         IVotiumMerkleStash(0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A)
-            .claimMulti(address(this), claimProofs);
+            .claimMulti(address(this), _claimProofs);
     }
 
     function claimvlCvxRewards() private {
