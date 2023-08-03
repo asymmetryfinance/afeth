@@ -31,7 +31,7 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     await afEthManager.addStrategy(votiumStrategy.address);
     await afEthManager.addStrategy(safEthStrategy.address);
   });
-  it.only("Should mint with uneven ratios", async function () {
+  it("Should mint with uneven ratios", async function () {
     await afEthManager.mint([30, 70], { value: ethers.utils.parseEther("1") });
   });
   it("Should mint with even ratios", async function () {

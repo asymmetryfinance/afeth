@@ -19,11 +19,10 @@ contract VotiumStrategyCore is
     OwnableUpgradeable,
     ERC721Upgradeable
 {
-    address constant cvxAddress = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
-    address constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address constant vlCVX = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
+    address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address constant VLCVX_ADDRESS = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
     // last epoch in which relock was called
     uint256 public lastRelockEpoch;
@@ -80,7 +79,7 @@ contract VotiumStrategyCore is
             VotiumVoteDelegationId,
             votiumVoteProxyAddress
         );
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
         lastRelockEpoch = currentEpoch;
         lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
@@ -94,7 +93,7 @@ contract VotiumStrategyCore is
         IVotiumMerkleStash.ClaimParam[] calldata claimProofs,
         SwapData[] calldata swapsData
     ) public {
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
         require(
             lastRewardEpochFullyClaimed < currentEpoch - 1 &&
                 currentEpoch % 2 == 0,
@@ -125,18 +124,18 @@ contract VotiumStrategyCore is
     /// Leaves cvx unlocked for any that have requested to close their position
     /// Relocks any unlocked cvx from positions that have not requested to close
     function oracleRelockCvx() public {
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
         if (lastRelockEpoch == currentEpoch) return;
 
-        (, uint256 unlockable, , ) = ILockedCvx(vlCVX).lockedBalances(
+        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
 
         if (unlockable == 0) return;
         // unlock all (theres no way to unlock individual locks)
-        ILockedCvx(vlCVX).processExpiredLocks(false);
+        ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
 
-        uint256 unlockedCvxBalance = IERC20(CVX).balanceOf(address(this));
+        uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
 
         // nothing to relock
         if (unlockedCvxBalance == 0) return;
@@ -157,21 +156,21 @@ contract VotiumStrategyCore is
         // nothing to relock
         if (cvxAmountToRelock == 0) return;
 
-        IERC20(CVX).approve(vlCVX, cvxAmountToRelock);
-        ILockedCvx(vlCVX).lock(address(this), cvxAmountToRelock, 0);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
         lastRelockEpoch = currentEpoch;
     }
 
     function lockCvx(uint256 cvxAmount, uint256 positionId) internal {
-        uint256 currentEpoch = ILockedCvx(vlCVX).findEpochId(block.timestamp);
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
         vlCvxPositions[positionId].cvxAmount = cvxAmount;
         vlCvxPositions[positionId].firstRelockEpoch = currentEpoch + 17;
         vlCvxPositions[positionId].firstRewardEpoch = currentEpoch % 2 == 0
             ? currentEpoch + 2
             : currentEpoch + 1;
 
-        IERC20(CVX).approve(vlCVX, cvxAmount);
-        ILockedCvx(vlCVX).lock(address(this), cvxAmount, 0);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
     }
 
     function buyCvx(
@@ -179,7 +178,7 @@ contract VotiumStrategyCore is
     ) internal returns (uint256 cvxAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
-        uint256 cvxBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
+        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{
             value: ethAmountIn
         }(
@@ -188,7 +187,7 @@ contract VotiumStrategyCore is
             ethAmountIn,
             0 // TODO minout to something
         );
-        uint256 cvxBalanceAfter = IERC20(cvxAddress).balanceOf(address(this));
+        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
         cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;
     }
 
@@ -197,15 +196,15 @@ contract VotiumStrategyCore is
     ) internal returns (uint256 ethAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
-        uint256 ethBalanceBefore = IERC20(cvxAddress).balanceOf(address(this));
-        IERC20(cvxAddress).approve(CVX_ETH_CRV_POOL_ADDRESS, cvxAmountIn);
+        uint256 ethBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, cvxAmountIn);
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
             cvxAmountIn,
             0 // TODO minout to something
         );
-        uint256 ethBalanceAfter = IERC20(cvxAddress).balanceOf(address(this));
+        uint256 ethBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
         ethAmountOut = ethBalanceAfter - ethBalanceBefore;
     }
 
