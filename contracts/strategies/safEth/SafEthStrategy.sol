@@ -12,7 +12,6 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         );
         uint256 newPositionId = positionCount;
         positionCount++;
-        _mint(msg.sender, newPositionId);
 
         // storage of individual balances associated w/ user deposit
         positions[newPositionId] = Position({
@@ -30,7 +29,7 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
     }
 
     function requestClose(uint256 _positionId) external override onlyOwner {
-        require(ownerOf(_positionId) == msg.sender, "Not owner");
+        require(positions[_positionId].owner == msg.sender, "Not owner");
         positions[_positionId].unlockTime = block.timestamp;
     }
 
@@ -39,8 +38,8 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
             positions[_positionId].unlockTime != 0,
             "requestClose() not called"
         );
-        address positionOwner = ownerOf(_positionId);
-        _burn(_positionId);
+        address positionOwner = positions[_positionId].owner;
+
         uint256 ethBalanceBefore = address(this).balance;
         ISafEth(safEthAddress).unstake(
             safEthPositions[_positionId].safEthAmount,

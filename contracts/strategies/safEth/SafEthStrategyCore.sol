@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// For private internal functions and anything not exposed via the interface
-contract SafEthStrategyCore is
-    Initializable,
-    OwnableUpgradeable,
-    ERC721Upgradeable
-{
+contract SafEthStrategyCore is Initializable, OwnableUpgradeable {
     address public constant safEthAddress =
         0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
 

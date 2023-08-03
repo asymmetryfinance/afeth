@@ -25,8 +25,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     }
 
     function requestClose(uint256 _positionId) public override onlyOwner {
-        require(ownerOf(_positionId) == msg.sender, "Not owner");
-        require(positions[positionId].unlockTime == 0, "Already requested close");
+        require(positions[_positionId].owner == msg.sender, "Not owner");
+        require(positions[_positionId].unlockTime == 0, "Already requested close");
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
@@ -47,8 +47,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         (, uint256 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS)
             .epochs(currentEpoch);
 
-        positions[positionId].unlockTime = currentEpochStartingTime + (unlockEpoch - currentEpoch) * (60 * 60 * 24 * 7);
-        unlockSchedule[unlockEpoch] += vlCvxPositions[positionId].cvxAmount;
+        positions[_positionId].unlockTime = currentEpochStartingTime + (unlockEpoch - currentEpoch) * (60 * 60 * 24 * 7);
+        unlockSchedule[unlockEpoch] += vlCvxPositions[_positionId].cvxAmount;
     }
 
     function burn(uint256 _positionId) public override onlyOwner {
@@ -67,7 +67,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         vlCvxPositions[_positionId].cvxAmount = 0;
         
         // solhint-disable-next-line
-        (bool sent, ) = address(ownerOf(_positionId)).call{value: ethReceived}(
+        (bool sent, ) = address(positions[_positionId].owner).call{value: ethReceived}(
             ""
         );
         require(sent, "Failed to send Ether");
@@ -111,7 +111,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         vlCvxPositions[_positionId]
             .lastRewardEpochFullyClaimed = lastRewardEpochFullyClaimed;
         // solhint-disable-next-line
-        (bool sent, ) = address(ownerOf(_positionId)).call{value: claimable}("");
+        (bool sent, ) = address(positions[_positionId].owner).call{value: claimable}("");
         require(sent, "Failed to send Ether");
     }
 

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 abstract contract AbstractNftStrategy is
     Initializable,
-    OwnableUpgradeable,
-    ERC721Upgradeable
+    OwnableUpgradeable
 {
     struct Position {
         uint256 unlockTime; // when it can be burned (fully closed). 0 if requestClose() hasn't been called
