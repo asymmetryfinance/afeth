@@ -5,6 +5,8 @@ import "./SafEthStrategyCore.sol";
 import "../AbstractNftStrategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
+import "hardhat/console.sol";
+
 contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
     function mint() external payable override onlyOwner returns (uint256) {
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
