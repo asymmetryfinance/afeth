@@ -183,12 +183,12 @@ describe.only("Test claimVotiumRewards()", async function () {
     await votiumStrategy.deployed();
 
     // generate a merkle tree of rewards with our contract address and some other random addresses to make it realistic
-    const proofData = await generateMockMerkleData({
-      [votiumStrategy.address]: "150",
-      "0x8a65ac0E23F31979db06Ec62Af62b132a6dF4741": "160",
-      "0x0000462df2438f7b39577917374b1565c306b908": "170",
-      "0x000051d46ff97559ed5512ac9d2d95d0ef1140e1": "180",
-    });
+    const proofData = await generateMockMerkleData([
+      votiumStrategy.address,
+      "0x8a65ac0E23F31979db06Ec62Af62b132a6dF4741",
+      "0x0000462df2438f7b39577917374b1565c306b908",
+      "0x000051d46ff97559ed5512ac9d2d95d0ef1140e1",
+    ]);
 
     const tokenAddresses = Object.keys(proofData);
 
@@ -197,8 +197,6 @@ describe.only("Test claimVotiumRewards()", async function () {
       await votiumStashController.multiFreeze([tokenAddresses[i]]);
       await votiumStashController.multiSet([tokenAddresses[i]], [merkleRoot]);
     }
-
-    console.log("tokenAddresses is", tokenAddresses);
 
     const claimProofs = tokenAddresses.map((_: any, i: number) => {
       const pd = proofData[tokenAddresses[i]];
@@ -210,22 +208,33 @@ describe.only("Test claimVotiumRewards()", async function () {
       ];
     });
 
-    const crvAddress = "0xD533a949740bb3306d119CC777fa900bA034cd52";
-    const crvContract = new ethers.Contract(crvAddress, ERC20.abi, accounts[0]);
-    const crvBalanceBeforeClaim = await crvContract.balanceOf(
-      votiumStrategy.address
-    );
+    const balancesBefore: any[] = [];
+    for (let i = 0; i < tokenAddresses.length; i++) {
+      const contract = new ethers.Contract(
+        tokenAddresses[i],
+        ERC20.abi,
+        accounts[0]
+      );
+      const balanceBeforeClaim = await contract.balanceOf(
+        votiumStrategy.address
+      );
 
-    console.log("crvBalanceBeforeClaim", crvBalanceBeforeClaim.toString());
+      balancesBefore.push(balanceBeforeClaim);
+    }
 
     const tx2 = await votiumStrategy.claimVotiumRewards(claimProofs);
     await tx2.wait();
-    const crvBalanceAfterClaim = await crvContract.balanceOf(
-      votiumStrategy.address
-    );
-
-    // TODO verify all balances went up
-    expect(crvBalanceAfterClaim).gt(crvBalanceBeforeClaim);
+    for (let i = 0; i < tokenAddresses.length; i++) {
+      const contract = new ethers.Contract(
+        tokenAddresses[i],
+        ERC20.abi,
+        accounts[0]
+      );
+      const balanceAfterClaim = await contract.balanceOf(
+        votiumStrategy.address
+      );
+      expect(balanceAfterClaim).to.be.gt(balancesBefore[i]);
+    }
   });
 });
 
