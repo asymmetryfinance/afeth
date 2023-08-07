@@ -2,10 +2,7 @@
 pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-abstract contract AbstractNftStrategy is
-    Initializable,
-    OwnableUpgradeable
-{
+abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable {
     struct Position {
         uint256 unlockTime; // when it can be burned (fully closed). 0 if requestClose() hasn't been called
         uint256 ethClaimed; // how much eth value has been claimed from this position so far
@@ -18,7 +15,7 @@ abstract contract AbstractNftStrategy is
     mapping(uint => Position) public positions;
 
     /// open new position (mint nft), returns positionId
-    function mint() external payable virtual returns (uint256 positionId);
+    function mint(uint256 _positionId) external payable virtual;
 
     /// request to close a position so nft can be burned later
     function requestClose(uint256 positionId) external virtual;
