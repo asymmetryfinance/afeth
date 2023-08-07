@@ -78,8 +78,6 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     }
 
     bool readyToSellRewards;
-    // TODO: We need 2 different oracles to update the below oracle functions. one every 2 weeks and the other every week.
-
     /// this should be called around the same time every other epoch
     /// because vlCvx rewards are constant it would be unfair/inconsistent to claim at different times the way it distributes rewards into epochs
     /// but its also not a huge deal because vlCvx is a much smaller part of the overall rewards
