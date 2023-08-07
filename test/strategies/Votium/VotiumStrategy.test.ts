@@ -4,7 +4,6 @@ import axios from "axios";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { expect } from "chai";
 import { votiumStashControllerAbi } from "../../abis/votiumStashControllerAbi";
-import { parseBalanceMap } from "../../merkle_helpers/parse-balance-map";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { vlCvxAbi } from "../../abis/vlCvxAbi";
 import { BigNumber } from "ethers";
@@ -147,7 +146,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   };
 });
 
-// TODO change this to "Test oracleClaimRewards" and make claimVotiumRewards() private
+// TODO change this to "Test oracleClaimRewards" (and implement 0x selling helpers) and make claimVotiumRewards() private
 describe.only("Test claimVotiumRewards()", async function () {
   it("Should mock merkle data & impersonate account to set merkle root & claim rewards", async function () {
     const votiumStashControllerAddress =
@@ -183,32 +182,26 @@ describe.only("Test claimVotiumRewards()", async function () {
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
-    const crvAddress = "0xD533a949740bb3306d119CC777fa900bA034cd52";
-
     // generate a merkle tree of rewards with our contract address and some other random addresses to make it realistic
-
-    const proofData2 = await generateMockMerkleData({
+    const proofData = await generateMockMerkleData({
       [votiumStrategy.address]: "150",
       "0x8a65ac0E23F31979db06Ec62Af62b132a6dF4741": "160",
       "0x0000462df2438f7b39577917374b1565c306b908": "170",
       "0x000051d46ff97559ed5512ac9d2d95d0ef1140e1": "180",
     });
-    console.log("proofData2 is", proofData2[crvAddress].claims);
 
-    const merkleRoot = proofData2[crvAddress].merkleRoot;
+    const tokenAddresses = Object.keys(proofData);
 
-    console.log('merkleRoot is', merkleRoot);
+    for (let i = 0; i < tokenAddresses.length; i++) {
+      const merkleRoot = proofData[tokenAddresses[i]].merkleRoot;
+      await votiumStashController.multiFreeze([tokenAddresses[i]]);
+      await votiumStashController.multiSet([tokenAddresses[i]], [merkleRoot]);
+    }
 
-    await votiumStashController.multiFreeze([crvAddress]);
-
-    await votiumStashController.multiSet([crvAddress], [merkleRoot]);
-
-    const tokenAddresses = Object.keys(proofData2);
-
-    console.log('tokenAddresses is', tokenAddresses);
+    console.log("tokenAddresses is", tokenAddresses);
 
     const claimProofs = tokenAddresses.map((_: any, i: number) => {
-      const pd = proofData2[tokenAddresses[i]];
+      const pd = proofData[tokenAddresses[i]];
       return [
         tokenAddresses[i],
         pd.claims[votiumStrategy.address].index,
@@ -217,8 +210,7 @@ describe.only("Test claimVotiumRewards()", async function () {
       ];
     });
 
-    console.log("claimProofs", claimProofs);
-
+    const crvAddress = "0xD533a949740bb3306d119CC777fa900bA034cd52";
     const crvContract = new ethers.Contract(crvAddress, ERC20.abi, accounts[0]);
     const crvBalanceBeforeClaim = await crvContract.balanceOf(
       votiumStrategy.address
@@ -232,6 +224,7 @@ describe.only("Test claimVotiumRewards()", async function () {
       votiumStrategy.address
     );
 
+    // TODO verify all balances went up
     expect(crvBalanceAfterClaim).gt(crvBalanceBeforeClaim);
   });
 });
