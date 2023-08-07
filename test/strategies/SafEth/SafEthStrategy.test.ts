@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { SafEthStrategy } from "../../typechain-types";
+import { SafEthStrategy } from "../../../typechain-types";
 import { ethers, upgrades, network } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 
@@ -114,9 +114,5 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     await expect(nonOwnerSigner.requestClose(0)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     );
-  });
-
-  it("Should allow user to transfer minted nft to another user who is able to use it", async function () {
-    // TODO
   });
 });
