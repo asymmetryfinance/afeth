@@ -18,21 +18,21 @@ abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable {
     function mint(uint256 _positionId) external payable virtual;
 
     /// request to close a position so nft can be burned later
-    function requestClose(uint256 positionId) external virtual;
+    function requestClose(uint256 _positionId) external virtual;
 
     /// burn nft to receive all locked value and rewards. position must be fully closed (requestClose() called & sufficient time passed)
-    function burn(uint256 positionId) external virtual;
+    function burn(uint256 _positionId) external virtual;
 
     /// Withdraw any rewards from the position that can be claimed right now
-    function claimRewards(uint256 positionId) external virtual;
+    function claimRewards(uint256 _positionId) external virtual;
 
     /// how much rewards can be claimed right now
     function claimableNow(
-        uint256 positionId
+        uint256 _positionId
     ) external view virtual returns (uint256 ethAmountClaimable);
 
     /// how much eth value is locked up
     function lockedValue(
-        uint256 positionId
+        uint256 _positionId
     ) external view virtual returns (uint256 ethValue);
 }

@@ -1,11 +1,11 @@
 import { ethers, upgrades } from "hardhat";
-import { AfEth } from "../typechain-types";
+import { AfEth, SafEthStrategy, VotiumStrategy } from "../typechain-types";
 import { expect } from "chai";
-// import { VotiumStrategy } from "../typechain-types";
-// import { SafEthStrategy } from "../typechain-types";
 
 describe("Test AfEth (Votium + SafEth Strategies)", async function () {
   let afEthManager: AfEth;
+  let votiumStrategy: VotiumStrategy;
+  let safEthStrategy: SafEthStrategy;
 
   before(async () => {
     const afEthFactory = await ethers.getContractFactory("AfEth");
@@ -15,27 +15,35 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
     );
-    const votiumStrategy = await upgrades.deployProxy(votiumStrategyFactory, [
+    votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       afEthManager.address,
-    ]);
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
     const safEthStrategyFactory = await ethers.getContractFactory(
       "SafEthStrategy"
     );
-    const safEthStrategy = await upgrades.deployProxy(safEthStrategyFactory, [
+    safEthStrategy = (await upgrades.deployProxy(safEthStrategyFactory, [
       afEthManager.address,
-    ]);
+    ])) as SafEthStrategy;
     await safEthStrategy.deployed();
 
     await afEthManager.addStrategy(votiumStrategy.address);
     await afEthManager.addStrategy(safEthStrategy.address);
   });
   it("Should mint with uneven ratios", async function () {
+    let votiumPositionCount = await votiumStrategy.vlCvxPositions(1);
+    let safEthPositionCount = await safEthStrategy.safEthPositions(1);
+    console.log({ votiumPositionCount });
+    console.log({ safEthPositionCount });
     await afEthManager.mint(
       [ethers.utils.parseEther(".3"), ethers.utils.parseEther(".7")],
       { value: ethers.utils.parseEther("1") }
     );
+    votiumPositionCount = await votiumStrategy.vlCvxPositions(1);
+    safEthPositionCount = await safEthStrategy.safEthPositions(1);
+    console.log({ votiumPositionCount });
+    console.log({ safEthPositionCount });
   });
   it("Should mint with even ratios", async function () {
     await afEthManager.mint(

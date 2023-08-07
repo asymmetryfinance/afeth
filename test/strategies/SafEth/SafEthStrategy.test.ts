@@ -20,6 +20,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     });
     accounts = await ethers.getSigners();
 
+    // This is deploying before each test, will probably be slow
     const safEthStrategyFactory = await ethers.getContractFactory(
       "SafEthStrategy"
     );
@@ -30,7 +31,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   });
 
   it("Should mint() and be able to immediately requestClose() and burn() the position", async function () {
-    const mintTx = await safEthStrategy.mint({
+    const mintTx = await safEthStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -70,7 +71,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   });
 
   it("Should be able to call claimRewards() but have no effect because safEth strategy rewards are received upon burning", async function () {
-    const mintTx = await safEthStrategy.mint({
+    const mintTx = await safEthStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -93,7 +94,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   });
 
   it("Should fail to call burn() if it has already been called", async function () {
-    const mintTx = await safEthStrategy.mint({
+    const mintTx = await safEthStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -105,7 +106,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   });
 
   it("Should fail to call requestClose() if not the owner", async function () {
-    const mintTx = await safEthStrategy.mint({
+    const mintTx = await safEthStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
