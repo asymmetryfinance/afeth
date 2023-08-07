@@ -9,12 +9,37 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { vlCvxAbi } from "../abis/vlCvxAbi";
 import { BigNumber } from "ethers";
 
+const epochDuration = 60 * 60 * 24 * 7;
+
 // Votium tests are hard for 2 reasons:
 // 1) they require 2 types of oracle updates -- once a week to relock cvx and another every 2 weeks to claim rewards
 // 2) We may need to impersonate accounts to update the merkle root and generate/simulate our own reward merkle proofs
-describe("Test Votium Cvx Lock & Unlock Logic", async function () {
-  const epochDuration = 60 * 60 * 24 * 7;
 
+describe("Test Votium Rewards Logic", async function () {
+  let votiumStrategy: any;
+
+  beforeEach(async () => {
+    const votiumStrategyFactory = await ethers.getContractFactory(
+      "VotiumStrategy"
+    );
+    votiumStrategy = (await upgrades.deployProxy(
+      votiumStrategyFactory
+    )) as VotiumStrategy;
+    await votiumStrategy.deployed();
+  });
+
+  it.only("Should be able to claim rewards after the first successful oracleClaimRewards() call", async function () {
+    const mintTx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await mintTx.wait();
+
+    const claimRewardsTx0 = await votiumStrategy.oracleClaimRewards();
+    await claimRewardsTx0.wait();
+  });
+});
+
+describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   let votiumStrategy: any;
   let accounts: any;
 
