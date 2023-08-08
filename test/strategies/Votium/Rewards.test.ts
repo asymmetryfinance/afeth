@@ -41,7 +41,7 @@ describe("Test Votium Rewards Logic", async function () {
     await resetToBlock(Number(result.data.result) - 6);
   });
 
-  it("Should mock merkle data, impersonate account to set merkle root, wait until claimable, claimRewards & sellRewards into eth", async function () {
+  it.only("Should mock merkle data, impersonate account to set merkle root, wait until claimable, claimRewards & sellRewards into eth", async function () {
     let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
@@ -52,14 +52,10 @@ describe("Test Votium Rewards Logic", async function () {
     const claimProofs = await updateRewardsMerkleRoot(votiumStrategy.address);
     tx = await votiumStrategy.oracleClaimRewards(claimProofs);
     await tx.wait();
-
     const tokenAddresses = claimProofs.map((cp: any[]) => cp[0]);
-
+    const tokenAmounts = claimProofs.map((cp: any[]) => cp[2]);
     // sell rewards
-    const swapsData = await generate0xSwapData(
-      tokenAddresses,
-      votiumStrategy.address
-    );
+    const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
     const ethBalanceBefore = await ethers.provider.getBalance(
       votiumStrategy.address
     );

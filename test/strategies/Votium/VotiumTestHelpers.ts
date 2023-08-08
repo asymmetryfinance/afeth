@@ -6,6 +6,7 @@ import { wethAbi } from "../../abis/wethAbi";
 import { vlCvxAbi } from "../../abis/vlCvxAbi";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { votiumStashControllerAbi } from "../../abis/votiumStashControllerAbi";
+import { BigNumber } from "ethers";
 
 export const epochDuration = 60 * 60 * 24 * 7;
 
@@ -108,7 +109,7 @@ export const generateMockMerkleData = async (recipients: string[]) => {
 
 export const generate0xSwapData = async (
   tokenAddresses: string[],
-  votiumStrategyAddress: string
+  tokenAmounts: string[]
 ) => {
   const accounts = await ethers.getSigners();
 
@@ -125,14 +126,14 @@ export const generate0xSwapData = async (
       accounts[0]
     );
 
-    const sellAmount = await tokenContract.balanceOf(votiumStrategyAddress);
-
     // special case unwrap weth
     if (
       sellToken.toLowerCase() ===
       "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".toLowerCase()
     ) {
-      const data = await tokenContract.populateTransaction.withdraw(sellAmount);
+      const data = await tokenContract.populateTransaction.withdraw(
+        tokenAmounts[i]
+      );
       const newData = {
         sellToken,
         spender: tokenContract.address,
@@ -145,7 +146,9 @@ export const generate0xSwapData = async (
       // TODO do we want slippage protection or does it not matter and we just dump all the tokens anyway?
       try {
         result = await axios.get(
-          `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${sellAmount}`,
+          `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${BigNumber.from(
+            tokenAmounts[i]
+          )}`,
           {
             headers: {
               "0x-api-key":
@@ -164,7 +167,14 @@ export const generate0xSwapData = async (
 
         swapsData.push(newData);
       } catch (e) {
-        console.log("0x doesnt support", i, sellToken, buyToken, sellAmount, e);
+        console.log(
+          "0x doesnt support",
+          i,
+          sellToken,
+          buyToken,
+          tokenAmounts[i],
+          e
+        );
       }
     }
     // prevent 429s
