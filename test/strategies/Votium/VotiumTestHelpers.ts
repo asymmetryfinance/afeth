@@ -126,14 +126,14 @@ export const generate0xSwapData = async (
       accounts[0]
     );
 
+    const sellAmount = BigNumber.from(tokenAmounts[i]);
+
     // special case unwrap weth
     if (
       sellToken.toLowerCase() ===
       "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".toLowerCase()
     ) {
-      const data = await tokenContract.populateTransaction.withdraw(
-        tokenAmounts[i]
-      );
+      const data = await tokenContract.populateTransaction.withdraw(sellAmount);
       const newData = {
         sellToken,
         spender: tokenContract.address,
@@ -146,9 +146,7 @@ export const generate0xSwapData = async (
       // TODO do we want slippage protection or does it not matter and we just dump all the tokens anyway?
       try {
         result = await axios.get(
-          `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${BigNumber.from(
-            tokenAmounts[i]
-          )}`,
+          `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${sellAmount}`,
           {
             headers: {
               "0x-api-key":
