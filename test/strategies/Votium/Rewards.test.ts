@@ -41,7 +41,7 @@ describe("Test Votium Rewards Logic", async function () {
     await resetToBlock(Number(result.data.result) - 6);
   });
 
-  it.only("Should mock merkle data, impersonate account to set merkle root, wait until claimable, claimRewards & sellRewards into eth", async function () {
+  it("Should mock merkle data, impersonate account to set merkle root, wait until claimable, claimRewards & sellRewards into eth", async function () {
     let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
