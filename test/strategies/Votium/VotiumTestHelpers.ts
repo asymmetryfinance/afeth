@@ -1,12 +1,49 @@
 import axios from "axios";
 import { parseBalanceMap } from "../../merkle_helpers/parse-balance-map";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { wethAbi } from "../../abis/wethAbi";
 import { vlCvxAbi } from "../../abis/vlCvxAbi";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { votiumStashControllerAbi } from "../../abis/votiumStashControllerAbi";
 
 export const epochDuration = 60 * 60 * 24 * 7;
+
+export const updateRewardsMerkleRoot = async (proofData: any) => {
+  const votiumStashControllerAddress =
+    "0x9d37A22cEc2f6b3635c61C253D192E68e85b1790";
+  const votiumStashControllerOwner =
+    "0xe39b8617D571CEe5e75e1EC6B2bb40DdC8CF6Fa3";
+  await network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [votiumStashControllerOwner],
+  });
+  const impersonatedOwnerSigner = await ethers.getSigner(
+    votiumStashControllerOwner
+  );
+  const votiumStashController = new ethers.Contract(
+    votiumStashControllerAddress,
+    votiumStashControllerAbi,
+    impersonatedOwnerSigner
+  ) as any;
+
+  // give owner some eth to do txs with
+  const accounts = await ethers.getSigners();
+  const tx = await accounts[0].sendTransaction({
+    to: votiumStashControllerOwner,
+    value: "2000000000000000000", // 2 eth
+  });
+  await tx.wait();
+
+  const tokenAddresses = Object.keys(proofData);
+
+  // set root from new mocked merkle data
+  for (let i = 0; i < tokenAddresses.length; i++) {
+    const merkleRoot = proofData[tokenAddresses[i]].merkleRoot;
+    await votiumStashController.multiFreeze([tokenAddresses[i]]);
+    await votiumStashController.multiSet([tokenAddresses[i]], [merkleRoot]);
+  }
+};
 
 export const generateMockMerkleData = async (recipients: string[]) => {
   const votiumRewardsContractAddress =

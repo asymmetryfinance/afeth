@@ -7,6 +7,7 @@ import {
   generate0xSwapData,
   generateMockMerkleData,
   incrementVlcvxEpoch,
+  updateRewardsMerkleRoot,
 } from "./VotiumTestHelpers";
 
 describe("Test Votium Rewards Logic", async function () {
@@ -34,30 +35,9 @@ describe("Test Votium Rewards Logic", async function () {
   });
 
   it("Should mock merkle data, impersonate account to set merkle root, wait until claimable, claimRewards & sellRewards into eth", async function () {
-    const votiumStashControllerAddress =
-      "0x9d37A22cEc2f6b3635c61C253D192E68e85b1790";
-    const votiumStashControllerOwner =
-      "0xe39b8617D571CEe5e75e1EC6B2bb40DdC8CF6Fa3";
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [votiumStashControllerOwner],
-    });
-    const impersonatedOwnerSigner = await ethers.getSigner(
-      votiumStashControllerOwner
-    );
-    const votiumStashController = new ethers.Contract(
-      votiumStashControllerAddress,
-      votiumStashControllerAbi,
-      impersonatedOwnerSigner
-    ) as any;
 
     // give owner some eth to do txs with
     const accounts = await ethers.getSigners();
-    let tx = await accounts[0].sendTransaction({
-      to: votiumStashControllerOwner,
-      value: "2000000000000000000", // 2 eth
-    });
-    await tx.wait();
 
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
@@ -81,12 +61,7 @@ describe("Test Votium Rewards Logic", async function () {
 
     const tokenAddresses = Object.keys(proofData);
 
-    // set root from new mocked merkle data
-    for (let i = 0; i < tokenAddresses.length; i++) {
-      const merkleRoot = proofData[tokenAddresses[i]].merkleRoot;
-      await votiumStashController.multiFreeze([tokenAddresses[i]]);
-      await votiumStashController.multiSet([tokenAddresses[i]], [merkleRoot]);
-    }
+    await updateRewardsMerkleRoot(proofData);
 
     const claimProofs = tokenAddresses.map((_: any, i: number) => {
       const pd = proofData[tokenAddresses[i]];
@@ -98,7 +73,7 @@ describe("Test Votium Rewards Logic", async function () {
       ];
     });
 
-    tx = await votiumStrategy.mint(0, {
+    let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     tx.wait();
@@ -121,6 +96,6 @@ describe("Test Votium Rewards Logic", async function () {
     const ethBalanceAfter = await ethers.provider.getBalance(
       votiumStrategy.address
     );
-    expect(ethBalanceAfter).gt(ethBalanceBefore);
+    expect(ethBalanceAfter).gt(ethBalanceBefore as any);
   });
 });
