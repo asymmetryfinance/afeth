@@ -42,9 +42,6 @@ describe("Test Votium Rewards Logic", async function () {
   });
 
   it("Should mock merkle data, impersonate account to set merkle root, wait until claimable, claimRewards & sellRewards into eth", async function () {
-    const claimProofs = await updateRewardsMerkleRoot(votiumStrategy.address);
-    const tokenAddresses = claimProofs.map((cp: any[]) => cp[0]);
-
     let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
@@ -52,8 +49,11 @@ describe("Test Votium Rewards Logic", async function () {
     await incrementVlcvxEpoch();
     await incrementVlcvxEpoch();
     // should be allowed to claim every 2 epochs
+    const claimProofs = await updateRewardsMerkleRoot(votiumStrategy.address);
     tx = await votiumStrategy.oracleClaimRewards(claimProofs);
     await tx.wait();
+
+    const tokenAddresses = claimProofs.map((cp: any[]) => cp[0]);
 
     // sell rewards
     const swapsData = await generate0xSwapData(
