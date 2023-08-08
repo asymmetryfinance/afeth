@@ -35,22 +35,22 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     // verify strategy positions
     let votiumPosition = await votiumStrategy.vlCvxPositions(1);
     let safEthPosition = await safEthStrategy.safEthPositions(1);
-    let tokenId = await afEthManager.tokenId();
+    let tokenCount = await afEthManager.tokenCount();
 
     expect(votiumPosition.cvxAmount).eq(0);
     expect(safEthPosition).eq(0);
-    expect(tokenId).eq(0);
+    expect(tokenCount).eq(0);
     await afEthManager.mint(
       [ethers.utils.parseEther(".3"), ethers.utils.parseEther(".7")],
       { value: ethers.utils.parseEther("1") }
     );
     votiumPosition = await votiumStrategy.vlCvxPositions(1);
     safEthPosition = await safEthStrategy.safEthPositions(1);
-    tokenId = await afEthManager.tokenId();
+    tokenCount = await afEthManager.tokenCount();
 
     expect(votiumPosition.cvxAmount).eq("185590451737888536751");
     expect(safEthPosition).eq("699649515058320520");
-    expect(tokenId).eq(1);
+    expect(tokenCount).eq(1);
 
     // verify nft position
     const ownerAddress = await ethers.provider.getSigner(0).getAddress();
@@ -63,22 +63,22 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     // verify strategy positions
     let votiumPosition = await votiumStrategy.vlCvxPositions(2);
     let safEthPosition = await safEthStrategy.safEthPositions(2);
-    let tokenId = await afEthManager.tokenId();
+    let tokenCount = await afEthManager.tokenCount();
 
     expect(votiumPosition.cvxAmount).eq(0);
     expect(safEthPosition).eq(0);
-    expect(tokenId).eq(1);
+    expect(tokenCount).eq(1);
     await afEthManager.mint(
       [ethers.utils.parseEther(".5"), ethers.utils.parseEther(".5")],
       { value: ethers.utils.parseEther("1") }
     );
     votiumPosition = await votiumStrategy.vlCvxPositions(2);
     safEthPosition = await safEthStrategy.safEthPositions(2);
-    tokenId = await afEthManager.tokenId();
+    tokenCount = await afEthManager.tokenCount();
 
     expect(votiumPosition.cvxAmount).eq("309264117388178050890");
     expect(safEthPosition).eq("499747505426046777");
-    expect(tokenId).eq(2);
+    expect(tokenCount).eq(2);
   });
   it("Should fail to mint with wrong ratios", async function () {
     await expect(
