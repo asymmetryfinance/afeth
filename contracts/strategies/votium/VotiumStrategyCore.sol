@@ -88,11 +88,9 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
-        require(
-            lastRewardEpochFullyClaimed < currentEpoch - 1 &&
-                currentEpoch % 2 == 0,
-            "cant call oracleClaimRewards yet"
-        );
+
+        uint256 unclaimedEpochCount = currentEpoch - lastRewardEpochFullyClaimed - 1;
+        require(unclaimedEpochCount > 0, "no unclaimed epochs");
 
         claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
@@ -109,11 +107,6 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         require(readyToSellRewards, "call oracleClaimRewards first");
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
-        );
-        require(
-            lastRewardEpochFullyClaimed < currentEpoch - 1 &&
-                currentEpoch % 2 == 0,
-            "cant call oracleSellRewards yet"
         );
 
         uint256 claimed = sellRewards(_swapsData);

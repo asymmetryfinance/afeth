@@ -10,6 +10,7 @@ import {
 
 describe("Test Votium Rewards Logic", async function () {
   let votiumStrategy: VotiumStrategy;
+  let accounts: any;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
       method: "hardhat_reset",
@@ -22,7 +23,7 @@ describe("Test Votium Rewards Logic", async function () {
         },
       ],
     });
-    const accounts = await ethers.getSigners();
+    accounts = await ethers.getSigners();
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
     );
@@ -41,14 +42,15 @@ describe("Test Votium Rewards Logic", async function () {
     await resetToBlock(Number(result.data.result) - 6);
   });
 
-  it("Should mock merkle data, impersonate account to set merkle root, wait until claimable, claimRewards & sellRewards into eth", async function () {
+  it("Should mint token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
     let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     tx.wait();
     await incrementVlcvxEpoch();
     await incrementVlcvxEpoch();
-    // should be allowed to claim every 2 epochs
+    await incrementVlcvxEpoch();
+    // should be allowed to claim every 2 epochs. 3 from when initially staking
     const claimProofs = await updateRewardsMerkleRoot(votiumStrategy.address);
     tx = await votiumStrategy.oracleClaimRewards(claimProofs);
     await tx.wait();
@@ -56,14 +58,18 @@ describe("Test Votium Rewards Logic", async function () {
     const tokenAmounts = claimProofs.map((cp: any[]) => cp[2]);
     // sell rewards
     const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
-    const ethBalanceBefore = await ethers.provider.getBalance(
-      votiumStrategy.address
-    );
     tx = await votiumStrategy.oracleSellRewards(swapsData);
     await tx.wait();
-    const ethBalanceAfter = await ethers.provider.getBalance(
-      votiumStrategy.address
+
+    const balanceBeforeClaim = await ethers.provider.getBalance(
+      accounts[0].address
     );
-    expect(ethBalanceAfter).gt(ethBalanceBefore as any);
+    tx = await votiumStrategy.claimRewards(0);
+    await tx.wait();
+    const balanceAfterClaim = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    expect(balanceAfterClaim.gt(balanceBeforeClaim)).eq(true);
   });
 });
