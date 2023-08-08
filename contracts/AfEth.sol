@@ -7,8 +7,8 @@ import "./strategies/safEth/SafEthStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
-    address[] strategies;
-    uint256 tokenId;
+    address[] public strategies;
+    uint256 public tokenId;
 
     error InvalidRatios();
 
