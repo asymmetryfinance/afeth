@@ -160,6 +160,6 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             .latestRoundData();
         return
             vlCvxPositions[_positionId].cvxAmount *
-            uint256(chainLinkCvxEthPrice); // TODO does this need to be divided by 1 e18?
+            uint256(chainLinkCvxEthPrice);
     }
 }
