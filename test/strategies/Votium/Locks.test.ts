@@ -5,10 +5,6 @@ import { vlCvxAbi } from "../../abis/vlCvxAbi";
 import { BigNumber } from "ethers";
 import { incrementVlcvxEpoch } from "./VotiumTestHelpers";
 
-// Votium tests are hard for 2 reasons:
-// 1) they require 2 types of oracle updates -- once a week to relock cvx and another every 2 weeks to claim rewards
-// 2) We may need to impersonate accounts to update the merkle root and generate/simulate our own reward merkle proofs
-
 describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   let votiumStrategy: any;
   let accounts: any;
