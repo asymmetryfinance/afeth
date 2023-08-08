@@ -80,13 +80,14 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     }
 
     function claimRewards(uint256 _positionId) public override {
-        uint256 firstRewardEpoch = vlCvxPositions[_positionId]
+        uint256 firstPositionRewardEpoch = vlCvxPositions[_positionId]
             .lastRewardEpochFullyClaimed != 0
             ? vlCvxPositions[_positionId].lastRewardEpochFullyClaimed + 1
             : vlCvxPositions[_positionId].firstRewardEpoch;
+
         require(
-            firstRewardEpoch <= lastRewardEpochFullyClaimed,
-            "call claim on oracle"
+            firstPositionRewardEpoch <= lastRewardEpochFullyClaimed,
+            "position hasnt earned rewards yet"
         );
 
         uint256 positionAmount = vlCvxPositions[_positionId].cvxAmount;
@@ -95,7 +96,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
 
         // add up total rewards for a position up until the last epoch claimed via the oracle
         for (
-            uint256 i = firstRewardEpoch;
+            uint256 i = firstPositionRewardEpoch;
             i < lastRewardEpochFullyClaimed + 1;
             i++
         ) {
