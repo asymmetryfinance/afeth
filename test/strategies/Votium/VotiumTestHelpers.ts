@@ -165,14 +165,7 @@ export const generate0xSwapData = async (
 
         swapsData.push(newData);
       } catch (e) {
-        console.log(
-          "0x doesnt support",
-          i,
-          sellToken,
-          buyToken,
-          tokenAmounts[i],
-          e
-        );
+        console.log("0x doesnt support", i, sellToken, buyToken, sellAmount, e);
       }
     }
     // prevent 429s
