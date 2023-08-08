@@ -1,12 +1,75 @@
 import axios from "axios";
 import { parseBalanceMap } from "../../merkle_helpers/parse-balance-map";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { wethAbi } from "../../abis/wethAbi";
 import { vlCvxAbi } from "../../abis/vlCvxAbi";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { votiumStashControllerAbi } from "../../abis/votiumStashControllerAbi";
 
 export const epochDuration = 60 * 60 * 24 * 7;
+
+export const updateRewardsMerkleRoot = async (
+  votiumStrategyAddress: string
+) => {
+  const votiumStashControllerAddress =
+    "0x9d37A22cEc2f6b3635c61C253D192E68e85b1790";
+  const votiumStashControllerOwner =
+    "0xe39b8617D571CEe5e75e1EC6B2bb40DdC8CF6Fa3";
+  await network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [votiumStashControllerOwner],
+  });
+  const impersonatedOwnerSigner = await ethers.getSigner(
+    votiumStashControllerOwner
+  );
+  const votiumStashController = new ethers.Contract(
+    votiumStashControllerAddress,
+    votiumStashControllerAbi,
+    impersonatedOwnerSigner
+  ) as any;
+
+  // give owner some eth to do txs with
+  const accounts = await ethers.getSigners();
+  const tx = await accounts[0].sendTransaction({
+    to: votiumStashControllerOwner,
+    value: "2000000000000000000", // 2 eth
+  });
+  await tx.wait();
+
+  // generate a merkle tree of rewards with our contract address and some other random addresses to make it realistic
+  const proofData = await generateMockMerkleData([
+    votiumStrategyAddress,
+    "0x8a65ac0E23F31979db06Ec62Af62b132a6dF4741",
+    "0x0000462df2438f7b39577917374b1565c306b908",
+    "0x000051d46ff97559ed5512ac9d2d95d0ef1140e1",
+    "0xc90c5cc170a8db4c1b66939e1a0bb9ad47c93602",
+    "0x47CB53752e5dc0A972440dA127DCA9FBA6C2Ab6F",
+    "0xe7ebef64f1ff602a28d8d37049e46d0ca77a38ac",
+    "0x76a1f47f8d998d07a15189a07d9aada180e09ac6",
+  ]);
+
+  const tokenAddresses = Object.keys(proofData);
+
+  // set root from new mocked merkle data
+  for (let i = 0; i < tokenAddresses.length; i++) {
+    const merkleRoot = proofData[tokenAddresses[i]].merkleRoot;
+    await votiumStashController.multiFreeze([tokenAddresses[i]]);
+    await votiumStashController.multiSet([tokenAddresses[i]], [merkleRoot]);
+  }
+
+  const claimProofs = tokenAddresses.map((_: any, i: number) => {
+    const pd = proofData[tokenAddresses[i]];
+    return [
+      tokenAddresses[i],
+      pd.claims[votiumStrategyAddress].index,
+      pd.claims[votiumStrategyAddress].amount,
+      pd.claims[votiumStrategyAddress].proof,
+    ];
+  });
+
+  return claimProofs;
+};
 
 export const generateMockMerkleData = async (recipients: string[]) => {
   const votiumRewardsContractAddress =
@@ -37,7 +100,7 @@ export const generateMockMerkleData = async (recipients: string[]) => {
   for (let i = 0; i < tokenAddresses.length; i++) {
     const recipientAmounts = {} as any;
     for (let j = 0; j < recipients.length; j++)
-      recipientAmounts[recipients[j]] = balances[i].div(recipients.length);
+      recipientAmounts[recipients[j]] = balances[i].div(recipients.length * 10); // this means after 10 claims it will be out of tokens
     proofData[tokenAddresses[i]] = await parseBalanceMap(recipientAmounts);
   }
   return proofData;
