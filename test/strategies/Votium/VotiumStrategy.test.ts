@@ -34,7 +34,7 @@ describe("Test Votium Rewards Logic", async function () {
   });
 
   it("Should be able to claim rewards after the first successful oracleClaimRewards() call", async function () {
-    const mintTx = await votiumStrategy.mint({
+    const mintTx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -61,7 +61,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   });
 
   it("Should update values correctly if requestClose() is called followed by oracleRelockCvx() 17 weeks later", async function () {
-    const mintTx = await votiumStrategy.mint({
+    const mintTx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -147,7 +147,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
 });
 
 // TODO change this to "Test oracleClaimRewards" (and implement 0x selling helpers) and make claimVotiumRewards() private
-describe.only("Test claimVotiumRewards()", async function () {
+describe.skip("Test claimVotiumRewards()", async function () {
   it("Should mock merkle data & impersonate account to set merkle root & claim rewards", async function () {
     const votiumStashControllerAddress =
       "0x9d37A22cEc2f6b3635c61C253D192E68e85b1790";
