@@ -6,15 +6,14 @@ import "../AbstractNftStrategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
 contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
-    function mint() external payable override onlyOwner returns (uint256) {
+    function mint(uint256 _positionId) external payable override onlyOwner {
+        require(positions[_positionId].owner == address(0), "Already Exists");
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
         );
-        uint256 newPositionId = positionCount;
-        positionCount++;
 
         // storage of individual balances associated w/ user deposit
-        positions[newPositionId] = Position({
+        positions[_positionId] = Position({
             unlockTime: 0,
             ethClaimed: 0,
             ethBurned: 0,
@@ -22,10 +21,9 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
             owner: msg.sender
         });
 
-        safEthPositions[newPositionId] = SafEthPosition({
+        safEthPositions[_positionId] = SafEthPosition({
             safEthAmount: mintAmount
         });
-        return newPositionId;
     }
 
     function requestClose(uint256 _positionId) external override onlyOwner {

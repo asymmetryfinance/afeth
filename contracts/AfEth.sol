@@ -7,7 +7,8 @@ import "./strategies/safEth/SafEthStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
-    address[] strategies;
+    address[] public strategies;
+    uint256 public tokenCount;
 
     error InvalidRatios();
 
@@ -47,11 +48,12 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
         if (totalRatio != 1e18) {
             revert InvalidRatios();
         }
-
+        tokenCount++;
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
-            strategy.mint{value: (amount * _ratios[i]) / 1e18}();
+            strategy.mint{value: (amount * _ratios[i]) / 1e18}(tokenCount);
         }
+        _mint(msg.sender, tokenCount);
     }
 
     /**
@@ -64,6 +66,7 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
             AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
             strategy.burn(_positionId);
         }
+        _burn(_positionId);
     }
 
     /**

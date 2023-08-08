@@ -6,27 +6,29 @@ import "../AbstractNftStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
-    function mint() public payable override onlyOwner returns (uint256) {
+    function mint(uint256 _positionId) public payable override onlyOwner {
+        require(positions[_positionId].owner == address(0), "Already Exists");
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        uint256 newPositionId = positionCount;
-        positionCount++;
-        lockCvx(cvxAmount, newPositionId);
+
+        lockCvx(cvxAmount, _positionId);
 
         // storage of individual balances associated w/ user deposit
-        positions[newPositionId] = Position({
+        positions[_positionId] = Position({
             unlockTime: 0,
             ethClaimed: 0,
             ethBurned: 0,
             startingValue: msg.value,
             owner: msg.sender
         });
-        return newPositionId;
     }
 
     function requestClose(uint256 _positionId) public override onlyOwner {
         require(positions[_positionId].owner == msg.sender, "Not owner");
-        require(positions[_positionId].unlockTime == 0, "Already requested close");
+        require(
+            positions[_positionId].unlockTime == 0,
+            "Already requested close"
+        );
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
@@ -44,10 +46,14 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             unlockEpoch = firstRelockEpoch;
         }
 
-        (, uint256 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS)
-            .epochs(currentEpoch);
+        (, uint256 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(
+            currentEpoch
+        );
 
-        positions[_positionId].unlockTime = currentEpochStartingTime + (unlockEpoch - currentEpoch) * (60 * 60 * 24 * 7);
+        positions[_positionId].unlockTime =
+            currentEpochStartingTime +
+            (unlockEpoch - currentEpoch) *
+            (60 * 60 * 24 * 7);  // TODO: Add comment explaining numbers
         unlockSchedule[unlockEpoch] += vlCvxPositions[_positionId].cvxAmount;
     }
 
@@ -65,11 +71,11 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
 
         positions[_positionId].ethBurned += ethReceived;
         vlCvxPositions[_positionId].cvxAmount = 0;
-        
+
         // solhint-disable-next-line
-        (bool sent, ) = address(positions[_positionId].owner).call{value: ethReceived}(
-            ""
-        );
+        (bool sent, ) = address(positions[_positionId].owner).call{
+            value: ethReceived
+        }("");
         require(sent, "Failed to send Ether");
     }
 
@@ -111,7 +117,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         vlCvxPositions[_positionId]
             .lastRewardEpochFullyClaimed = lastRewardEpochFullyClaimed;
         // solhint-disable-next-line
-        (bool sent, ) = address(positions[_positionId].owner).call{value: claimable}("");
+        (bool sent, ) = address(positions[_positionId].owner).call{
+            value: claimable
+        }("");
         require(sent, "Failed to send Ether");
     }
 
