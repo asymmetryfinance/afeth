@@ -22,7 +22,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   });
 
   it("Should update values correctly if requestClose() is called followed by oracleRelockCvx() 17 weeks later", async function () {
-    const mintTx = await votiumStrategy.mint({
+    const mintTx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();

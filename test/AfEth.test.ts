@@ -48,8 +48,8 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     safEthPosition = await safEthStrategy.safEthPositions(1);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq("185590451737888536751");
-    expect(safEthPosition).eq("699649515058320520");
+    expect(votiumPosition.cvxAmount).eq("168653931577370777381");
+    expect(safEthPosition).eq("694281210347620707");
     expect(tokenCount).eq(1);
 
     // verify nft position
@@ -76,8 +76,8 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     safEthPosition = await safEthStrategy.safEthPositions(2);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq("309264117388178050890");
-    expect(safEthPosition).eq("499747505426046777");
+    expect(votiumPosition.cvxAmount).eq("281043193118442289949");
+    expect(safEthPosition).eq("495915150248300505");
     expect(tokenCount).eq(2);
   });
   it("Should fail to mint with wrong ratios", async function () {

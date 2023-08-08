@@ -98,7 +98,7 @@ describe("Test Votium Rewards Logic", async function () {
       ];
     });
 
-    tx = await votiumStrategy.mint({
+    tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     tx.wait();
