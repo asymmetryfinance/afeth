@@ -52,14 +52,10 @@ describe("Test Votium Rewards Logic", async function () {
     const claimProofs = await updateRewardsMerkleRoot(votiumStrategy.address);
     tx = await votiumStrategy.oracleClaimRewards(claimProofs);
     await tx.wait();
-
     const tokenAddresses = claimProofs.map((cp: any[]) => cp[0]);
-
+    const tokenAmounts = claimProofs.map((cp: any[]) => cp[2]);
     // sell rewards
-    const swapsData = await generate0xSwapData(
-      tokenAddresses,
-      votiumStrategy.address
-    );
+    const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
     const ethBalanceBefore = await ethers.provider.getBalance(
       votiumStrategy.address
     );

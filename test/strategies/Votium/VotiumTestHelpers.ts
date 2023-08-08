@@ -6,6 +6,7 @@ import { wethAbi } from "../../abis/wethAbi";
 import { vlCvxAbi } from "../../abis/vlCvxAbi";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { votiumStashControllerAbi } from "../../abis/votiumStashControllerAbi";
+import { BigNumber } from "ethers";
 
 export const epochDuration = 60 * 60 * 24 * 7;
 
@@ -108,7 +109,7 @@ export const generateMockMerkleData = async (recipients: string[]) => {
 
 export const generate0xSwapData = async (
   tokenAddresses: string[],
-  votiumStrategyAddress: string
+  tokenAmounts: string[]
 ) => {
   const accounts = await ethers.getSigners();
 
@@ -125,7 +126,7 @@ export const generate0xSwapData = async (
       accounts[0]
     );
 
-    const sellAmount = await tokenContract.balanceOf(votiumStrategyAddress);
+    const sellAmount = BigNumber.from(tokenAmounts[i]);
 
     // special case unwrap weth
     if (
