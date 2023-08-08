@@ -46,7 +46,6 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
 
     struct SwapData {
         address sellToken;
-        address buyToken;
         address spender;
         address swapTarget;
         bytes swapCallData;
@@ -78,26 +77,45 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
 
-    // TODO: We need 2 different oracles to update the below oracle functions. one every 2 weeks and the other every week.
-
+    bool readyToSellRewards;
     /// this should be called around the same time every other epoch
     /// because vlCvx rewards are constant it would be unfair/inconsistent to claim at different times the way it distributes rewards into epochs
     /// but its also not a huge deal because vlCvx is a much smaller part of the overall rewards
     function oracleClaimRewards(
-        IVotiumMerkleStash.ClaimParam[] calldata _claimProofs,
-        SwapData[] calldata _swapsData
+        IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
     ) public {
+        require(!readyToSellRewards, "already called oracleClaimRewards");
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
         require(
             lastRewardEpochFullyClaimed < currentEpoch - 1 &&
                 currentEpoch % 2 == 0,
-            "cant claim rewards"
+            "cant call oracleClaimRewards yet"
         );
 
         claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
+
+        readyToSellRewards = true;
+    }
+
+    /// this should be called right after oracleClaimRewards
+    /// must be called separately because rewards must first be claimed
+    /// so we have belances to generate swap data
+    function oracleSellRewards(
+        SwapData[] calldata _swapsData
+    ) public {
+        require(readyToSellRewards, "call oracleClaimRewards first");
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
+        require(
+            lastRewardEpochFullyClaimed < currentEpoch - 1 &&
+                currentEpoch % 2 == 0,
+            "cant call oracleSellRewards yet"
+        );
+
         uint256 claimed = sellRewards(_swapsData);
 
         uint256 unclaimedEpochCount = currentEpoch -
@@ -114,6 +132,8 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         }
 
         lastRewardEpochFullyClaimed = currentEpoch - 1;
+
+        readyToSellRewards = false;
     }
 
     /// Called by our oracle at the beginning of each new epoch
@@ -221,8 +241,11 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
             (bool success, ) = _swapsData[i].swapTarget.call(
                 _swapsData[i].swapCallData
             );
-            // TODO this line will cause them all to fail. look into how to handle this
-            if (!success) revert SwapFailed(i);
+            if (!success) {
+                // TODO emit an event or something?
+                // this causes unsold tokens to build up in the contract, see:
+                // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478
+            }
         }
         uint256 ethBalanceAfter = address(this).balance;
         ethReceived = ethBalanceAfter - ethBalanceBefore;
@@ -230,8 +253,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
 
     function claimVotiumRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
-    ) public {
-        // TODO make this private. I made it temporarily public for testing during dev
+    ) private {
         IVotiumMerkleStash(0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A)
             .claimMulti(address(this), _claimProofs);
     }
