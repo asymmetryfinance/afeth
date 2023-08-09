@@ -41,7 +41,7 @@ describe("Test Votium Rewards Logic!", async function () {
     await resetToBlock(Number(result.data.result) - 6);
   });
 
-  it.only("Should mint token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
+  it("Should mint token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
     try {
       console.log("wtf1");
 
