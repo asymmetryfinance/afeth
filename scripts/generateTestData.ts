@@ -2,9 +2,9 @@ import * as path from "path";
 import * as fs from "fs";
 import axios from "axios";
 import { BigNumber } from "ethers";
-import { wethAbi } from "../../abis/wethAbi";
+import { wethAbi } from "../test/abis/wethAbi";
 import { ethers } from "hardhat";
-import { parseBalanceMap } from "../../merkle_helpers/parse-balance-map";
+import { parseBalanceMap } from "../test/merkle_helpers/parse-balance-map";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 
 function writeJSONToFile(obj: any, filePath: string): Promise<void> {
@@ -76,6 +76,14 @@ const generate0xSwapData = async (
 
     const sellAmount = BigNumber.from(tokenAmounts[i]);
 
+    console.log(
+      "trueBalance is",
+      await tokenContract.balanceOf(
+        "0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A"
+      ),
+      sellAmount.toString()
+    );
+
     // special case unwrap weth
     if (
       sellToken.toLowerCase() ===
@@ -111,6 +119,8 @@ const generate0xSwapData = async (
           swapCallData: result.data.data,
         };
 
+        console.log('pushing swap data', newData);
+
         swapsData.push(newData);
       } catch (e) {
         console.log("0x doesnt support", i, sellToken, buyToken, sellAmount, e);
@@ -123,7 +133,7 @@ const generate0xSwapData = async (
 };
 async function main() {
   // address of VotiumStrategy contract that will be used in the tests
-  const votiumStrategyAddress = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5";
+  const votiumStrategyAddress = "0x38628490c3043E5D0bbB26d5a0a62fC77342e9d5";
 
   const claimProofs = await generateMockMerkleData([
     votiumStrategyAddress,
@@ -139,6 +149,8 @@ async function main() {
   const tokenAmounts = tokenAddresses.map(
     (ta: string) => claimProofs[ta].tokenTotal
   );
+
+  console.log('token amounts', tokenAmounts, tokenAddresses)
   const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
 
   await writeJSONToFile(

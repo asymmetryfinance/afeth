@@ -12,6 +12,8 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 
 /// For private internal functions and anything not exposed via the interface
+import "hardhat/console.sol";
+
 contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -104,6 +106,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     function oracleSellRewards(
         SwapData[] calldata _swapsData
     ) public {
+        console.log('hit oracleSellReweards');
         require(readyToSellRewards, "call oracleClaimRewards first");
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
@@ -114,6 +117,9 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         uint256 unclaimedEpochCount = currentEpoch -
             lastRewardEpochFullyClaimed -
             1;
+
+        console.log('claimed', claimed);
+        console.log('unclaimedEpochCount', unclaimedEpochCount);
         uint256 rewardsPerCompletedEpoch = claimed / unclaimedEpochCount;
 
         for (
@@ -122,7 +128,9 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
             i++
         ) {
             rewardsClaimedPerEpoch[i] = rewardsPerCompletedEpoch;
+        console.log('rewardsClaimedPerEpoch[i]', rewardsClaimedPerEpoch[i]);
         }
+
 
         lastRewardEpochFullyClaimed = currentEpoch - 1;
 
@@ -227,14 +235,18 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     ) private returns (uint256 ethReceived) {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
+            console.log('blah0');
             IERC20(_swapsData[i].sellToken).approve(
                 address(_swapsData[i].spender),
                 type(uint256).max
             );
+            console.log('blah1', _swapsData[i].swapTarget);
             (bool success, ) = _swapsData[i].swapTarget.call(
                 _swapsData[i].swapCallData
             );
+            console.log('blah2');
             if (!success) {
+                console.log('well fuck', _swapsData[i].sellToken);
                 // TODO emit an event or something?
                 // this causes unsold tokens to build up in the contract, see:
                 // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478
@@ -242,6 +254,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         }
         uint256 ethBalanceAfter = address(this).balance;
         ethReceived = ethBalanceAfter - ethBalanceBefore;
+        console.log('ethReceived', ethReceived);
     }
 
     function claimVotiumRewards(

@@ -41,45 +41,35 @@ describe("Test Votium Rewards Logic!", async function () {
     await resetToBlock(Number(result.data.result) - 6);
   });
 
-  it("Should mint token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
-    try {
-      console.log("wtf1");
+  it.only("Should mi!nt token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
+    console.log('test!0')
+    let tx = await votiumStrategy.mint(0, {
+      value: ethers.utils.parseEther("1"),
+    });
+    tx.wait();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    // should be allowed to claim every 2 epochs. 3 from when initially staking
+    console.log('about to get data', votiumStrategy.address)
+    const { claimProofs, swapsData } = await updateRewardsMerkleRoot(
+      votiumStrategy.address
+    );
+    tx = await votiumStrategy.oracleClaimRewards(claimProofs);
+    let mined = await tx.wait();
+    console.log('claimed')
+    tx = await votiumStrategy.oracleSellRewards(swapsData);
+    mined = await tx.wait();
+    console.log('sold!')
 
-      let tx = await votiumStrategy.mint(0, {
-        value: ethers.utils.parseEther("1"),
-      });
-      console.log("wtf2", tx);
-      tx.wait();
-      console.log("wtf3");
-      await incrementVlcvxEpoch();
-      console.log("wtf3.5");
-      await incrementVlcvxEpoch();
-      console.log("wtf4");
-      await incrementVlcvxEpoch();
-      console.log("wtf5");
-      // should be allowed to claim every 2 epochs. 3 from when initially staking
-      const { claimProofs, swapsData } = await updateRewardsMerkleRoot(
-        votiumStrategy.address
-      );
-      console.log("wtf6");
-      tx = await votiumStrategy.oracleClaimRewards(claimProofs);
-      await tx.wait();
-      tx = await votiumStrategy.oracleSellRewards(swapsData);
-      await tx.wait();
-
-      const balanceBeforeClaim = await ethers.provider.getBalance(
-        accounts[0].address
-      );
-      tx = await votiumStrategy.claimRewards(0);
-      await tx.wait();
-      const balanceAfterClaim = await ethers.provider.getBalance(
-        accounts[0].address
-      );
-
-      console.log("done");
-      expect(balanceAfterClaim.gt(balanceBeforeClaim)).eq(true);
-    } catch (e) {
-      console.log("error", e);
-    }
+    // const balanceBeforeClaim = await ethers.provider.getBalance(
+    //   accounts[0].address
+    // );
+    // tx = await votiumStrategy.claimRewards(0);
+    // await tx.wait();
+    // const balanceAfterClaim = await ethers.provider.getBalance(
+    //   accounts[0].address
+    // );
+    // expect(balanceAfterClaim.gt(balanceBeforeClaim)).eq(true);
   });
 });

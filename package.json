@@ -16,7 +16,7 @@
     "prettier": "prettier '**/*.{json,sol,md}' --write",
     "clean": "rm .openzeppelin/unknown-*.json | rm -rf node_modules artifacts cache typechain-types deployments",
     "test": "yarn hardhat test",
-    "testData": "yarn hardhat run test/strategies/votium/generateTestData.ts"
+    "testData": "yarn hardhat run scripts/generateTestData.ts"
   },
   "repository": {
     "type": "git",

@@ -5,6 +5,8 @@ import "./VotiumStrategyCore.sol";
 import "../AbstractNftStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+import "hardhat/console.sol";
+
 contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function mint(uint256 _positionId) public payable override onlyOwner {
         require(positions[_positionId].owner == address(0), "Already Exists");
@@ -94,6 +96,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
 
         uint256 claimable = 0;
 
+        console.log('firstPositionRewardEpoch', firstPositionRewardEpoch);
+        console.log('lastRewardEpochFullyClaimed', lastRewardEpochFullyClaimed);
+
         // add up total rewards for a position up until the last epoch claimed via the oracle
         for (
             uint256 i = firstPositionRewardEpoch;
@@ -104,14 +109,21 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
                 i,
                 address(this)
             );
+            console.log('looping', i, balanceAtEpoch, positionAmount);
             if (balanceAtEpoch == 0) continue;
             uint256 positionLockRatio = (positionAmount * 10 ** 18) /
                 balanceAtEpoch;
 
+                console.log('positionLockRatio', positionLockRatio);
+                console.log('rewardsClaimedPerEpoch[i]', rewardsClaimedPerEpoch[i]);
+
             uint256 claimed = (positionLockRatio * rewardsClaimedPerEpoch[i]) /
                 10 ** 18;
+                console.log('claimed', claimed);
             claimable += claimed;
         }
+
+        console.log('claimable is %s', claimable);
 
         require(claimable > 0, "no rewards to claim");
 
