@@ -99,8 +99,17 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     expect(vPosition.unlockTime).eq("1701302400");
     expect(sPosition.unlockTime).eq("1691447184");
   });
+  it("Can't request to close positions if already closed", async function () {
+    const accounts = await ethers.getSigners();
+    const notOwner = afEthManager.connect(accounts[0]);
+    await expect(notOwner.requestClose(1)).to.be.revertedWith(
+      "Already requested close"
+    );
+  });
   it("Can't request to close positions if not the owner", async function () {
-    // TODO
+    const accounts = await ethers.getSigners();
+    const notOwner = afEthManager.connect(accounts[1]);
+    await expect(notOwner.requestClose(2)).to.be.revertedWith("Not owner");
   });
   it("Should burn positions", async function () {
     // TODO

@@ -6,7 +6,7 @@ import "../AbstractNftStrategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
 contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
-    function mint(uint256 _positionId) external payable override onlyOwner {
+    function mint(uint256 _positionId, address _msgSender) external payable override onlyOwner {
         require(positions[_positionId].owner == address(0), "Already Exists");
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
@@ -18,7 +18,7 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
             ethClaimed: 0,
             ethBurned: 0,
             startingValue: msg.value,
-            owner: msg.sender
+            owner: _msgSender
         });
 
         safEthPositions[_positionId] = SafEthPosition({
@@ -26,8 +26,8 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         });
     }
 
-    function requestClose(uint256 _positionId) external override onlyOwner {
-        require(positions[_positionId].owner == msg.sender, "Not owner");
+    function requestClose(uint256 _positionId, address _msgSender) external override onlyOwner {
+        require(positions[_positionId].owner == _msgSender, "Not owner");
         positions[_positionId].unlockTime = block.timestamp;
     }
 

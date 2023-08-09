@@ -6,7 +6,7 @@ import "../AbstractNftStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
-    function mint(uint256 _positionId) public payable override onlyOwner {
+    function mint(uint256 _positionId, address _msgSender) public payable override onlyOwner {
         require(positions[_positionId].owner == address(0), "Already Exists");
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
@@ -19,12 +19,12 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             ethClaimed: 0,
             ethBurned: 0,
             startingValue: msg.value,
-            owner: msg.sender
+            owner: _msgSender
         });
     }
 
-    function requestClose(uint256 _positionId) public override onlyOwner {
-        require(positions[_positionId].owner == msg.sender, "Not owner");
+    function requestClose(uint256 _positionId, address _msgSender) public override onlyOwner {
+        require(positions[_positionId].owner == _msgSender, "Not owner");
         require(
             positions[_positionId].unlockTime == 0,
             "Already requested close"
@@ -53,7 +53,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         positions[_positionId].unlockTime =
             currentEpochStartingTime +
             (unlockEpoch - currentEpoch) *
-            (60 * 60 * 24 * 7);  // TODO: Add comment explaining numbers
+            (60 * 60 * 24 * 7); // TODO: Add comment explaining numbers
         unlockSchedule[unlockEpoch] += vlCvxPositions[_positionId].cvxAmount;
     }
 

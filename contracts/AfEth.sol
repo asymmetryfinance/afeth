@@ -40,7 +40,6 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     */
     function mint(uint256[] memory _ratios) external payable {
         uint256 totalRatio;
-
         uint256 amount = msg.value;
         for (uint256 i = 0; i < _ratios.length; i++) {
             totalRatio += _ratios[i];
@@ -51,7 +50,7 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
         tokenCount++;
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
-            strategy.mint{value: (amount * _ratios[i]) / 1e18}(tokenCount);
+            strategy.mint{value: (amount * _ratios[i]) / 1e18}(tokenCount, msg.sender);
         }
         _mint(msg.sender, tokenCount);
     }
@@ -75,7 +74,10 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     */
     function requestClose(uint256 _positionId) external payable {
         for (uint256 i = 0; i < strategies.length; i++) {
-            AbstractNftStrategy(strategies[i]).requestClose(_positionId);
+            AbstractNftStrategy(strategies[i]).requestClose(
+                _positionId,
+                msg.sender
+            );
         }
     }
 
