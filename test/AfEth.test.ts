@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import { AfEth, SafEthStrategy, VotiumStrategy } from "../typechain-types";
 import { expect } from "chai";
 
-describe("Test AfEth (Votium + SafEth Strategies)", async function () {
+describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
   let afEthManager: AfEth;
   let votiumStrategy: VotiumStrategy;
   let safEthStrategy: SafEthStrategy;
@@ -61,22 +61,22 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
   });
   it("Should mint with even ratios", async function () {
     // verify strategy positions
-    let votiumPosition = await votiumStrategy.vlCvxPositions(2);
+    let vlCvxPosition = await votiumStrategy.vlCvxPositions(2);
     let safEthPosition = await safEthStrategy.safEthPositions(2);
     let tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq(0);
+    expect(vlCvxPosition.cvxAmount).eq(0);
     expect(safEthPosition).eq(0);
     expect(tokenCount).eq(1);
     await afEthManager.mint(
       [ethers.utils.parseEther(".5"), ethers.utils.parseEther(".5")],
       { value: ethers.utils.parseEther("1") }
     );
-    votiumPosition = await votiumStrategy.vlCvxPositions(2);
+    vlCvxPosition = await votiumStrategy.vlCvxPositions(2);
     safEthPosition = await safEthStrategy.safEthPositions(2);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq("281043193118442289949");
+    expect(vlCvxPosition.cvxAmount).eq("281043193118442289949");
     expect(safEthPosition).eq("495915150248300505");
     expect(tokenCount).eq(2);
   });
@@ -89,7 +89,15 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     ).to.be.revertedWith("InvalidRatio");
   });
   it("Should request to close positions", async function () {
-    // TODO
+    let vPosition = await votiumStrategy.positions(1);
+    let sPosition = await safEthStrategy.positions(1);
+    expect(vPosition.unlockTime).eq("0");
+    expect(sPosition.unlockTime).eq("0");
+    await afEthManager.requestClose(1);
+    vPosition = await votiumStrategy.positions(1);
+    sPosition = await safEthStrategy.positions(1);
+    expect(vPosition.unlockTime).eq("1701302400");
+    expect(sPosition.unlockTime).eq("1691447184");
   });
   it("Can't request to close positions if not the owner", async function () {
     // TODO
