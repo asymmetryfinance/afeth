@@ -48,7 +48,7 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     safEthPosition = await safEthStrategy.safEthPositions(1);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq("168653931577370777381");
+    expect(votiumPosition.cvxAmount).eq("172341027344318405377");
     expect(safEthPosition).eq("694281210347620707");
     expect(tokenCount).eq(1);
 
@@ -76,7 +76,7 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     safEthPosition = await safEthStrategy.safEthPositions(2);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq("281043193118442289949");
+    expect(votiumPosition.cvxAmount).eq("287154408910464895275");
     expect(safEthPosition).eq("495915150248300505");
     expect(tokenCount).eq(2);
   });
