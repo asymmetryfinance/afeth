@@ -4,14 +4,16 @@ import { expect } from "chai";
 import { incrementEpochCallOracles } from "./strategies/Votium/VotiumTestHelpers";
 import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { derivativeAbi } from "./abis/derivativeAbi";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
+  let accounts: SignerWithAddress[];
   let afEthManager: AfEth;
   let votiumStrategy: VotiumStrategy;
   let safEthStrategy: SafEthStrategy;
 
   before(async () => {
-    const accounts = await ethers.getSigners();
+    accounts = await ethers.getSigners();
 
     const afEthFactory = await ethers.getContractFactory("AfEth");
     afEthManager = (await upgrades.deployProxy(afEthFactory)) as AfEth;
@@ -50,7 +52,6 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
       "ChainLinkWstFeedMock"
     );
     const chainLinkWstFeed = await chainLinkWstFeedFactory.deploy();
-
 
     const multiSigSigner = await ethers.getSigner(MULTI_SIG);
 
@@ -145,22 +146,28 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     );
   });
   it("Can't request to close positions if not the owner", async function () {
-    const accounts = await ethers.getSigners();
     const notOwner = afEthManager.connect(accounts[1]);
     await expect(notOwner.requestClose(2)).to.be.revertedWith("Not owner");
+  });
+  it("Can't request burn positions if not the owner", async function () {
+    const notOwner = afEthManager.connect(accounts[1]);
+    await expect(notOwner.burn(1)).to.be.revertedWith("Not owner");
   });
   it("Should burn positions", async function () {
     let vPosition = await votiumStrategy.positions(1);
     let sPosition = await safEthStrategy.positions(1);
     expect(vPosition.unlockTime).eq("1701302400");
+    expect(vPosition.ethBurned).eq("0");
     expect(sPosition.unlockTime).eq("1691447188");
+    expect(sPosition.ethBurned).eq("0");
     for (let i = 0; i < 17; i++) {
       await incrementEpochCallOracles(votiumStrategy);
     }
     await afEthManager.burn(1);
-  });
-  it("Can't request burn positions if not the owner", async function () {
-    // TODO
+    vPosition = await votiumStrategy.positions(1);
+    sPosition = await safEthStrategy.positions(1);
+    expect(vPosition.ethBurned).eq("694840125905182709");
+    expect(sPosition.ethBurned).eq("299848073734485135");
   });
   it("Should claim all rewards", async function () {
     // TODO

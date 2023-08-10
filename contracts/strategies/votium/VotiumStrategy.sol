@@ -6,7 +6,10 @@ import "../AbstractNftStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
-    function mint(uint256 _positionId, address _msgSender) public payable override onlyOwner {
+    function mint(
+        uint256 _positionId,
+        address _msgSender
+    ) public payable override onlyOwner {
         require(positions[_positionId].owner == address(0), "Already Exists");
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
@@ -23,7 +26,10 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         });
     }
 
-    function requestClose(uint256 _positionId, address _msgSender) public override onlyOwner {
+    function requestClose(
+        uint256 _positionId,
+        address _msgSender
+    ) public override onlyOwner {
         require(positions[_positionId].owner == _msgSender, "Not owner");
         require(
             positions[_positionId].unlockTime == 0,
@@ -57,16 +63,20 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         unlockSchedule[unlockEpoch] += vlCvxPositions[_positionId].cvxAmount;
     }
 
-    function burn(uint256 _positionId) public override onlyOwner {
+    function burn(
+        uint256 _positionId,
+        address _msgSender
+    ) public override onlyOwner {
         require(
             positions[_positionId].unlockTime != 0,
             "requestClose() not called"
         );
-
         require(
             positions[_positionId].unlockTime < block.timestamp,
             "still locked"
         );
+        require(positions[_positionId].owner == _msgSender, "Not owner");
+
         this.claimRewards(_positionId);
         uint256 ethReceived = sellCvx(vlCvxPositions[_positionId].cvxAmount);
         positions[_positionId].ethBurned += ethReceived;
@@ -85,7 +95,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             ? vlCvxPositions[_positionId].lastRewardEpochFullyClaimed + 1
             : vlCvxPositions[_positionId].firstRewardEpoch;
 
-        if(firstPositionRewardEpoch > lastRewardEpochFullyClaimed) return;
+        if (firstPositionRewardEpoch > lastRewardEpochFullyClaimed) return;
 
         uint256 positionAmount = vlCvxPositions[_positionId].cvxAmount;
 

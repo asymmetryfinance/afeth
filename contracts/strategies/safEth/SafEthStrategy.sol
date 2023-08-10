@@ -37,11 +37,13 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         positions[_positionId].unlockTime = block.timestamp;
     }
 
-    function burn(uint256 _positionId) external override onlyOwner {
+    function burn(uint256 _positionId, address _msgSender) external override onlyOwner {
         require(
             positions[_positionId].unlockTime != 0,
             "requestClose() not called"
         );
+        require(positions[_positionId].owner == _msgSender, "Not owner");
+
         address positionOwner = positions[_positionId].owner;
         uint256 ethBalanceBefore = address(this).balance;
 

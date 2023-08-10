@@ -67,7 +67,7 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     function burn(uint256 _positionId) external {
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
-            strategy.burn(_positionId);
+            strategy.burn(_positionId, msg.sender);
         }
         _burn(_positionId);
     }
