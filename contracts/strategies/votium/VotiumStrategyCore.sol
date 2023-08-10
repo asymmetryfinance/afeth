@@ -209,7 +209,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     ) internal returns (uint256 ethAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
-        uint256 ethBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
@@ -217,8 +217,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
             _cvxAmountIn,
             0 // TODO minout to something
         );
-        uint256 ethBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        ethAmountOut = ethBalanceAfter - ethBalanceBefore;
+        ethAmountOut = address(this).balance - ethBalanceBefore;
     }
 
     /// sell any number of erc20's via 0x in a single tx

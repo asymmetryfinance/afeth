@@ -2,7 +2,10 @@ import { ethers, upgrades } from "hardhat";
 import { VotiumStrategy } from "../typechain-types";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { getCurrentEpoch, incrementVlcvxEpoch } from "./VotiumTestHelpers";
+import {
+  getCurrentEpoch,
+  incrementEpochCallOracles,
+} from "./VotiumTestHelpers";
 
 describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   let votiumStrategy: any;
@@ -38,7 +41,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
 
     // wait 16 epochs and try to relock
     for (let i = 0; i < 16; i++) {
-      await incrementVlcvxEpoch();
+      await incrementEpochCallOracles(votiumStrategy);
       const currentBlockTime = (await ethers.provider.getBlock()).timestamp;
       expect(currentBlockTime).lt(unlockTimeFinal);
     }
@@ -51,7 +54,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
     expect(await votiumStrategy.cvxToLeaveUnlocked()).eq(0);
 
     // wait 1 more epoch and it will have unlocked so can be relocked
-    await incrementVlcvxEpoch();
+    await incrementEpochCallOracles(votiumStrategy);
     await votiumStrategy.oracleRelockCvx();
 
     const currentBlockTime = (await ethers.provider.getBlock()).timestamp;

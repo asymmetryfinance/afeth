@@ -51,7 +51,6 @@ const generateMockMerkleData = async (recipients: string[]) => {
     proofData[tokenAddresses[i]] = await parseBalanceMap(recipientAmounts);
   }
 
-  console.log("returning proof data generated", proofData);
   return proofData;
 };
 
@@ -75,14 +74,6 @@ const generate0xSwapData = async (
     );
 
     const sellAmount = BigNumber.from(tokenAmounts[i]);
-
-    console.log(
-      "trueBalance is",
-      await tokenContract.balanceOf(
-        "0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A"
-      ),
-      sellAmount.toString()
-    );
 
     // special case unwrap weth
     if (
@@ -118,8 +109,6 @@ const generate0xSwapData = async (
           swapTarget: result.data.to,
           swapCallData: result.data.data,
         };
-
-        console.log("pushing swap data", newData);
 
         swapsData.push(newData);
       } catch (e) {
