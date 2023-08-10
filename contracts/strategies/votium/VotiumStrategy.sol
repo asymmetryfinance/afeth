@@ -103,7 +103,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         if (firstRewardEpoch > lastRewardEpochFullyClaimed) return 0;
 
         uint256 positionAmount = vlCvxPositions[_positionId].cvxAmount;
-       uint256 firstRelockEpoch = vlCvxPositions[_positionId].firstRelockEpoch;
+        uint256 firstRelockEpoch = vlCvxPositions[_positionId].firstRelockEpoch;
         uint256 totalRewards = 0;
 
         // add up total rewards for a position up until unlock epoch -1
@@ -112,7 +112,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             i < lastRewardEpochFullyClaimed + 1;
             i++
         ) {
-                       if((i - firstRelockEpoch) % 17 == 0) continue; // skip epochs that were relocked
+            if((i - firstRelockEpoch) % 17 == 0) continue; // skip epochs that were relocked
             uint256 balanceAtEpoch = ILockedCvx(VLCVX_ADDRESS).balanceAtEpochOf(
                 i,
                 address(this)
