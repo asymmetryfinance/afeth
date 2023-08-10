@@ -50,6 +50,7 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
         }
         tokenCount++;
         for (uint256 i = 0; i < strategies.length; i++) {
+            if (_ratios[i] == 0) continue;
             AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
             strategy.mint{value: (amount * _ratios[i]) / 1e18}(tokenCount);
         }
