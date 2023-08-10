@@ -6,7 +6,10 @@ import "../AbstractNftStrategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
 contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
-    function mint(uint256 _positionId, address _msgSender) external payable override onlyOwner {
+    function mint(
+        uint256 _positionId,
+        address _msgSender
+    ) external payable override onlyOwner {
         require(positions[_positionId].owner == address(0), "Already Exists");
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
@@ -26,7 +29,10 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         });
     }
 
-    function requestClose(uint256 _positionId, address _msgSender) external override onlyOwner {
+    function requestClose(
+        uint256 _positionId,
+        address _msgSender
+    ) external override onlyOwner {
         require(positions[_positionId].owner == _msgSender, "Not owner");
         positions[_positionId].unlockTime = block.timestamp;
     }
@@ -37,12 +43,13 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
             "requestClose() not called"
         );
         address positionOwner = positions[_positionId].owner;
-
         uint256 ethBalanceBefore = address(this).balance;
+
         ISafEth(safEthAddress).unstake(
             safEthPositions[_positionId].safEthAmount,
             0
         ); // TODO do we need minout here?
+
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
