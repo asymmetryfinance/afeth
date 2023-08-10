@@ -1,9 +1,9 @@
 import { network, ethers, upgrades } from "hardhat";
 import { VotiumStrategy } from "../typechain-types";
 import {
-  incrementVlcvxEpoch,
   readJSONFromFile,
   updateRewardsMerkleRoot,
+  incrementEpochCallOracles,
 } from "./VotiumTestHelpers";
 import { expect } from "chai";
 
@@ -41,9 +41,9 @@ describe("Test Votium Rewards Logic", async function () {
       value: ethers.utils.parseEther("1"),
     });
     tx.wait();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
+    await incrementEpochCallOracles(votiumStrategy);
+    await incrementEpochCallOracles(votiumStrategy);
+    await incrementEpochCallOracles(votiumStrategy);
 
     const testData = await readJSONFromFile("./scripts/testData.json");
 
@@ -71,5 +71,21 @@ describe("Test Votium Rewards Logic", async function () {
     );
 
     expect(balanceAfterClaim.gt(balanceBeforeClaim)).eq(true);
+
+    await votiumStrategy.requestClose(0);
+
+    for (let i = 0; i < 14; i++) {
+      await incrementEpochCallOracles(votiumStrategy);
+    }
+    const balanceBeforeBurn = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+    tx = await votiumStrategy.burn(0);
+    await tx.wait();
+    const balanceAfterBurn = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    expect(balanceAfterBurn.gt(balanceBeforeBurn)).eq(true);
   });
 });

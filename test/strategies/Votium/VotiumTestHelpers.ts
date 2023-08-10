@@ -4,8 +4,11 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { votiumStashControllerAbi } from "../../abis/votiumStashControllerAbi";
 import * as fs from "fs";
 import * as util from "util";
+import { BigNumber } from "ethers";
+import { VotiumStrategy } from "../../../typechain-types";
 
 export const epochDuration = 60 * 60 * 24 * 7;
+export const vlCvxAddress = "0x72a19342e8F1838460eBFCCEf09F6585e32db86E";
 
 export const updateRewardsMerkleRoot = async (
   merkleRoots: string[],
@@ -45,13 +48,12 @@ export const updateRewardsMerkleRoot = async (
 };
 
 // incremement time by 1 epoch and call await vlCvxContract.checkpointEpoch() so vlcv keeps working as time passes
-// TODO make sure we are calling checkpoint epoch correctly and dont need to call any other functions
-export const incrementVlcvxEpoch = async () => {
+const incrementVlcvxEpoch = async () => {
   const block = await ethers.provider.getBlock("latest");
   const blockTime = block.timestamp;
   const accounts = await ethers.getSigners();
   const vlCvxContract = new ethers.Contract(
-    "0x72a19342e8F1838460eBFCCEf09F6585e32db86E",
+    vlCvxAddress,
     vlCvxAbi,
     accounts[0]
   );
@@ -71,3 +73,47 @@ export async function readJSONFromFile(filePath: string): Promise<any> {
     throw error;
   }
 }
+
+export const getCurrentEpoch = async () => {
+  const accounts = await ethers.getSigners();
+  const vlCvxContract = new ethers.Contract(
+    vlCvxAddress,
+    vlCvxAbi,
+    accounts[0]
+  );
+  return vlCvxContract.findEpochId(await getCurrentBlockTime());
+};
+
+export const getCurrentBlockTime = async () => {
+  const currentBlock = await ethers.provider.getBlock("latest");
+  return currentBlock.timestamp;
+};
+
+export const getEpochStartTime = async (epoch: number) => {
+  const accounts = await ethers.getSigners();
+  const vlCvxContract = new ethers.Contract(
+    vlCvxAddress,
+    vlCvxAbi,
+    accounts[0]
+  );
+  return BigNumber.from((await vlCvxContract.epochs(epoch)).date);
+};
+
+export const getCurrentEpochStartTime = async () => {
+  return getEpochStartTime(await getCurrentEpoch());
+};
+
+export const getCurrentEpochEndTime = async () => {
+  return (await getCurrentEpochStartTime()).add(epochDuration - 1);
+};
+
+export const getNextEpochStartTime = async () => {
+  return getEpochStartTime((await getCurrentEpoch()).add(1));
+};
+export const incrementEpochCallOracles = async (
+  votiumStrategy: VotiumStrategy
+) => {
+  await incrementVlcvxEpoch();
+  await votiumStrategy.oracleRelockCvx();
+  // TODO check timestamp and see if we need to call claim rewards & sell rewards (every 2 weeks)
+};
