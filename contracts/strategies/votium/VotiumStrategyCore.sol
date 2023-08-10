@@ -179,7 +179,9 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         vlCvxPositions[_positionId].cvxAmount = _cvxAmount;
         vlCvxPositions[_positionId].firstRelockEpoch = currentEpoch + 17;
 
-        // next epoch in which a vote takes place
+        // voting rounds start every other epoch (even epochs)
+        // rewards are distributed late in this epoch
+        // for consistency we assume our oracle claims the rewards early the following epoch
         uint nextVoteEpoch = ((currentEpoch % 2 == 0) ? 2 : 1);
 
         vlCvxPositions[_positionId].firstRewardEpoch = nextVoteEpoch + 1;
