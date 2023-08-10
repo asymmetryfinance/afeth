@@ -9,7 +9,7 @@ import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 
 function writeJSONToFile(obj: any, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const jsonString = JSON.stringify(obj, null, 2); // Convert the object to a JSON string with 2-space indentation
+    const jsonString = JSON.stringify(obj, null, 2);
     fs.writeFile(path.resolve(filePath), jsonString, "utf8", (err) => {
       if (err) {
         reject(err);
