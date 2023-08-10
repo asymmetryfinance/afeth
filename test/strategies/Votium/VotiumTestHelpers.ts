@@ -71,3 +71,18 @@ export async function readJSONFromFile(filePath: string): Promise<any> {
     throw error;
   }
 }
+
+export const getCurrentEpoch = async () => {
+  const accounts = await ethers.getSigners();
+  const vlCvxContract = new ethers.Contract(
+    "0x72a19342e8F1838460eBFCCEf09F6585e32db86E",
+    vlCvxAbi,
+    accounts[0]
+  );
+  return vlCvxContract.findEpochId(await getCurrentBlockTime());
+};
+
+export const getCurrentBlockTime = async () => {
+  const currentBlock = await ethers.provider.getBlock("latest");
+  return currentBlock.timestamp;
+};

@@ -1,9 +1,8 @@
 import { ethers, upgrades } from "hardhat";
 import { VotiumStrategy } from "../typechain-types";
 import { expect } from "chai";
-import { vlCvxAbi } from "../../abis/vlCvxAbi";
 import { BigNumber } from "ethers";
-import { incrementVlcvxEpoch } from "./VotiumTestHelpers";
+import { getCurrentEpoch, incrementVlcvxEpoch } from "./VotiumTestHelpers";
 
 describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   let votiumStrategy: any;
@@ -44,7 +43,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
       expect(currentBlockTime).lt(unlockTimeFinal);
     }
 
-    await oracleRelockCvx();
+    await votiumStrategy.oracleRelockCvx();
 
     // 16 epochs isnt enough to be eligible to relock so it wont have relocked
     expect(await votiumStrategy.lastEpochLocksProcessed()).eq(firstRelockEpoch);
@@ -53,7 +52,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
 
     // wait 1 more epoch and it will have unlocked so can be relocked
     await incrementVlcvxEpoch();
-    await oracleRelockCvx();
+    await votiumStrategy.oracleRelockCvx();
 
     const currentBlockTime = (await ethers.provider.getBlock()).timestamp;
     // now it should be eligible for relock because some is unlockable
@@ -70,23 +69,4 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
       BigNumber.from(firstRelockEpoch).add(17)
     );
   });
-
-  const getCurrentEpoch = async () => {
-    const accounts = await ethers.getSigners();
-    const vlCvxContract = new ethers.Contract(
-      "0x72a19342e8F1838460eBFCCEf09F6585e32db86E",
-      vlCvxAbi,
-      accounts[0]
-    );
-    return vlCvxContract.findEpochId(await getCurrentBlockTime());
-  };
-
-  const getCurrentBlockTime = async () => {
-    const currentBlock = await ethers.provider.getBlock("latest");
-    return currentBlock.timestamp;
-  };
-
-  const oracleRelockCvx = async () => {
-    await votiumStrategy.oracleRelockCvx();
-  };
 });
