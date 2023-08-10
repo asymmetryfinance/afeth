@@ -12,6 +12,8 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 
 /// For private internal functions and anything not exposed via the interface
+import "hardhat/console.sol";
+
 contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -111,6 +113,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
 
         uint256 claimed = sellRewards(_swapsData);
 
+        console.log('claimed is', claimed);
         uint256 unclaimedEpochCount = currentEpoch -
             lastRewardEpochFullyClaimed -
             1;
