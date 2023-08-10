@@ -55,11 +55,11 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
     tx = await votiumStrategy.requestClose(0);
     await tx.wait();
     for (let i = 0; i < 16; i++)
-      await incrementEpochCallOracles(votiumStrategy);
+      await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
     await expect(votiumStrategy.burn(0)).to.be.revertedWith("still locked");
 
     // should succeed after 1 more
-    await incrementEpochCallOracles(votiumStrategy);
+    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
     tx = await votiumStrategy.burn(0);
     await tx.wait();
   });
@@ -71,16 +71,16 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
     await tx.wait();
 
     for (let i = 0; i < 17; i++)
-      await incrementEpochCallOracles(votiumStrategy);
+      await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
 
     // it will now have relocked
     tx = await votiumStrategy.requestClose(0);
     await tx.wait();
 
     for (let i = 0; i < 16; i++)
-      await incrementEpochCallOracles(votiumStrategy);
+      await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
     await expect(votiumStrategy.burn(0)).to.be.revertedWith("still locked");
-    await incrementEpochCallOracles(votiumStrategy);
+    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
     // it will now be burnable
     tx = await votiumStrategy.burn(0);
     await tx.wait();
@@ -104,7 +104,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
 
     // wait 16 epochs and try to relock
     for (let i = 0; i < 16; i++) {
-      await incrementEpochCallOracles(votiumStrategy);
+      await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
       const currentBlockTime = (await ethers.provider.getBlock()).timestamp;
       expect(currentBlockTime).lt(unlockTimeFinal);
     }
@@ -117,7 +117,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
     expect(await votiumStrategy.cvxToLeaveUnlocked()).eq(0);
 
     // wait 1 more epoch and it will have unlocked so can be relocked
-    await incrementEpochCallOracles(votiumStrategy);
+    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
     await votiumStrategy.oracleRelockCvx();
 
     const currentBlockTime = (await ethers.provider.getBlock()).timestamp;

@@ -55,7 +55,7 @@ const incrementVlcvxEpoch = async () => {
   const vlCvxContract = new ethers.Contract(
     vlCvxAddress,
     vlCvxAbi,
-    accounts[0]
+    accounts[2]
   );
   await time.increaseTo(blockTime + epochDuration);
   const tx = await vlCvxContract.checkpointEpoch();
@@ -111,9 +111,9 @@ export const getNextEpochStartTime = async () => {
   return getEpochStartTime((await getCurrentEpoch()).add(1));
 };
 export const incrementEpochCallOracles = async (
-  votiumStrategy: VotiumStrategy
+  oracleVotiumStrategy: VotiumStrategy
 ) => {
   await incrementVlcvxEpoch();
-  await votiumStrategy.oracleRelockCvx();
+  await oracleVotiumStrategy.oracleRelockCvx();
   // TODO check timestamp and see if we need to call claim rewards & sell rewards (every 2 weeks)
 };

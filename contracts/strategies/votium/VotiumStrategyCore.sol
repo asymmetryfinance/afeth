@@ -180,9 +180,9 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         vlCvxPositions[_positionId].firstRelockEpoch = currentEpoch + 17;
 
         // next epoch in which a vote takes place
-        uint nextVoteEpoch = currentEpoch + (currentEpoch % 2 == 0) ? 2 : 1;
+        uint nextVoteEpoch = ((currentEpoch % 2 == 0) ? 2 : 1);
 
-        vlCvxPositions[_positionId].firstRewardEpoch = nextVoteEpoch + 1
+        vlCvxPositions[_positionId].firstRewardEpoch = nextVoteEpoch + 1;
 
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, _cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), _cvxAmount, 0);
