@@ -89,7 +89,7 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     safEthPosition = await safEthStrategy.safEthPositions(1);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq("393492588060555579143");
+    expect(votiumPosition.cvxAmount).eq("402121500509689836997");
     expect(safEthPosition).eq("297549090148980303");
     expect(tokenCount).eq(1);
 
@@ -117,7 +117,7 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     safEthPosition = await safEthStrategy.safEthPositions(2);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(vlCvxPosition.cvxAmount).eq("280996710477357104993");
+    expect(vlCvxPosition.cvxAmount).eq("287145334757983898510");
     expect(safEthPosition).eq("495915150248300505");
     expect(tokenCount).eq(2);
   });
@@ -138,7 +138,7 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     vPosition = await votiumStrategy.positions(1);
     sPosition = await safEthStrategy.positions(1);
     expect(vPosition.unlockTime).eq("1701302400");
-    expect(sPosition.unlockTime).eq("1691447188");
+    expect(sPosition.unlockTime).eq("1691620468");
   });
   it("Can't request to close positions if already closed", async function () {
     await expect(afEthManager.requestClose(1)).to.be.revertedWith(
@@ -161,7 +161,7 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     let sPosition = await safEthStrategy.positions(1);
     expect(vPosition.unlockTime).eq("1701302400");
     expect(vPosition.ethBurned).eq("0");
-    expect(sPosition.unlockTime).eq("1691447188");
+    expect(sPosition.unlockTime).eq("1691620468");
     expect(sPosition.ethBurned).eq("0");
     for (let i = 0; i < 17; i++) {
       await incrementEpochCallOracles(votiumStrategy);
@@ -169,11 +169,10 @@ describe("Test AfEth (Votium + SafEth Strategies)", async function () {
     await afEthManager.burn(1);
     vPosition = await votiumStrategy.positions(1);
     sPosition = await safEthStrategy.positions(1);
-    expect(vPosition.ethBurned).eq("694840125905182709");
-    expect(sPosition.ethBurned).eq("299848073734485135");
+    expect(vPosition.ethBurned).eq("696443599046152185");
+    expect(sPosition.ethBurned).eq("300006572996331905");
   });
   it("Should claim all rewards", async function () {
-
     // TODO
   });
 });
