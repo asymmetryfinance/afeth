@@ -1,4 +1,4 @@
-import { ethers, upgrades } from "hardhat";
+import { ethers, network, upgrades } from "hardhat";
 import { VotiumStrategy } from "../typechain-types";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
@@ -8,12 +8,21 @@ import {
 } from "./VotiumTestHelpers";
 
 describe("Test Votium Cvx Lock & Unlock Logic", async function () {
-  let votiumStrategy: any;
+  let votiumStrategy: VotiumStrategy;
   let accounts: any;
-
-  before(async () => {
+  const resetToBlock = async (blockNumber: number) => {
+    await network.provider.request({
+      method: "hardhat_reset",
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: process.env.MAINNET_URL,
+            blockNumber,
+          },
+        },
+      ],
+    });
     accounts = await ethers.getSigners();
-
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
     );
@@ -21,7 +30,11 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
       accounts[0].address,
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
-  });
+  };
+
+  beforeEach(
+    async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
+  );
 
   it("Should fail to burn if requestClose() has not been called", async function () {
     const mintTx = await votiumStrategy.mint(0, {
@@ -32,6 +45,23 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
     await expect(votiumStrategy.burn(0)).to.be.revertedWith(
       "requestClose() not called"
     );
+  });
+
+  it("Should fail to burn if less than 17 epochs have passed since minting", async function () {
+    const mintTx = await votiumStrategy.mint(0, {
+      value: ethers.utils.parseEther("1"),
+    });
+    await mintTx.wait();
+
+    await votiumStrategy.requestClose(0);
+
+    for (let i = 0; i < 16; i++)
+      await incrementEpochCallOracles(votiumStrategy);
+    await expect(votiumStrategy.burn(0)).to.be.revertedWith("still locked");
+
+    // should succeed after 1 more
+    await incrementEpochCallOracles(votiumStrategy);
+    await votiumStrategy.burn(0);
   });
 
   it("Should update values correctly if requestClose() is called followed by oracleRelockCvx() 17 weeks later", async function () {
