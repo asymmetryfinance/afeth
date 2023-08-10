@@ -153,6 +153,9 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     const notOwner = afEthManager.connect(accounts[1]);
     await expect(notOwner.burn(1)).to.be.revertedWith("Not owner");
   });
+  it("Can't burn positions if not requested to close", async function () {
+    await expect(afEthManager.burn(1)).to.be.revertedWith("still locked");
+  });
   it("Should burn positions", async function () {
     let vPosition = await votiumStrategy.positions(1);
     let sPosition = await safEthStrategy.positions(1);
@@ -170,6 +173,7 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     expect(sPosition.ethBurned).eq("299848073734485135");
   });
   it("Should claim all rewards", async function () {
+    
     // TODO
   });
 });
