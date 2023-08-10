@@ -62,13 +62,13 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             positions[_positionId].unlockTime != 0,
             "requestClose() not called"
         );
+
         require(
-            positions[_positionId].unlockTime > block.timestamp,
+            positions[_positionId].unlockTime < block.timestamp,
             "still locked"
         );
         this.claimRewards(_positionId);
         uint256 ethReceived = sellCvx(vlCvxPositions[_positionId].cvxAmount);
-
         positions[_positionId].ethBurned += ethReceived;
         vlCvxPositions[_positionId].cvxAmount = 0;
 
@@ -85,10 +85,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             ? vlCvxPositions[_positionId].lastRewardEpochFullyClaimed + 1
             : vlCvxPositions[_positionId].firstRewardEpoch;
 
-        require(
-            firstPositionRewardEpoch <= lastRewardEpochFullyClaimed,
-            "position hasnt earned rewards yet"
-        );
+        if(firstPositionRewardEpoch > lastRewardEpochFullyClaimed) return;
 
         uint256 positionAmount = vlCvxPositions[_positionId].cvxAmount;
 

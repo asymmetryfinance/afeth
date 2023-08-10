@@ -1,12 +1,11 @@
 import { network, ethers, upgrades } from "hardhat";
 import { VotiumStrategy } from "../typechain-types";
-import axios from "axios";
-import { expect } from "chai";
 import {
-  generate0xSwapData,
-  incrementVlcvxEpoch,
+  readJSONFromFile,
   updateRewardsMerkleRoot,
+  incrementEpochCallOracles,
 } from "./VotiumTestHelpers";
+import { expect } from "chai";
 
 describe("Test Votium Rewards Logic", async function () {
   let votiumStrategy: VotiumStrategy;
@@ -33,31 +32,32 @@ describe("Test Votium Rewards Logic", async function () {
     await votiumStrategy.deployed();
   };
 
-  before(async () => {
-    const result = await axios.get(
-      `https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=${process.env.ETHERSCAN_API_KEY}`
-    );
-    // Because of dependence on 0x api
-    // These tests needs to run close to the latest block
-    await resetToBlock(Number(result.data.result) - 6);
-  });
+  before(
+    async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
+  );
 
   it("Should mint token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
     let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     tx.wait();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
+    await incrementEpochCallOracles(votiumStrategy);
+    await incrementEpochCallOracles(votiumStrategy);
+    await incrementEpochCallOracles(votiumStrategy);
+
+    const testData = await readJSONFromFile("./scripts/testData.json");
+
     // should be allowed to claim every 2 epochs. 3 from when initially staking
-    const claimProofs = await updateRewardsMerkleRoot(votiumStrategy.address);
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    const claimProofs = testData.claimProofs;
     tx = await votiumStrategy.oracleClaimRewards(claimProofs);
     await tx.wait();
-    const tokenAddresses = claimProofs.map((cp: any[]) => cp[0]);
-    const tokenAmounts = claimProofs.map((cp: any[]) => cp[2]);
     // sell rewards
-    const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
+    const swapsData = testData.swapsData;
     tx = await votiumStrategy.oracleSellRewards(swapsData);
     await tx.wait();
 
@@ -71,5 +71,21 @@ describe("Test Votium Rewards Logic", async function () {
     );
 
     expect(balanceAfterClaim.gt(balanceBeforeClaim)).eq(true);
+
+    await votiumStrategy.requestClose(0);
+
+    for (let i = 0; i < 14; i++) {
+      await incrementEpochCallOracles(votiumStrategy);
+    }
+    const balanceBeforeBurn = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+    tx = await votiumStrategy.burn(0);
+    await tx.wait();
+    const balanceAfterBurn = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    expect(balanceAfterBurn.gt(balanceBeforeBurn)).eq(true);
   });
 });
