@@ -143,7 +143,6 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         if (unlockable == 0) return;
         // unlock all (theres no way to unlock individual locks)
         ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-        lastEpochLocksProcessed = currentEpoch;
 
         uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
             address(this)
@@ -160,6 +159,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
             toUnlock += unlockSchedule[i];
             unlockSchedule[i] = 0;
         }
+        lastEpochLocksProcessed = currentEpoch;
         cvxToLeaveUnlocked += toUnlock;
 
         // relock everything minus unlocked obligations
