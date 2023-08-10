@@ -36,7 +36,7 @@ describe("Test Votium Rewards Logic", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should mint token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
+  it("Should mint token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
     let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
