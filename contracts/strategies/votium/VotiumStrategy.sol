@@ -81,38 +81,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     }
 
     function claimRewards(uint256 _positionId) public override {
-        uint256 firstPositionRewardEpoch = vlCvxPositions[_positionId]
-            .lastRewardEpochFullyClaimed != 0
-            ? vlCvxPositions[_positionId].lastRewardEpochFullyClaimed + 1
-            : vlCvxPositions[_positionId].firstRewardEpoch;
-
-        if(firstPositionRewardEpoch > lastRewardEpochFullyClaimed) return;
-
-        uint256 positionAmount = vlCvxPositions[_positionId].cvxAmount;
-
-        uint256 claimable = 0;
-
-        // add up total rewards for a position up until the last epoch claimed via the oracle
-        for (
-            uint256 i = firstPositionRewardEpoch;
-            i < lastRewardEpochFullyClaimed + 1;
-            i++
-        ) {
-            uint256 balanceAtEpoch = ILockedCvx(VLCVX_ADDRESS).balanceAtEpochOf(
-                i,
-                address(this)
-            );
-            if (balanceAtEpoch == 0) continue;
-            uint256 positionLockRatio = (positionAmount * 10 ** 18) /
-                balanceAtEpoch;
-
-            uint256 claimed = (positionLockRatio * rewardsClaimedPerEpoch[i]) /
-                10 ** 18;
-            claimable += claimed;
-        }
-
-        require(claimable > 0, "no rewards to claim");
-
+        uint256 claimable = claimableNow(_positionId);
+        if(claimable == 0) return;
         vlCvxPositions[_positionId]
             .lastRewardEpochFullyClaimed = lastRewardEpochFullyClaimed;
         // solhint-disable-next-line
@@ -125,23 +95,25 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
     function claimableNow(
         uint256 _positionId
     ) public view override returns (uint256 ethAmount) {
-        uint256 firstRewardEpoch = vlCvxPositions[_positionId]
+        uint256 firstPositionRewardEpoch = vlCvxPositions[_positionId]
             .lastRewardEpochFullyClaimed != 0
             ? vlCvxPositions[_positionId].lastRewardEpochFullyClaimed + 1
             : vlCvxPositions[_positionId].firstRewardEpoch;
 
-        if (firstRewardEpoch > lastRewardEpochFullyClaimed) return 0;
+        if(firstPositionRewardEpoch > lastRewardEpochFullyClaimed) return 0;
 
         uint256 positionAmount = vlCvxPositions[_positionId].cvxAmount;
 
-        uint256 totalRewards = 0;
+        uint256 firstRelockEpoch = vlCvxPositions[_positionId].firstRelockEpoch;
+        uint256 claimable = 0;
 
-        // add up total rewards for a position up until unlock epoch -1
+        // add up total rewards for a position up until the last epoch claimed via the oracle
         for (
-            uint256 i = firstRewardEpoch;
+            uint256 i = firstPositionRewardEpoch;
             i < lastRewardEpochFullyClaimed + 1;
             i++
         ) {
+           if(i > firstRelockEpoch && (i - firstRelockEpoch) % 17 == 0) continue; // skip epochs that were relocked
             uint256 balanceAtEpoch = ILockedCvx(VLCVX_ADDRESS).balanceAtEpochOf(
                 i,
                 address(this)
@@ -152,9 +124,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
 
             uint256 claimed = (positionLockRatio * rewardsClaimedPerEpoch[i]) /
                 10 ** 18;
-            totalRewards += claimed;
+            claimable += claimed;
         }
-        return totalRewards;
+        return claimable;
     }
 
     function lockedValue(
