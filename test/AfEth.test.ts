@@ -6,7 +6,7 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
+describe("Test AfEth (Votium + SafEth Strategies)", async function () {
   let accounts: SignerWithAddress[];
   let afEthManager: AfEth;
   let votiumStrategy: VotiumStrategy;
@@ -173,7 +173,7 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     expect(sPosition.ethBurned).eq("299848073734485135");
   });
   it("Should claim all rewards", async function () {
-    
+
     // TODO
   });
 });

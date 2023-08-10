@@ -31,7 +31,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   });
 
   it("Should mint() and be able to immediately requestClose() and burn() the position", async function () {
-    const mintTx = await safEthStrategy.mint(0, {
+    const mintTx = await safEthStrategy.mint(0, accounts[0].address, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -40,11 +40,14 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
 
     expect(positionBeforeClose.unlockTime).eq(0);
 
-    await expect(safEthStrategy.burn(0)).to.be.revertedWith(
-      "requestClose() not called"
-    );
+    await expect(
+      safEthStrategy.burn(0, accounts[0].address)
+    ).to.be.revertedWith("requestClose() not called");
 
-    const requestCloseTx = await safEthStrategy.requestClose(0);
+    const requestCloseTx = await safEthStrategy.requestClose(
+      0,
+      accounts[0].address
+    );
     await requestCloseTx.wait();
 
     const positionAfterClose = await safEthStrategy.positions(0);
@@ -56,7 +59,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
 
     const lockedValueBeforeBurn = await safEthStrategy.lockedValue(0);
     const balanceBefore = await ethers.provider.getBalance(accounts[0].address);
-    const burnTx = await safEthStrategy.burn(0);
+    const burnTx = await safEthStrategy.burn(0, accounts[0].address);
     await burnTx.wait();
     const lockedValueAfterBurn = await safEthStrategy.lockedValue(0);
     const balanceAfter = await ethers.provider.getBalance(accounts[0].address);
@@ -71,7 +74,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   });
 
   it("Should be able to call claimRewards() but have no effect because safEth strategy rewards are received upon burning", async function () {
-    const mintTx = await safEthStrategy.mint(0, {
+    const mintTx = await safEthStrategy.mint(0, accounts[0].address, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -94,26 +97,29 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   });
 
   it("Should fail to call burn() if it has already been called", async function () {
-    const mintTx = await safEthStrategy.mint(0, {
+    const mintTx = await safEthStrategy.mint(0, accounts[0].address, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
-    const requestCloseTx = await safEthStrategy.requestClose(0);
+    const requestCloseTx = await safEthStrategy.requestClose(
+      0,
+      accounts[0].address
+    );
     await requestCloseTx.wait();
-    const burnTx = await safEthStrategy.burn(0);
+    const burnTx = await safEthStrategy.burn(0, accounts[0].address);
     await burnTx.wait();
-    await expect(safEthStrategy.burn(0)).to.be.reverted; // TODO: Be more specific to revert
+    await expect(safEthStrategy.burn(0, accounts[0].address)).to.be.reverted; // TODO: Be more specific to revert
   });
 
   it("Should fail to call requestClose() if not the owner", async function () {
-    const mintTx = await safEthStrategy.mint(0, {
+    const mintTx = await safEthStrategy.mint(0, accounts[0].address, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
 
     const nonOwnerSigner = safEthStrategy.connect(accounts[1]);
-    await expect(nonOwnerSigner.requestClose(0)).to.be.revertedWith(
-      "Ownable: caller is not the owner"
-    );
+    await expect(
+      nonOwnerSigner.requestClose(0, accounts[0].address)
+    ).to.be.revertedWith("Ownable: caller is not the owner");
   });
 });

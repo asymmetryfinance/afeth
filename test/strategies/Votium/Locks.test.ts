@@ -24,7 +24,8 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   });
 
   it("Should update values correctly if requestClose() is called followed by oracleRelockCvx() 17 weeks later", async function () {
-    const mintTx = await votiumStrategy.mint(0, {
+    const ownerAddress = accounts[0].address;
+    const mintTx = await votiumStrategy.mint(0, ownerAddress, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -33,7 +34,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
 
     expect(unlockTime0).eq(0);
 
-    const requestCloseTx = await votiumStrategy.requestClose(0);
+    const requestCloseTx = await votiumStrategy.requestClose(0, ownerAddress);
     await requestCloseTx.wait();
 
     const firstRelockEpoch = await votiumStrategy.lastEpochLocksProcessed();
