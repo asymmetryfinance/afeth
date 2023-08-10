@@ -141,7 +141,6 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         );
 
         if (unlockable == 0) return;
-
         // unlock all (theres no way to unlock individual locks)
         ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
 
@@ -151,7 +150,6 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
 
         // nothing to relock
         if (unlockedCvxBalance == 0) return;
-        
 
         uint256 toUnlock = 0;
         // we overlap with the previous relock by 1 epoch
@@ -213,7 +211,6 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         // cvx -> eth
         uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
-
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
