@@ -134,23 +134,28 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
     /// Relocks any unlocked cvx from positions that have not requested to close
     function oracleRelockCvx() public {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
-        if (lastEpochLocksProcessed == currentEpoch) return;
+        if (lastEpochLocksProcessed == currentEpoch) {
+            return;
+        }
 
-        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+        (, uint256 unlockable, uint256 locked, ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
 
-        if (unlockable == 0) return;
+        if (unlockable == 0) {
+            return;
+        }
         // unlock all (theres no way to unlock individual locks)
         ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-        lastEpochLocksProcessed = currentEpoch;
 
         uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
             address(this)
         );
 
         // nothing to relock
-        if (unlockedCvxBalance == 0) return;
+        if (unlockedCvxBalance == 0) {
+            return;
+        }
 
         uint256 toUnlock = 0;
         // we overlap with the previous relock by 1 epoch
@@ -160,13 +165,16 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
             toUnlock += unlockSchedule[i];
             unlockSchedule[i] = 0;
         }
+        lastEpochLocksProcessed = currentEpoch;
         cvxToLeaveUnlocked += toUnlock;
 
         // relock everything minus unlocked obligations
         uint256 cvxAmountToRelock = unlockedCvxBalance - cvxToLeaveUnlocked;
 
         // nothing to relock
-        if (cvxAmountToRelock == 0) return;
+        if (cvxAmountToRelock == 0) {
+            return;
+        }
 
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
@@ -211,6 +219,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         // cvx -> eth
         uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
+
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,

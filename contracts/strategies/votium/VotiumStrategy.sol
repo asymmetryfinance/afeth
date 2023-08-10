@@ -40,8 +40,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         // calculate its new unlock epoch
         if (currentEpoch >= firstRelockEpoch) {
             uint256 epochDifference = currentEpoch - firstRelockEpoch;
-            uint256 extraLockLengths = (epochDifference / 16) + 1;
-            unlockEpoch = firstRelockEpoch + extraLockLengths * 16;
+            uint256 extraLockLengths = (epochDifference / 17) + 1;
+            unlockEpoch = firstRelockEpoch + extraLockLengths * 17;
         } else {
             unlockEpoch = firstRelockEpoch;
         }
@@ -54,6 +54,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
             currentEpochStartingTime +
             (unlockEpoch - currentEpoch) *
             (60 * 60 * 24 * 7);  // TODO: Add comment explaining numbers
+
         unlockSchedule[unlockEpoch] += vlCvxPositions[_positionId].cvxAmount;
     }
 
