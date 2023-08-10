@@ -1,6 +1,7 @@
 import { ethers, upgrades } from "hardhat";
 import { AfEth, SafEthStrategy, VotiumStrategy } from "../typechain-types";
 import { expect } from "chai";
+import { incrementVlcvxEpoch } from "./strategies/Votium/VotiumTestHelpers";
 
 describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
   let afEthManager: AfEth;
@@ -100,9 +101,7 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     expect(sPosition.unlockTime).eq("1691447184");
   });
   it("Can't request to close positions if already closed", async function () {
-    const accounts = await ethers.getSigners();
-    const notOwner = afEthManager.connect(accounts[0]);
-    await expect(notOwner.requestClose(1)).to.be.revertedWith(
+    await expect(afEthManager.requestClose(1)).to.be.revertedWith(
       "Already requested close"
     );
   });
@@ -112,7 +111,12 @@ describe.only("Test AfEth (Votium + SafEth Strategies)", async function () {
     await expect(notOwner.requestClose(2)).to.be.revertedWith("Not owner");
   });
   it("Should burn positions", async function () {
-    // TODO
+    let vPosition = await votiumStrategy.positions(1);
+    let sPosition = await safEthStrategy.positions(1);
+    expect(vPosition.unlockTime).eq("1701302400");
+    expect(sPosition.unlockTime).eq("1691447184");
+
+    await afEthManager.burn(1);
   });
   it("Can't request burn positions if not the owner", async function () {
     // TODO
