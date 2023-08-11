@@ -41,9 +41,10 @@ describe("Test Votium Rewards Logic", async function () {
       value: ethers.utils.parseEther("1"),
     });
     tx.wait();
-    await incrementEpochCallOracles(votiumStrategy);
-    await incrementEpochCallOracles(votiumStrategy);
-    await incrementEpochCallOracles(votiumStrategy);
+    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
+    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
+    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
+    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
 
     const testData = await readJSONFromFile("./scripts/testData.json");
 
@@ -74,7 +75,7 @@ describe("Test Votium Rewards Logic", async function () {
 
     await votiumStrategy.requestClose(0);
 
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 13; i++) {
       await incrementEpochCallOracles(votiumStrategy);
     }
     const balanceBeforeBurn = await ethers.provider.getBalance(

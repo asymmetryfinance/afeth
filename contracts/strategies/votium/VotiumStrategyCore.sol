@@ -178,10 +178,9 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable {
         );
         vlCvxPositions[_positionId].cvxAmount = _cvxAmount;
         vlCvxPositions[_positionId].firstRelockEpoch = currentEpoch + 17;
-        vlCvxPositions[_positionId].firstRewardEpoch = currentEpoch % 2 == 0
-            ? currentEpoch + 2
-            : currentEpoch + 1;
 
+        // they shouldnt eligible for rewards until locked (1 more epoch)
+        vlCvxPositions[_positionId].firstRewardEpoch = currentEpoch + 1;
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, _cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), _cvxAmount, 0);
     }
