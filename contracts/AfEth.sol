@@ -40,7 +40,6 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     */
     function mint(uint256[] memory _ratios) external payable {
         uint256 totalRatio;
-
         uint256 amount = msg.value;
         for (uint256 i = 0; i < _ratios.length; i++) {
             totalRatio += _ratios[i];
@@ -63,11 +62,21 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
         @param _positionId - Position id to burn
     */
     function burn(uint256 _positionId) external {
+        require(ownerOf(_positionId) == msg.sender, "Not owner");
+
+        uint256 ethBalanceBefore = address(this).balance;
+
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
             strategy.burn(_positionId);
         }
         _burn(_positionId);
+        uint256 ethBalanceAfter = address(this).balance;
+        uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
+
+        // solhint-disable-next-line
+        (bool sent, ) = msg.sender.call{value: ethReceived}("");
+        require(sent, "Failed to send Ether");
     }
 
     /**
@@ -75,6 +84,8 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
         @param _positionId - Position id to request to close
     */
     function requestClose(uint256 _positionId) external payable {
+        require(ownerOf(_positionId) == msg.sender, "Not owner");
+
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractNftStrategy(strategies[i]).requestClose(_positionId);
         }
@@ -89,4 +100,6 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
             AbstractNftStrategy(strategies[i]).claimRewards(_positionId);
         }
     }
+
+    receive() external payable {}
 }
