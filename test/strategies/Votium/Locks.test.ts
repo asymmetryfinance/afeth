@@ -37,40 +37,35 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
   );
 
   it("Should fail to burn if requestClose() has not been called", async function () {
-    const ownerAddress = accounts[0].address;
-    const tx = await votiumStrategy.mint(0, ownerAddress, {
+    const tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
 
-    await expect(votiumStrategy.burn(0, ownerAddress)).to.be.revertedWith(
+    await expect(votiumStrategy.burn(0)).to.be.revertedWith(
       "requestClose() not called"
     );
   });
 
   it("Should fail to burn if less than 17 epochs have passed since minting and succeed after 17", async function () {
-    const ownerAddress = accounts[0].address;
-    let tx = await votiumStrategy.mint(0, ownerAddress, {
+    let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
-    tx = await votiumStrategy.requestClose(0, ownerAddress);
+    tx = await votiumStrategy.requestClose(0);
     await tx.wait();
     for (let i = 0; i < 16; i++)
       await incrementEpochCallOracles(votiumStrategy);
-    await expect(votiumStrategy.burn(0, ownerAddress)).to.be.revertedWith(
-      "still locked"
-    );
+    await expect(votiumStrategy.burn(0)).to.be.revertedWith("still locked");
 
     // should succeed after 1 more
     await incrementEpochCallOracles(votiumStrategy);
-    tx = await votiumStrategy.burn(0, ownerAddress);
+    tx = await votiumStrategy.burn(0);
     await tx.wait();
   });
 
   it("Should fail to burn if less than 17 epochs have passed since relocking", async function () {
-    const ownerAddress = accounts[0].address;
-    let tx = await votiumStrategy.mint(0, ownerAddress, {
+    let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -79,23 +74,20 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
       await incrementEpochCallOracles(votiumStrategy);
 
     // it will now have relocked
-    tx = await votiumStrategy.requestClose(0, ownerAddress);
+    tx = await votiumStrategy.requestClose(0);
     await tx.wait();
 
     for (let i = 0; i < 16; i++)
       await incrementEpochCallOracles(votiumStrategy);
-    await expect(votiumStrategy.burn(0, ownerAddress)).to.be.revertedWith(
-      "still locked"
-    );
+    await expect(votiumStrategy.burn(0)).to.be.revertedWith("still locked");
     await incrementEpochCallOracles(votiumStrategy);
     // it will now be burnable
-    tx = await votiumStrategy.burn(0, ownerAddress);
+    tx = await votiumStrategy.burn(0);
     await tx.wait();
   });
 
   it("Should update values correctly if requestClose() is called followed by oracleRelockCvx() 17 weeks later", async function () {
-    const ownerAddress = accounts[0].address;
-    const tx = await votiumStrategy.mint(0, ownerAddress, {
+    const tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -104,7 +96,7 @@ describe("Test Votium Cvx Lock & Unlock Logic", async function () {
 
     expect(unlockTime0).eq(0);
 
-    const requestCloseTx = await votiumStrategy.requestClose(0, ownerAddress);
+    const requestCloseTx = await votiumStrategy.requestClose(0);
     await requestCloseTx.wait();
 
     const firstRelockEpoch = await votiumStrategy.lastEpochLocksProcessed();

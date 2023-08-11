@@ -6,11 +6,8 @@ import "../AbstractNftStrategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
 contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
-    function mint(
-        uint256 _positionId,
-        address _msgSender
-    ) external payable override onlyOwner {
-        require(positions[_positionId].owner == address(0), "Already Exists");
+    function mint(uint256 _positionId) external payable override onlyOwner {
+        require(positions[_positionId].startingValue == 0, "Already Exists");
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
         );
@@ -20,8 +17,7 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
             unlockTime: 0,
             ethClaimed: 0,
             ethBurned: 0,
-            startingValue: msg.value,
-            owner: _msgSender
+            startingValue: msg.value
         });
 
         safEthPositions[_positionId] = SafEthPosition({
@@ -29,22 +25,16 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
         });
     }
 
-    function requestClose(
-        uint256 _positionId,
-        address _msgSender
-    ) external override onlyOwner {
-        require(positions[_positionId].owner == _msgSender, "Not owner");
+    function requestClose(uint256 _positionId) external override onlyOwner {
         positions[_positionId].unlockTime = block.timestamp;
     }
 
-    function burn(uint256 _positionId, address _msgSender) external override onlyOwner {
+    function burn(uint256 _positionId) external override onlyOwner {
         require(
             positions[_positionId].unlockTime != 0,
             "requestClose() not called"
         );
-        require(positions[_positionId].owner == _msgSender, "Not owner");
 
-        address positionOwner = positions[_positionId].owner;
         uint256 ethBalanceBefore = address(this).balance;
 
         ISafEth(safEthAddress).unstake(
@@ -57,9 +47,9 @@ contract SafEthStrategy is AbstractNftStrategy, SafEthStrategyCore {
 
         positions[_positionId].ethBurned += ethReceived;
         safEthPositions[_positionId].safEthAmount = 0;
-
+   
         // solhint-disable-next-line
-        (bool sent, ) = positionOwner.call{value: ethReceived}("");
+        (bool sent, ) = msg.sender.call{value: ethReceived}("");
         require(sent, "Failed to send Ether");
     }
 

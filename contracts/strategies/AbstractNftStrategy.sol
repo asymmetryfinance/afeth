@@ -8,7 +8,6 @@ abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable {
         uint256 ethClaimed; // how much eth value has been claimed from this position so far
         uint256 ethBurned; // how much eth was received by burning tokens from this position
         uint256 startingValue; // how much eth value was locked up when the position was created
-        address owner; // address of who owns the position
     }
 
     uint256 public positionCount;
@@ -16,18 +15,16 @@ abstract contract AbstractNftStrategy is Initializable, OwnableUpgradeable {
 
     /// open new position (mint nft), returns positionId
     function mint(
-        uint256 _positionId,
-        address _msgSender
+        uint256 _positionId
     ) external payable virtual;
 
     /// request to close a position so nft can be burned later
     function requestClose(
-        uint256 _positionId,
-        address _msgSender
+        uint256 _positionId
     ) external virtual;
 
     /// burn nft to receive all locked value and rewards. position must be fully closed (requestClose() called & sufficient time passed)
-    function burn(uint256 _positionId, address _msgSender) external virtual;
+    function burn(uint256 _positionId) external virtual;
 
     /// Withdraw any rewards from the position that can be claimed right now
     function claimRewards(uint256 _positionId) external virtual;

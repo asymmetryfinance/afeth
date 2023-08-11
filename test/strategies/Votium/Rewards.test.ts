@@ -37,8 +37,7 @@ describe("Test Votium Rewards Logic", async function () {
   );
 
   it("Should mint token, mock merkle data, set merkle root, wait until claimable, oracleClaimRewards() & oracleSellRewards(), claim rewards", async function () {
-    const ownerAddress = accounts[0].address;
-    let tx = await votiumStrategy.mint(0, ownerAddress, {
+    let tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     tx.wait();
@@ -73,7 +72,7 @@ describe("Test Votium Rewards Logic", async function () {
 
     expect(balanceAfterClaim.gt(balanceBeforeClaim)).eq(true);
 
-    await votiumStrategy.requestClose(0, ownerAddress);
+    await votiumStrategy.requestClose(0);
 
     for (let i = 0; i < 14; i++) {
       await incrementEpochCallOracles(votiumStrategy);
@@ -81,7 +80,7 @@ describe("Test Votium Rewards Logic", async function () {
     const balanceBeforeBurn = await ethers.provider.getBalance(
       accounts[0].address
     );
-    tx = await votiumStrategy.burn(0, ownerAddress);
+    tx = await votiumStrategy.burn(0);
     await tx.wait();
     const balanceAfterBurn = await ethers.provider.getBalance(
       accounts[0].address

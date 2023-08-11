@@ -32,13 +32,12 @@ describe("Test Votium Rewards Logic", async function () {
   );
 
   it("Should fail to mint the same tokenId twice", async function () {
-    const ownerAddress = accounts[0].address;
-    const tx = await votiumStrategy.mint(0, ownerAddress, {
+    const tx = await votiumStrategy.mint(0, {
       value: ethers.utils.parseEther("1"),
     });
     tx.wait();
     await expect(
-      votiumStrategy.mint(0, ownerAddress, {
+      votiumStrategy.mint(0, {
         value: ethers.utils.parseEther("1"),
       })
     ).to.be.revertedWith("Already Exists");
