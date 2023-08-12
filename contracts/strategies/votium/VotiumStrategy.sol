@@ -23,6 +23,41 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractNftStrategy {
         });
     }
 
+    function requestClose(uint256 _positionId) public override onlyOwner {
+        require(positions[_positionId].owner == msg.sender, "Not owner");
+        require(
+            positions[_positionId].unlockTime == 0,
+            "Already requested close"
+        );
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
+        uint256 firstRelockEpoch = vlCvxPositions[_positionId].firstRelockEpoch;
+
+        uint256 unlockEpoch;
+
+        // position has been relocked since the originalUnlockEpoch passed
+        // calculate its new unlock epoch
+        if (currentEpoch >= firstRelockEpoch) {
+            uint256 epochDifference = currentEpoch - firstRelockEpoch;
+            uint256 extraLockLengths = (epochDifference / 17) + 1;
+            unlockEpoch = firstRelockEpoch + extraLockLengths * 17;
+        } else {
+            unlockEpoch = firstRelockEpoch;
+        }
+
+        (, uint256 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(
+            currentEpoch
+        );
+
+        positions[_positionId].unlockTime =
+            currentEpochStartingTime +
+            (unlockEpoch - currentEpoch) *
+            (60 * 60 * 24 * 7);  // TODO: Add comment explaining numbers
+
+        unlockSchedule[unlockEpoch] += vlCvxPositions[_positionId].cvxAmount;
+    }
+
     function burn(uint256 _positionId) public override onlyOwner {
         require(
             positions[_positionId].unlockTime != 0,
