@@ -19,12 +19,29 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             afEthToBurn: _amount,
             afEthBurned: 0
         });
-        cvxToLeaveUnlocked+=_amount;
+        fullyUnlockedCvx+=_amount;
         _burn(msg.sender, _amount);
     }
 
     //  public function anyone can call to process the unlock queue
-    function processWithdrawQueue() public view override {
-
+    function processWithdrawQueue() public override {
+        require(fullyUnlockedCvx > 0, 'No cvx to withdraw');
+        for(uint256 i=nextQueuePositionToProcess;i<=queueSize;i++){
+            UnlockQueuePosition storage position = unlockQueue[i];
+            uint256 remainingCvxToWithdrawFromPosition = position.afEthToBurn - position.afEthBurned;
+            if(remainingCvxToWithdrawFromPosition >= fullyUnlockedCvx) {
+                remainingCvxToWithdrawFromPosition -= fullyUnlockedCvx;
+                sellCvx(fullyUnlockedCvx);
+                fullyUnlockedCvx = 0;
+                position.afEthBurned += fullyUnlockedCvx;
+                payable(position.owner).transfer(address(this).balance);
+                return;
+            }else {
+                sellCvx(remainingCvxToWithdrawFromPosition);
+                fullyUnlockedCvx -= remainingCvxToWithdrawFromPosition;
+                position.afEthBurned += remainingCvxToWithdrawFromPosition;
+                payable(position.owner).transfer(address(this).balance);
+            }
+        }
     }
 }

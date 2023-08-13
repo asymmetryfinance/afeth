@@ -44,9 +44,10 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     }
 
     uint256 public queueSize;
+    uint256 public nextQueuePositionToProcess;
     mapping(uint => UnlockQueuePosition) public unlockQueue;
 
-    uint256 public cvxToLeaveUnlocked;
+    uint256 public fullyUnlockedCvx;
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -139,7 +140,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         if (unlockedCvxBalance == 0) return;
 
         // relock everything minus unlock queue obligations
-        uint256 cvxAmountToRelock = cvxToLeaveUnlocked > unlockedCvxBalance ? 0 : unlockedCvxBalance - cvxToLeaveUnlocked;
+        uint256 cvxAmountToRelock = fullyUnlockedCvx > unlockedCvxBalance ? 0 : unlockedCvxBalance - fullyUnlockedCvx;
 
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
