@@ -13,17 +13,13 @@ import "../../external_interfaces/ICrvEthPool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 /// For private internal functions and anything not exposed via the interface
+import "hardhat/console.sol";
+
 contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address constant VLCVX_ADDRESS = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
-
-    // last epoch in which expired locks were processed with vlcvx.processExpiredLocks()
-    uint256 public lastEpochLocksProcessed;
-
-    // what is the last epoch for which rewards have been fully claimed
-    uint256 public lastRewardEpochFullyClaimed;
 
     error SwapFailed(uint256 index);
 
@@ -34,8 +30,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         bytes swapCallData;
     }
 
-    uint256 rebaseNumerator;
-    uint256 rebaseDenominator;
+    uint256 rebaseRewardTotalSupply;
 
     struct UnlockQueuePosition {
         address owner; // address of who owns the position
@@ -47,45 +42,20 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     uint256 public nextQueuePositionToProcess;
     mapping(uint => UnlockQueuePosition) public unlockQueue;
 
-    uint256 public fullyUnlockedCvx;
+    uint256 public cvxUnlockObligations;
+
+    mapping(address => uint256) public userRewardsProcessedWithdrawn;
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-
-    function totalSupply() public view override returns (uint256) {
-            uint256 rebasedTotalSupply = (super.totalSupply() * rebaseNumerator) / rebaseDenominator;
-            return rebasedTotalSupply;
-    }
-
-    function balanceOf(address _account) public view override returns (uint256) {
-            uint256 rebasedBalance = (super.balanceOf(_account) * rebaseNumerator) / rebaseDenominator;
-            return rebasedBalance;
-    }
-    /**
-        @notice - Mints afEth to everyone using any eth in the contract (from rewards)
-    */
-    function applyRebaseRewards() public {
-        uint256 cvxAmount = buyCvx(address(this).balance); // TODO track eth balance from rewards separately
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        uint256 currentAfEthSupply = this.totalSupply();
-        uint256 afEthToMintToEveryone = cvxAmount;
-        uint256 increaseAmountNumerator = currentAfEthSupply + afEthToMintToEveryone;
-        rebaseNumerator = (increaseAmountNumerator * rebaseNumerator) / rebaseDenominator;
-        rebaseDenominator = currentAfEthSupply;
-    }
-
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
-        @param _manager - Address of the manager contract
     */
-    function initialize(address _manager) external initializer {
-        _transferOwnership(_manager);
-
+    function initialize() external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
         address votiumVoteProxyAddress = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
@@ -93,27 +63,24 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             VotiumVoteDelegationId,
             votiumVoteProxyAddress
         );
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
-        lastEpochLocksProcessed = currentEpoch;
-        lastRewardEpochFullyClaimed = currentEpoch - 1;
     }
 
-    /// this should be called around the same time every other epoch
-    /// because vlCvx rewards are constant it would be unfair/inconsistent to claim at different times the way it distributes rewards into epochs
-    /// but its also not a huge deal because vlCvx is a much smaller part of the overall rewards
-    function oracleClaimAndSellRewards(
+    /// sell votium rewards, convert them into cvx and lock, mint claimable rewards to all users
+    function applyRebaseRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs,
         SwapData[] calldata _swapsData
     ) public {
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-            block.timestamp
-        );
-        uint256 unclaimedEpochCount = currentEpoch - lastRewardEpochFullyClaimed - 1;
-        require(unclaimedEpochCount > 0, "no unclaimed epochs");
         claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
         sellRewards(_swapsData);
-        lastRewardEpochFullyClaimed = currentEpoch - 1;
+
+        uint256 cvxAmount = buyCvx(address(this).balance);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        uint256 afEthAmount = cvxAmount;
+
+        // TODO how do we dsitribute these minted afEth tokens to users?
+        _mint(address(this), afEthAmount);
     }
 
 
@@ -122,7 +89,6 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     /// Relocks any unlocked cvx from positions that have not requested to close
     function oracleRelockCvx() public {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
-        if (lastEpochLocksProcessed == currentEpoch) return;
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
@@ -140,7 +106,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         if (unlockedCvxBalance == 0) return;
 
         // relock everything minus unlock queue obligations
-        uint256 cvxAmountToRelock = fullyUnlockedCvx > unlockedCvxBalance ? 0 : unlockedCvxBalance - fullyUnlockedCvx;
+        uint256 cvxAmountToRelock = cvxUnlockObligations > unlockedCvxBalance ? 0 : unlockedCvxBalance - cvxUnlockObligations;
 
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
