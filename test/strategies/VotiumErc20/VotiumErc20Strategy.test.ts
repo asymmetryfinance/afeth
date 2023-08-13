@@ -31,6 +31,8 @@ describe.only("Test VotiumErc20Strategy", async function () {
       []
     )) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
+    const tx = await votiumStrategy.initializeRebaseable();
+    await tx.wait();
   };
 
   before(
@@ -39,7 +41,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
 
   it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     let tx = await votiumStrategy.mint({
-      value: ethers.utils.parseEther("1"),
+      value: ethers.utils.parseEther("2"),
     });
     await tx.wait();
 
@@ -72,6 +74,11 @@ describe.only("Test VotiumErc20Strategy", async function () {
     // this just puts the new afEth in the contract, need to figure out how to distribute it to users
     tx = await votiumStrategy.applyRebaseRewards(claimProofs, swapsData);
     await tx.wait();
+
+    const afEthBalance2 = await votiumStrategy.balanceOf(accounts[0].address);
+
+    // afEth balance goes up after rebase
+    expect(afEthBalance2).gt(afEthBalance1);
 
     // pass enough epochs so the burned position is fully unlocked
     for (let i = 0; i < 16; i++) {

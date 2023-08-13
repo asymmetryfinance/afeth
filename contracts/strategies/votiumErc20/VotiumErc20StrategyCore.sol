@@ -11,11 +11,9 @@ import "../../external_interfaces/ILockedCvx.sol";
 import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import './RebaseableErc20.sol';
 
-/// For private internal functions and anything not exposed via the interface
-import "hardhat/console.sol";
-
-contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeable {
+contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, RebaseableErc20 {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
@@ -30,8 +28,6 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         bytes swapCallData;
     }
 
-    uint256 rebaseRewardTotalSupply;
-
     struct UnlockQueuePosition {
         address owner; // address of who owns the position
         uint256 afEthToBurn; // how much afEth was burned (entering unlock queue)
@@ -43,8 +39,6 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     mapping(uint => UnlockQueuePosition) public unlockQueue;
 
     uint256 public cvxUnlockObligations;
-
-    mapping(address => uint256) public userRewardsProcessedWithdrawn;
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -79,17 +73,14 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         uint256 afEthAmount = cvxAmount;
 
-        // TODO how do we dsitribute these minted afEth tokens to users?
-        _mint(address(this), afEthAmount);
+        uint256 newTotalSupply = totalSupply() + afEthAmount;
+        rebaseRatio = (newTotalSupply * 1e18) / totalSupply();
     }
-
 
     /// Called by our oracle at the beginning of each new epoch
     /// Leaves cvx unlocked for any that have requested to close their position
     /// Relocks any unlocked cvx from positions that have not requested to close
     function oracleRelockCvx() public {
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
-
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
