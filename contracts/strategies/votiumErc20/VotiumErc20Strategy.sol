@@ -25,12 +25,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         _burn(msg.sender, _amount);
     }
 
-    function claimRebaseRewards() public {
-        uint256 userRewardsShare = ((super.balanceOf(msg.sender)) * ((rebaseRewardTotalSupply * 10e18) / super.totalSupply()))/10e18 - userRewardsProcessedWithdrawn[msg.sender];
-        userRewardsProcessedWithdrawn[msg.sender] += userRewardsShare;
-        _transfer(address(this), msg.sender, userRewardsShare);
-    }
-
     //  public function anyone can call to process the unlock queue
     function processWithdrawQueue() public override {
         uint256 fullyUnlockedCvx = IERC20(CVX_ADDRESS).balanceOf(address(this));
