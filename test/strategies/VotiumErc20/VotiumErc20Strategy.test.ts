@@ -71,7 +71,6 @@ describe.only("Test VotiumErc20Strategy", async function () {
     const claimProofs = testData.claimProofs;
     const swapsData = testData.swapsData;
 
-    // this just puts the new afEth in the contract, need to figure out how to distribute it to users
     tx = await votiumStrategy.applyRebaseRewards(claimProofs, swapsData);
     await tx.wait();
 
