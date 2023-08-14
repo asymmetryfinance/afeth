@@ -8,14 +8,11 @@ import "hardhat/console.sol";
 
 contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function price() public view override returns (uint256) {
-        console.log('price');
         uint256 supply = totalSupply();
-        console.log('supply is', supply);
         if(supply == 0) return 1e18;
         (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        console.log('total locked is', total);
         if(total == 0) return 1e18;
         return (total * 1e18) / supply;
     }
