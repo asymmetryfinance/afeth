@@ -1,14 +1,20 @@
-import { ethers, upgrades } from "hardhat";
+import { ethers, network, upgrades } from "hardhat";
 import { AfEth, SafEthStrategy, VotiumStrategy } from "../typechain-types";
 import { expect } from "chai";
+import { incrementEpochCallOracles } from "./strategies/Votium/VotiumTestHelpers";
+import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
+import { derivativeAbi } from "./abis/derivativeAbi";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 // TODO fix for new erc20 afEth implementation
 describe.skip("Test AfEth (Votium + SafEth Strategies)", async function () {
   let afEthManager: AfEth;
   let votiumStrategy: VotiumStrategy;
   let safEthStrategy: SafEthStrategy;
-
+  let accounts: SignerWithAddress[];
   before(async () => {
+    accounts = await ethers.getSigners();
+
     const afEthFactory = await ethers.getContractFactory("AfEth");
     afEthManager = (await upgrades.deployProxy(afEthFactory)) as AfEth;
     await afEthManager.deployed();
@@ -29,8 +35,42 @@ describe.skip("Test AfEth (Votium + SafEth Strategies)", async function () {
     ])) as SafEthStrategy;
     await safEthStrategy.deployed();
 
-    await afEthManager.addStrategy(votiumStrategy.address);
     await afEthManager.addStrategy(safEthStrategy.address);
+    await afEthManager.addStrategy(votiumStrategy.address);
+
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [MULTI_SIG],
+    });
+
+    const chainLinkRethFeedFactory = await ethers.getContractFactory(
+      "ChainLinkRethFeedMock"
+    );
+    const chainLinkRethFeed = await chainLinkRethFeedFactory.deploy();
+
+    const chainLinkWstFeedFactory = await ethers.getContractFactory(
+      "ChainLinkWstFeedMock"
+    );
+    const chainLinkWstFeed = await chainLinkWstFeedFactory.deploy();
+
+    const multiSigSigner = await ethers.getSigner(MULTI_SIG);
+
+    // mock chainlink feed on derivatives
+    const rEthDerivative = new ethers.Contract(
+      RETH_DERIVATIVE,
+      derivativeAbi,
+      accounts[0]
+    );
+    const multiSigReth = rEthDerivative.connect(multiSigSigner);
+    await multiSigReth.setChainlinkFeed(chainLinkRethFeed.address);
+
+    const wstEthDerivative = new ethers.Contract(
+      WST_DERIVATIVE,
+      derivativeAbi,
+      accounts[0]
+    );
+    const multiSigWst = wstEthDerivative.connect(multiSigSigner);
+    await multiSigWst.setChainlinkFeed(chainLinkWstFeed.address);
   });
   it("Should mint with uneven ratios", async function () {
     // verify strategy positions
@@ -49,8 +89,8 @@ describe.skip("Test AfEth (Votium + SafEth Strategies)", async function () {
     safEthPosition = await safEthStrategy.safEthPositions(1);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq("172341027344318405377");
-    expect(safEthPosition).eq("694281210347620707");
+    expect(votiumPosition.cvxAmount).eq("402121500509689836997");
+    expect(safEthPosition).eq("297549090148980303");
     expect(tokenCount).eq(1);
 
     // verify nft position
@@ -62,22 +102,22 @@ describe.skip("Test AfEth (Votium + SafEth Strategies)", async function () {
   });
   it("Should mint with even ratios", async function () {
     // verify strategy positions
-    let votiumPosition = await votiumStrategy.vlCvxPositions(2);
+    let vlCvxPosition = await votiumStrategy.vlCvxPositions(2);
     let safEthPosition = await safEthStrategy.safEthPositions(2);
     let tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq(0);
+    expect(vlCvxPosition.cvxAmount).eq(0);
     expect(safEthPosition).eq(0);
     expect(tokenCount).eq(1);
     await afEthManager.mint(
       [ethers.utils.parseEther(".5"), ethers.utils.parseEther(".5")],
       { value: ethers.utils.parseEther("1") }
     );
-    votiumPosition = await votiumStrategy.vlCvxPositions(2);
+    vlCvxPosition = await votiumStrategy.vlCvxPositions(2);
     safEthPosition = await safEthStrategy.safEthPositions(2);
     tokenCount = await afEthManager.tokenCount();
 
-    expect(votiumPosition.cvxAmount).eq("287154408910464895275");
+    expect(vlCvxPosition.cvxAmount).eq("287145334757983898510");
     expect(safEthPosition).eq("495915150248300505");
     expect(tokenCount).eq(2);
   });
@@ -90,16 +130,47 @@ describe.skip("Test AfEth (Votium + SafEth Strategies)", async function () {
     ).to.be.revertedWith("InvalidRatio");
   });
   it("Should request to close positions", async function () {
-    // TODO
+    let vPosition = await votiumStrategy.positions(1);
+    let sPosition = await safEthStrategy.positions(1);
+    expect(vPosition.unlockTime).eq("0");
+    expect(sPosition.unlockTime).eq("0");
+    await afEthManager.requestClose(1);
+    vPosition = await votiumStrategy.positions(1);
+    sPosition = await safEthStrategy.positions(1);
+    expect(vPosition.unlockTime).eq("1701302400");
+    expect(sPosition.unlockTime).eq("1691620468");
+  });
+  it("Can't request to close positions if already closed", async function () {
+    await expect(afEthManager.requestClose(1)).to.be.revertedWith(
+      "Already requested close"
+    );
   });
   it("Can't request to close positions if not the owner", async function () {
-    // TODO
-  });
-  it("Should burn positions", async function () {
-    // TODO
+    const notOwner = afEthManager.connect(accounts[1]);
+    await expect(notOwner.requestClose(2)).to.be.revertedWith("Not owner");
   });
   it("Can't request burn positions if not the owner", async function () {
-    // TODO
+    const notOwner = afEthManager.connect(accounts[1]);
+    await expect(notOwner.burn(1)).to.be.revertedWith("Not owner");
+  });
+  it("Can't burn positions if not requested to close", async function () {
+    await expect(afEthManager.burn(1)).to.be.revertedWith("still locked");
+  });
+  it("Should burn positions", async function () {
+    let vPosition = await votiumStrategy.positions(1);
+    let sPosition = await safEthStrategy.positions(1);
+    expect(vPosition.unlockTime).eq("1701302400");
+    expect(vPosition.ethBurned).eq("0");
+    expect(sPosition.unlockTime).eq("1691620468");
+    expect(sPosition.ethBurned).eq("0");
+    for (let i = 0; i < 17; i++) {
+      await incrementEpochCallOracles(votiumStrategy);
+    }
+    await afEthManager.burn(1);
+    vPosition = await votiumStrategy.positions(1);
+    sPosition = await safEthStrategy.positions(1);
+    expect(vPosition.ethBurned).eq("696443599046152185");
+    expect(sPosition.ethBurned).eq("300006572996331905");
   });
   it("Should claim all rewards", async function () {
     // TODO
