@@ -2,7 +2,7 @@ import { network, ethers, upgrades } from "hardhat";
 import { VotiumErc20Strategy } from "../typechain-types";
 import { expect } from "chai";
 import {
-  incrementEpochCallOracles,
+  incrementVlcvxEpoch,
   readJSONFromFile,
   updateRewardsMerkleRoot,
 } from "../Votium/VotiumTestHelpers";
@@ -31,8 +31,6 @@ describe.only("Test VotiumErc20Strategy", async function () {
       []
     )) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
-    const tx = await votiumStrategy.initializeRebaseable();
-    await tx.wait();
   };
 
   before(
@@ -45,21 +43,11 @@ describe.only("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
-    const afEthBalance0 = await votiumStrategy.balanceOf(accounts[0].address);
-
-    // only burning half of it because if there is no totalSUpply the rebase will fail
-    tx = await votiumStrategy.burn(afEthBalance0.div(2));
-    await tx.wait();
-
     const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
     const totalSupply1 = await votiumStrategy.totalSupply();
 
     expect(afEthBalance1).gt(0);
     expect(totalSupply1).eq(afEthBalance1);
-
-    // simulate some time passing
-    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
-    await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
 
     const testData = await readJSONFromFile("./scripts/testData.json");
 
@@ -71,17 +59,21 @@ describe.only("Test VotiumErc20Strategy", async function () {
     const claimProofs = testData.claimProofs;
     const swapsData = testData.swapsData;
 
-    tx = await votiumStrategy.applyRebaseRewards(claimProofs, swapsData);
+    const priceBeforeRewards = await votiumStrategy.price();
+    tx = await votiumStrategy.applyRewards(claimProofs, swapsData);
     await tx.wait();
 
-    const afEthBalance2 = await votiumStrategy.balanceOf(accounts[0].address);
+    const priceAfterRewards = await votiumStrategy.price();
 
-    // afEth balance goes up after rebase
-    expect(afEthBalance2).gt(afEthBalance1);
+    expect(priceAfterRewards).gt(priceBeforeRewards);
+    // burn
+    await votiumStrategy.burn(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
 
     // pass enough epochs so the burned position is fully unlocked
-    for (let i = 0; i < 16; i++) {
-      await incrementEpochCallOracles(votiumStrategy.connect(accounts[2]));
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
     }
 
     const ethBalanceBefore = await ethers.provider.getBalance(

@@ -48,7 +48,7 @@ export const updateRewardsMerkleRoot = async (
 };
 
 // incremement time by 1 epoch and call await vlCvxContract.checkpointEpoch() so vlcv keeps working as time passes
-const incrementVlcvxEpoch = async () => {
+export const incrementVlcvxEpoch = async () => {
   const block = await ethers.provider.getBlock("latest");
   const blockTime = block.timestamp;
   const accounts = await ethers.getSigners();
@@ -109,11 +109,4 @@ export const getCurrentEpochEndTime = async () => {
 
 export const getNextEpochStartTime = async () => {
   return getEpochStartTime((await getCurrentEpoch()).add(1));
-};
-export const incrementEpochCallOracles = async (
-  oracleVotiumStrategy: VotiumStrategy
-) => {
-  await incrementVlcvxEpoch();
-  await oracleVotiumStrategy.oracleRelockCvx();
-  // TODO check timestamp and see if we need to call claim rewards & sell rewards (every 2 weeks)
 };

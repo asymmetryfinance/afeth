@@ -13,7 +13,7 @@ import "../../external_interfaces/ICrvEthPool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import './RebaseableErc20.sol';
 
-contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, RebaseableErc20 {
+contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
@@ -30,8 +30,8 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, Rebaseabl
 
     struct UnlockQueuePosition {
         address owner; // address of who owns the position
-        uint256 afEthToBurn; // how much afEth was burned (entering unlock queue)
-        uint256 afEthBurned; // how much has been fully burned (withdrawn as eth)
+        uint256 cvxOwed; // how much cvx tota is owed for this position
+        uint256 cvxWithdrawn; // how much of whats owed has been withdrawn
     }
 
     uint256 public queueSize;
@@ -39,7 +39,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, Rebaseabl
     mapping(uint => UnlockQueuePosition) public unlockQueue;
 
     uint256 public cvxUnlockObligations;
-
+    
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -59,8 +59,8 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, Rebaseabl
         );
     }
 
-    /// sell votium rewards, convert them into cvx and lock, mint claimable rewards to all users
-    function applyRebaseRewards(
+    /// apply rewards, price goes up
+    function applyRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs,
         SwapData[] calldata _swapsData
     ) public {
@@ -71,36 +71,6 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, Rebaseabl
         uint256 cvxAmount = buyCvx(address(this).balance);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        uint256 afEthAmount = cvxAmount;
-
-        uint256 newTotalSupply = totalSupply() + afEthAmount;
-        rebaseRatio = (newTotalSupply * 1e18) / totalSupply();
-    }
-
-    /// Called by our oracle at the beginning of each new epoch
-    /// Leaves cvx unlocked for any that have requested to close their position
-    /// Relocks any unlocked cvx from positions that have not requested to close
-    function oracleRelockCvx() public {
-        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
-            address(this)
-        );
-
-        if (unlockable == 0) return;
-        // unlock all (theres no way to unlock individual locks)
-        ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-
-        uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
-            address(this)
-        );
-
-        // nothing to relock
-        if (unlockedCvxBalance == 0) return;
-
-        // relock everything minus unlock queue obligations
-        uint256 cvxAmountToRelock = cvxUnlockObligations > unlockedCvxBalance ? 0 : unlockedCvxBalance - cvxUnlockObligations;
-
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
     }
 
     function buyCvx(
