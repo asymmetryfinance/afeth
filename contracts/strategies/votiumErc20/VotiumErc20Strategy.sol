@@ -39,17 +39,13 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-
         if (unlockable == 0) return;
         // unlock all (theres no way to unlock individual locks)
         ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-
         uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
             address(this)
         );
-
         require(unlockedCvxBalance > 0, "No unlocked CVX to process queue");
-
         uint256 i;
         for (i = nextQueuePositionToProcess; i <= queueSize; i++) {
             if(_maxIterations == 0) break;

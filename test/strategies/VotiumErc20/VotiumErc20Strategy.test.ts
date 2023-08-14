@@ -111,7 +111,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
   it("Should allow owner to withdraw stuck tokens with withdrawStuckTokens()", async function () {
     // TODO
   });
-  it("Should be able to apply rewards manually with depositRewards()", async function () {
+  it("Should allow anyone apply rewards manually with depositRewards()", async function () {
     // TODO
   });
   it("Should allow a new minter to burn and immedietely withdraw from the queue if is cvx waiting to be unlocked", async function () {
@@ -124,6 +124,24 @@ describe.only("Test VotiumErc20Strategy", async function () {
     // TODO
   });
   it("Should alow a user to burn and fully withdraw from the queue without needing the owner to ever call anything", async function () {
+    // TODO
+  });
+  it("Should withdraw from the queue in order of who burned their tokens first", async function () {
+    // TODO
+  });
+  it("Should process multiple queue positions in a single call if there are enough unlockable cvx built up", async function () {
+    // TODO
+  });
+  it("Should allow anyone to process the queue", async function () {
+    // TODO
+  });
+  it("Should only allow the owner to applyRewards()", async function () {
+    // TODO
+  });
+  it("Should not be able to burn more than a users balance", async function () {
+    // TODO
+  });
+  it("Should be able to millions of dollars in rewards with minimal slippage", async function () {
     // TODO
   });
 });
