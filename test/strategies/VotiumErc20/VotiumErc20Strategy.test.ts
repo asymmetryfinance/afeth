@@ -8,7 +8,7 @@ import {
 } from "./VotiumTestHelpers";
 import { BigNumber } from "ethers";
 
-describe("Test VotiumErc20Strategy", async function () {
+describe.only("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: any;
   const resetToBlock = async (blockNumber: number) => {
@@ -54,6 +54,16 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
+    // Testing withdraw queue
+    tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+    tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
     const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
     const totalSupply1 = await votiumStrategy.totalSupply();
 
@@ -80,7 +90,13 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(priceAfterRewards).gt(priceBeforeRewards);
     // burn
     await votiumStrategy.requestWithdraw(
-      await votiumStrategy.balanceOf(accounts[0].address)
+      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
+    );
+    await votiumStrategy.requestWithdraw(
+      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
+    );
+    await votiumStrategy.requestWithdraw(
+      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
     );
 
     // pass enough epochs so the burned position is fully unlocked
@@ -92,8 +108,86 @@ describe("Test VotiumErc20Strategy", async function () {
       accounts[0].address
     );
 
-    tx = await votiumStrategy.processWithdrawQueue(10);
+    tx = await votiumStrategy.processWithdrawQueue(100);
+    const mined = await tx.wait();
+    // await tx.wait();
+
+    console.log("Gas used", mined.gasUsed.toString());
+
+    const ethBalanceAfter = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+    // balance after fully withdrawing is higher
+    expect(ethBalanceAfter).gt(ethBalanceBefore);
+  });
+
+  it("Should only be able to withdraw if you are in the correct portion of the queue", async function () {
+    const startingTotalSupply = await votiumStrategy.totalSupply();
+
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
     await tx.wait();
+
+    // Testing withdraw queue
+    tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+    tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
+    const totalSupply1 = await votiumStrategy.totalSupply();
+
+    expect(totalSupply1).eq(
+      BigNumber.from(afEthBalance1).add(startingTotalSupply)
+    );
+
+    const testData = await readJSONFromFile("./scripts/testData.json");
+
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    const claimProofs = testData.claimProofs;
+    const swapsData = testData.swapsData;
+
+    const priceBeforeRewards = await votiumStrategy.price();
+    tx = await votiumStrategy.applyRewards(claimProofs, swapsData);
+    await tx.wait();
+
+    const priceAfterRewards = await votiumStrategy.price();
+
+    expect(priceAfterRewards).gt(priceBeforeRewards);
+    // burn
+    await votiumStrategy.requestWithdraw(
+      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
+    );
+    await votiumStrategy.requestWithdraw(
+      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
+    );
+    await votiumStrategy.requestWithdraw(
+      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
+    );
+
+    // pass enough epochs so the burned position is fully unlocked
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const ethBalanceBefore = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    tx = await votiumStrategy.processWithdrawQueue(100);
+    const mined = await tx.wait();
+    // await tx.wait();
+
+    console.log("Gas used", mined.gasUsed.toString());
 
     const ethBalanceAfter = await ethers.provider.getBalance(
       accounts[0].address
