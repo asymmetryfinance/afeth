@@ -37,7 +37,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     uint256 public nextQueuePositionToProcess;
     mapping(uint => UnlockQueuePosition) public unlockQueue;
 
-    uint256 public cvxUnlockObligations;
+    uint256 public afEthUnlockObligations;
     
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -67,7 +67,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
         sellRewards(_swapsData);
-        uint256 cvxAmount = buyCvx(address(this).balance);
+        uint256 cvxAmount = buyCvx(address(this).balance); // TODO use exact amount from rewards sold
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
     }

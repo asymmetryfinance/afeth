@@ -4,44 +4,45 @@ pragma solidity 0.8.19;
 import "../AbstractErc20Strategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./VotiumErc20StrategyCore.sol";
-import "hardhat/console.sol";
 
+// TODO rename things from afEth to something else
 contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function price() public view override returns (uint256) {
         uint256 supply = totalSupply();
         if(supply == 0) return 1e18;
-        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+        (, , uint256 locked, ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        if(total == 0) return 1e18;
-        return (total * 1e18) / supply;
+        if(locked == 0) return 1e18;
+        return (locked * 1e18) / supply;
     }
 
     function mint() public payable override {
+        uint256 priceBefore = price();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        _mint(msg.sender, ((cvxAmount * 1e18) / price()));
+        _mint(msg.sender, ((cvxAmount * 1e18) / priceBefore));
     }
 
-    function burn(uint256 _amount) public override {
+    function requestWithdraw(uint256 _amount) public override {
         unlockQueue[queueSize] = UnlockQueuePosition({
             owner: msg.sender,
-            afEthOwed: (_amount * price()) / 1e18,
+            afEthOwed: (_amount),
             afEthWithdrawn: 0
         });
-        cvxUnlockObligations += unlockQueue[queueSize].afEthOwed;
+        afEthUnlockObligations += unlockQueue[queueSize].afEthOwed;
         queueSize++;
     }
 
-    //  public function anyone can call to process the unlock queue
+    // TODO look into gas costs of this
     function processWithdrawQueue(uint _maxIterations) public override {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
         if (unlockable == 0) return;
 
-        // unlocking changes prices
+        // get price before nlocking change the prices
         uint256 priceBeforeUnlock = price();
  
         // unlock all (theres no way to unlock individual locks)
@@ -50,30 +51,50 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             address(this)
         );
         require(unlockedCvxBalance > 0, "No unlocked CVX to process queue");
+
+        uint256 cvxUnlockObligations = afEthUnlockObligations * priceBeforeUnlock;
+
+        // relock everything minus unlock queue obligations
+        uint256 cvxAmountToRelock = cvxUnlockObligations > unlockedCvxBalance ? 0 : unlockedCvxBalance - cvxUnlockObligations;
+        if(cvxAmountToRelock > 0) {
+            IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
+            ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
+        }
         uint256 i;
 
         for (i = nextQueuePositionToProcess; i < queueSize; i++) {
+            if(unlockedCvxBalance == 0) return;
             if(_maxIterations == 0) break;
             _maxIterations--;
             
             UnlockQueuePosition storage position = unlockQueue[i];
+
+            // look into precision loss here, why does it become inexact?
             uint256 remainingCvxToWithdrawFromPosition = ((position.afEthOwed -
                 position.afEthWithdrawn) * priceBeforeUnlock) / 1e18;
+
             if (remainingCvxToWithdrawFromPosition == 0) continue;
+
             uint256 cvxToSell = remainingCvxToWithdrawFromPosition >=
                 unlockedCvxBalance
                 ? unlockedCvxBalance
                 : remainingCvxToWithdrawFromPosition;
             // fix edge case where roundoff error can made it higher than balance on edge case
             cvxToSell = unlockedCvxBalance > cvxToSell ? cvxToSell : unlockedCvxBalance;
+
+            // TODO break out of loop if we run out of cvx (unlockedCvxBalance)
+
             uint256 afEthToBurn = (cvxToSell * 1e18) / priceBeforeUnlock;
+
+            // fixes roundoff error bug that can cause underflow edge case
             afEthToBurn = afEthToBurn > address(this).balance ? address(this).balance : afEthToBurn;
             unlockedCvxBalance -= cvxToSell;
-            // fixes roundoff error bug that can cause underflow edge case
-            cvxUnlockObligations -= cvxUnlockObligations > cvxToSell ? cvxToSell : cvxUnlockObligations;
+            afEthUnlockObligations -= afEthToBurn;
             position.afEthWithdrawn += afEthToBurn;
             _burn(msg.sender, afEthToBurn);
             sellCvx(cvxToSell);
+
+            // use call to send eth instead
             payable(position.owner).transfer(address(this).balance);
         }
         nextQueuePositionToProcess = i;

@@ -6,6 +6,7 @@ import {
   readJSONFromFile,
   updateRewardsMerkleRoot,
 } from "../Votium/VotiumTestHelpers";
+import { BigNumber } from "ethers";
 
 describe.only("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy;
@@ -31,6 +32,14 @@ describe.only("Test VotiumErc20Strategy", async function () {
       []
     )) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
+
+    // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
+    const tx = await votiumStrategy.connect(accounts[2]).mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+    const totalSupply0 = await votiumStrategy.totalSupply();
+    const afEthBalance0 = await votiumStrategy.balanceOf(accounts[2].address);
   };
 
   before(
@@ -38,16 +47,19 @@ describe.only("Test VotiumErc20Strategy", async function () {
   );
 
   it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+    const startingTotalSupply = await votiumStrategy.totalSupply();
+
     let tx = await votiumStrategy.mint({
-      value: ethers.utils.parseEther("2"),
+      value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
 
     const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
     const totalSupply1 = await votiumStrategy.totalSupply();
 
-    expect(afEthBalance1).gt(0);
-    expect(totalSupply1).eq(afEthBalance1);
+    expect(totalSupply1).eq(
+      BigNumber.from(afEthBalance1).add(startingTotalSupply)
+    );
 
     const testData = await readJSONFromFile("./scripts/testData.json");
 
@@ -67,7 +79,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
     // burn
-    await votiumStrategy.burn(
+    await votiumStrategy.requestWithdraw(
       await votiumStrategy.balanceOf(accounts[0].address)
     );
 

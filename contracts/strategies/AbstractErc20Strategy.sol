@@ -13,7 +13,7 @@ abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgrade
     function mint() external payable virtual;
 
     /// burn afEth (enter unlock queue)
-    function burn(uint256 _amount) external virtual;
+    function requestWithdraw(uint256 _amount) external virtual;
 
     /// withdraw any unlocked vlcvx
     function processWithdrawQueue(uint256 _maxIterations) external virtual;
