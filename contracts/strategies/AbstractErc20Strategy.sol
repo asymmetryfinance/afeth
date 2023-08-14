@@ -16,5 +16,5 @@ abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgrade
     function burn(uint256 _amount) external virtual;
 
     /// withdraw any unlocked vlcvx
-    function processWithdrawQueue() external virtual;
+    function processWithdrawQueue(uint256 _maxIterations) external virtual;
 }

@@ -62,14 +62,28 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     function applyRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs,
         SwapData[] calldata _swapsData
-    ) public {
+    ) public onlyOwner {
         claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
         sellRewards(_swapsData);
-
         uint256 cvxAmount = buyCvx(address(this).balance);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+    }
+
+    /// anyone can deposit eth to make price go up
+    /// useful if we need to manually sell rewards ourselves
+    function depositRewards() public payable {
+        uint256 cvxAmount = buyCvx(msg.value);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+    }
+
+    function withdrawStuckTokens(address _token) public onlyOwner {
+        IERC20(_token).transfer(
+            msg.sender,
+            IERC20(_token).balanceOf(address(this))
+        );
     }
 
     function buyCvx(

@@ -35,7 +35,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     }
 
     //  public function anyone can call to process the unlock queue
-    function processWithdrawQueue() public override {
+    function processWithdrawQueue(uint _maxIterations) public override {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
@@ -50,7 +50,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
         require(unlockedCvxBalance > 0, "No unlocked CVX to process queue");
 
-        for (uint256 i = nextQueuePositionToProcess; i <= queueSize; i++) {
+        uint256 i;
+        for (i = nextQueuePositionToProcess; i <= queueSize; i++) {
+            if(_maxIterations == 0) break;
+            _maxIterations--;
             UnlockQueuePosition storage position = unlockQueue[i];
             uint256 remainingCvxToWithdrawFromPosition = position.cvxOwed -
                 position.cvxWithdrawn;
@@ -65,6 +68,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             sellCvx(cvxToSell);
             payable(position.owner).transfer(address(this).balance);
         }
-        nextQueuePositionToProcess = queueSize;
+        nextQueuePositionToProcess = i;
     }
 }

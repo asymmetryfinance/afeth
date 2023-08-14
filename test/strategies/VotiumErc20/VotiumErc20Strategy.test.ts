@@ -80,7 +80,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
       accounts[0].address
     );
 
-    tx = await votiumStrategy.processWithdrawQueue();
+    tx = await votiumStrategy.processWithdrawQueue(10);
     await tx.wait();
 
     const ethBalanceAfter = await ethers.provider.getBalance(
@@ -88,5 +88,42 @@ describe.only("Test VotiumErc20Strategy", async function () {
     );
     // balance after fully withdrawing is higher
     expect(ethBalanceAfter).gt(ethBalanceBefore);
+  });
+
+  it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
+    // TODO
+  });
+  it("Should show an account with twice as many tokens receive twice as many rewards as another", async function () {
+    // TODO
+  });
+  it("Should show an account staked for twice as long receive twice as many rewards as another", async function () {
+    // TODO
+  });
+  it("Should show an account staked for twice as long receive twice as many rewards as another", async function () {
+    // TODO
+  });
+  it("Should increase price proportionally to how much rewards were added vs tvl", async function () {
+    // TODO
+  });
+  it("Should increase price twice as much when depositing twice as much rewards", async function () {
+    // TODO
+  });
+  it("Should allow owner to withdraw stuck tokens with withdrawStuckTokens()", async function () {
+    // TODO
+  });
+  it("Should be able to apply rewards manually with depositRewards()", async function () {
+    // TODO
+  });
+  it("Should allow a new minter to burn and immedietely withdraw from the queue if is cvx waiting to be unlocked", async function () {
+    // TODO
+  });
+  it("Should never take more than 16 weeks to withdraw from the queue", async function () {
+    // TODO
+  });
+  it("Should always receive greater than or equal to the original cvx deposit value, even if applyRewards() is never called", async function () {
+    // TODO
+  });
+  it("Should alow a user to burn and fully withdraw from the queue without needing the owner to ever call anything", async function () {
+    // TODO
   });
 });
