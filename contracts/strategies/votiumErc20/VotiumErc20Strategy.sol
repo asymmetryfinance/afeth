@@ -82,8 +82,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             // fix edge case where roundoff error can made it higher than balance on edge case
             cvxToSell = unlockedCvxBalance > cvxToSell ? cvxToSell : unlockedCvxBalance;
 
-            // TODO break out of loop if we run out of cvx (unlockedCvxBalance)
-
             uint256 afEthToBurn = (cvxToSell * 1e18) / priceBeforeUnlock;
 
             // fixes roundoff error bug that can cause underflow edge case

@@ -5,7 +5,6 @@ import { votiumStashControllerAbi } from "../../abis/votiumStashControllerAbi";
 import * as fs from "fs";
 import * as util from "util";
 import { BigNumber } from "ethers";
-import { VotiumStrategy } from "../../../typechain-types";
 
 export const epochDuration = 60 * 60 * 24 * 7;
 export const vlCvxAddress = "0x72a19342e8F1838460eBFCCEf09F6585e32db86E";

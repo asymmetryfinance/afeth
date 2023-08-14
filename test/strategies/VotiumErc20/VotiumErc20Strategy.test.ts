@@ -5,10 +5,10 @@ import {
   incrementVlcvxEpoch,
   readJSONFromFile,
   updateRewardsMerkleRoot,
-} from "../Votium/VotiumTestHelpers";
+} from "./VotiumTestHelpers";
 import { BigNumber } from "ethers";
 
-describe.only("Test VotiumErc20Strategy", async function () {
+describe("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: any;
   const resetToBlock = async (blockNumber: number) => {
