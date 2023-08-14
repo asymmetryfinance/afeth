@@ -144,4 +144,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
   it("Should be able to millions of dollars in rewards with minimal slippage", async function () {
     // TODO
   });
+  it("Should test everything about the queue to be sure it works correctly", async function () {
+    // TODO
+  });
 });

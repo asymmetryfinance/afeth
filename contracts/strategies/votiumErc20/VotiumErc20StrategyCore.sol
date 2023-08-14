@@ -29,8 +29,8 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
 
     struct UnlockQueuePosition {
         address owner; // address of who owns the position
-        uint256 cvxOwed; // how much cvx tota is owed for this position
-        uint256 cvxWithdrawn; // how much of whats owed has been withdrawn
+        uint256 afEthOwed; // how much afEth total is owed for this position
+        uint256 afEthWithdrawn; // how much of whats owed has been withdrawn
     }
 
     uint256 public queueSize;
