@@ -9,7 +9,7 @@ import "./strategies/safEth/SafEthStrategy.sol";
 contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     address[] public strategies;
     uint256 public tokenCount;
-
+    
     error InvalidRatios();
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
@@ -79,17 +79,17 @@ contract AfEth is Initializable, ERC721Upgradeable, OwnableUpgradeable {
         require(sent, "Failed to send Ether");
     }
 
-    /**
-        @notice - Request to close position
-        @param _positionId - Position id to request to close
-    */
-    function requestClose(uint256 _positionId) external payable {
-        require(ownerOf(_positionId) == msg.sender, "Not owner");
+    // /**
+    //     @notice - Request to close position
+    //     @param _positionId - Position id to request to close
+    // */
+    // function requestClose(uint256 _positionId) external payable {
+    //     require(ownerOf(_positionId) == msg.sender, "Not owner");
 
-        for (uint256 i = 0; i < strategies.length; i++) {
-            AbstractNftStrategy(strategies[i]).requestClose(_positionId);
-        }
-    }
+    //     for (uint256 i = 0; i < strategies.length; i++) {
+    //         AbstractNftStrategy(strategies[i]).requestClose(_positionId);
+    //     }
+    // }
 
     /**
         @notice - Claim reward of position

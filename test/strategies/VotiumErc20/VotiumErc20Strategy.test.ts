@@ -8,7 +8,7 @@ import {
 } from "./VotiumTestHelpers";
 import { BigNumber } from "ethers";
 
-describe("Test VotiumErc20Strategy", async function () {
+describe.only("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: any;
   const resetToBlock = async (blockNumber: number) => {

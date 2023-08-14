@@ -48,7 +48,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
     */
-    function initialize() external initializer {
+    function initialize(address _manager) external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
         address votiumVoteProxyAddress = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
@@ -56,7 +56,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             VotiumVoteDelegationId,
             votiumVoteProxyAddress
         );
-        _transferOwnership(msg.sender);
+        _transferOwnership(_manager);
     }
 
     /// apply rewards, price goes up

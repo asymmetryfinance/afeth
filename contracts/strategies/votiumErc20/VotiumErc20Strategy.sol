@@ -50,6 +50,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
             address(this)
         );
+        
         require(unlockedCvxBalance > 0, "No unlocked CVX to process queue");
 
         uint256 cvxUnlockObligations = afEthUnlockObligations * priceBeforeUnlock;
