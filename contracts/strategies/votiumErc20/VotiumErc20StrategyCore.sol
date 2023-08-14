@@ -11,7 +11,6 @@ import "../../external_interfaces/ILockedCvx.sol";
 import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import './RebaseableErc20.sol';
 
 contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =

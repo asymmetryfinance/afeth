@@ -7,7 +7,7 @@ import "./VotiumErc20StrategyCore.sol";
 import "hardhat/console.sol";
 
 contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
-    function price() public view returns (uint256) {
+    function price() public view override returns (uint256) {
         uint256 supply = totalSupply();
         if(supply == 0) return 1e18;
         (, , uint256 locked, ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
