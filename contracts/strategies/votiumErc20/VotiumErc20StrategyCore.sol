@@ -56,6 +56,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             VotiumVoteDelegationId,
             votiumVoteProxyAddress
         );
+        _transferOwnership(msg.sender);
     }
 
     /// apply rewards, price goes up
