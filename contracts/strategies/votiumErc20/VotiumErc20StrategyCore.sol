@@ -12,7 +12,11 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
-contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeable {
+contract VotiumErc20StrategyCore is
+    Initializable,
+    OwnableUpgradeable,
+    ERC20Upgradeable
+{
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
@@ -28,22 +32,25 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     }
 
     struct UnlockQueuePosition {
-        address owner; // address of who owns the position
         uint256 afEthOwed; // how much afEth total is owed for this position
         uint256 afEthWithdrawn; // how much of whats owed has been withdrawn
+        uint256 timestamp; // timestamp of available position
     }
 
     uint256 public queueSize;
     uint256 public nextQueuePositionToProcess;
     mapping(uint => UnlockQueuePosition) public unlockQueue;
+    mapping(address => UnlockQueuePosition[]) public withdrawQueue;
+    mapping(uint => uint) public heldWithdraw;
 
     uint256 public afEthUnlockObligations;
-    
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
+
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
