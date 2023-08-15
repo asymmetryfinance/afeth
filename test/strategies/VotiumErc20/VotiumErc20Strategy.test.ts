@@ -82,10 +82,6 @@ describe("Test VotiumErc20Strategy", async function () {
     await votiumStrategy.requestWithdraw(
       await votiumStrategy.balanceOf(accounts[0].address)
     );
-    tx = await votiumStrategy.connect(accounts[2]).mint({
-      value: ethers.utils.parseEther("2"),
-    });
-    await tx.wait();
 
     // pass enough epochs so the burned position is fully unlocked
     for (let i = 0; i < 17; i++) {
