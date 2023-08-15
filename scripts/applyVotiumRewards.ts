@@ -1,0 +1,73 @@
+import { ethers } from "hardhat";
+import axios from "axios";
+import { generate0xSwapData } from "./generateTestData";
+import { VotiumErc20Strategy } from "../typechain-types";
+
+const votiumStrategyAddress = "0xbbba116ef0525cd5ea9f4a9c1f628c3bfc343261";
+
+// Claims all rewards using public votium merkle proofs
+// or pass in proofs to override
+export async function votiumClaimRewards(proofsOverride?: any): Promise<any> {
+  const accounts = await ethers.getSigners();
+  const VotiumInterface = (
+    await ethers.getContractFactory("VotiumErc20Strategy")
+  ).interface as any;
+  const votiumStrategy = new ethers.Contract(
+    votiumStrategyAddress,
+    VotiumInterface,
+    accounts[0]
+  ) as VotiumErc20Strategy;
+
+  let proofs: any;
+  if (!proofsOverride) {
+    const { data } = await axios.get(
+      "https://merkle-api-production.up.railway.app/proof/0xbbba116ef0525cd5ea9f4a9c1f628c3bfc343261"
+    );
+    proofs = data.proofs;
+  } else proofs = proofsOverride;
+
+  const tx = await votiumStrategy.claimRewards(proofs);
+  await tx.wait();
+  return proofs;
+}
+
+// Sell rewards that were claimed by the given proofs
+// or override with swapsDataOverride
+export async function votiumSellRewards(proofs: any, swapsDataOverride?: any) {
+  const accounts = await ethers.getSigners();
+  const VotiumInterface = (
+    await ethers.getContractFactory("VotiumErc20Strategy")
+  ).interface as any;
+  const votiumStrategy = new ethers.Contract(
+    votiumStrategyAddress,
+    VotiumInterface,
+    accounts[0]
+  ) as VotiumErc20Strategy;
+  if (swapsDataOverride) {
+    const tx = await votiumStrategy.applyRewards(swapsDataOverride);
+    const mined = await tx.wait();
+    console.log("votiumSellRewards", mined.transactionHash);
+    return;
+  }
+
+  const tokenAddresses = proofs.map((p: any) => p[0]);
+  const tokenAmounts = proofs.map((p: any[]) => p[2]);
+  const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
+  const tx = await votiumStrategy.applyRewards(swapsData);
+  const mined = await tx.wait();
+  console.log("votiumSellRewards", mined.transactionHash);
+}
+
+export const claimAndSellVotiumRewards = async () => {
+  const proofs = await votiumClaimRewards();
+  await votiumSellRewards(proofs);
+};
+
+(async function main() {
+  await claimAndSellVotiumRewards();
+})()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

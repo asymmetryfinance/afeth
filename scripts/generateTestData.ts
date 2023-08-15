@@ -54,7 +54,7 @@ const generateMockMerkleData = async (recipients: string[]) => {
   return proofData;
 };
 
-const generate0xSwapData = async (
+export const generate0xSwapData = async (
   tokenAddresses: string[],
   tokenAmounts: string[]
 ) => {

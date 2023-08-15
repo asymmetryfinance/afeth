@@ -38,8 +38,6 @@ describe("Test VotiumErc20Strategy", async function () {
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
-    const totalSupply0 = await votiumStrategy.totalSupply();
-    const afEthBalance0 = await votiumStrategy.balanceOf(accounts[2].address);
   };
 
   before(
