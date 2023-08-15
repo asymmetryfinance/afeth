@@ -22,14 +22,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function mint() public payable override {
         uint256 priceBefore = price();
         uint256 cvxAmount = buyCvx(msg.value);
-
-        // use mint cvx to process the queue
-        uint256 remainingCvx = processWithdrawQueueOnMint(cvxAmount);
-
-        if(remainingCvx > 0) {
-            IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, remainingCvx);
-            ILockedCvx(VLCVX_ADDRESS).lock(address(this), remainingCvx, 0);
-        }
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         _mint(msg.sender, ((cvxAmount * 1e18) / priceBefore));
     }
 
@@ -41,41 +35,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         });
         afEthUnlockObligations += unlockQueue[queueSize].afEthOwed;
         queueSize++;
-    }
-
-// trade cvxAmount for processing of the queue.
-// used by mint to benefit minters and people in the queue
-function processWithdrawQueueOnMint(uint256 cvxAmount) private returns (uint256 remainder) {
-        uint256 priceBeforeUnlock = price();
-        uint256 i;
-        for (i = nextQueuePositionToProcess; i < queueSize; i++) {
-            if(cvxAmount == 0) break;
-            
-            UnlockQueuePosition storage position = unlockQueue[i];
-
-            uint256 remainingCvxToWithdrawFromPosition = ((position.afEthOwed -
-                position.afEthWithdrawn) * priceBeforeUnlock) / 1e18;
-
-            if (remainingCvxToWithdrawFromPosition == 0) continue;
-
-            uint256 cvxToSell = remainingCvxToWithdrawFromPosition >=
-                cvxAmount
-                ? cvxAmount
-                : remainingCvxToWithdrawFromPosition;
-
-            uint256 afEthToBurn = (cvxToSell * 1e18) / priceBeforeUnlock;
-
-            cvxAmount -= cvxToSell;
-            afEthUnlockObligations -= afEthToBurn;
-            position.afEthWithdrawn += afEthToBurn;
-            _burn(msg.sender, afEthToBurn);
-            sellCvx(cvxAmount);
-
-            // use call to send eth instead
-            payable(position.owner).transfer(address(this).balance);
-        }
-        nextQueuePositionToProcess = i;
-        return cvxAmount;
     }
 
     // TODO look into gas costs of this

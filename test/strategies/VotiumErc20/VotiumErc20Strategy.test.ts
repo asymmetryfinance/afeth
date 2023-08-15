@@ -7,6 +7,10 @@ import {
   updateRewardsMerkleRoot,
 } from "./VotiumTestHelpers";
 import { BigNumber } from "ethers";
+import {
+  votiumClaimRewards,
+  votiumSellRewards,
+} from "../../../scripts/applyVotiumRewardsHelpers";
 
 describe("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy;
@@ -66,12 +70,11 @@ describe("Test VotiumErc20Strategy", async function () {
       testData.swapsData.map((sd: any) => sd.sellToken)
     );
 
-    const claimProofs = testData.claimProofs;
-    const swapsData = testData.swapsData;
-
     const priceBeforeRewards = await votiumStrategy.price();
-    tx = await votiumStrategy.applyRewards(claimProofs, swapsData);
-    await tx.wait();
+
+    await votiumClaimRewards(votiumStrategy.address, testData.claimProofs);
+    await await votiumStrategy.test();
+    await votiumSellRewards(votiumStrategy.address, [], testData.swapsData);
 
     const priceAfterRewards = await votiumStrategy.price();
 
@@ -83,26 +86,25 @@ describe("Test VotiumErc20Strategy", async function () {
     tx = await votiumStrategy.connect(accounts[2]).mint({
       value: ethers.utils.parseEther("2"),
     });
-//    const mined = await tx.wait();
+    await tx.wait();
 
+    // pass enough epochs so the burned position is fully unlocked
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
 
-    // // pass enough epochs so the burned position is fully unlocked
-    // for (let i = 0; i < 17; i++) {
-    //   await incrementVlcvxEpoch();
-    // }
+    const ethBalanceBefore = await ethers.provider.getBalance(
+      accounts[0].address
+    );
 
-    // const ethBalanceBefore = await ethers.provider.getBalance(
-    //   accounts[0].address
-    // );
+    tx = await votiumStrategy.processWithdrawQueue(10);
+    await tx.wait();
 
-    // tx = await votiumStrategy.processWithdrawQueue(10);
-    // await tx.wait();
-
-    // const ethBalanceAfter = await ethers.provider.getBalance(
-    //   accounts[0].address
-    // );
-    // // balance after fully withdrawing is higher
-    // expect(ethBalanceAfter).gt(ethBalanceBefore);
+    const ethBalanceAfter = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+    // balance after fully withdrawing is higher
+    expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
 
   it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
@@ -138,7 +140,7 @@ describe("Test VotiumErc20Strategy", async function () {
   it("Should always receive greater than or equal to the original cvx deposit value, even if applyRewards() is never called", async function () {
     // TODO
   });
-  it("Should alow a user to burn and fully withdraw from the queue without needing the owner to ever call anything", async function () {
+  it("Should allow a user to burn and fully withdraw from the queue without needing the owner to ever call anything", async function () {
     // TODO
   });
   it("Should withdraw from the queue in order of who burned their tokens first", async function () {
@@ -160,6 +162,15 @@ describe("Test VotiumErc20Strategy", async function () {
     // TODO
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
+    // TODO
+  });
+  it("Should allow owner to manually deposit eth rewards and price goes up", async function () {
+    // TODO
+  });
+  it("Should not change the price when minting, burning or withdrawing", async function () {
+    // TODO
+  });
+  it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
     // TODO
   });
 });

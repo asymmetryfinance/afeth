@@ -62,7 +62,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     /// apply rewards, price goes up
     function claimRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
-    ) public onlyOwner {
+    ) public {
         claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
     }
