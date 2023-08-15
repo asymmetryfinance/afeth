@@ -38,16 +38,9 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     }
 
     function requestWithdrawArray(uint256 _amount) public {
-        _burn(msg.sender, _amount);
         unlockQueueArray.push(
-            AddressAndAmount(
-                msg.sender,
-                _amount,
-                (_amount * price()) / 1e18,
-                false,
-                lastArrayIndex
-            ) // TODO change from msg.sender to real owner
-        ); // TODO maybe allow for rewards from cvx amount
+            AddressAndAmount(msg.sender, _amount, lastArrayIndex) // TODO change from msg.sender to real owner
+        );
         lastArrayIndex = unlockQueueArray.length - 1;
     }
 
@@ -55,40 +48,45 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function findIndexInArrayAndVerifyAvailableWithdraw(
         address sender,
         uint256 unlockedCvxBalance
-    ) public returns (int256) {
+    ) public returns (int256, uint256) {
         // Check total amount of CVX to withdraw for user & everyone in front
         uint availableAmount = 0;
         int256 position = -1;
-        uint256 prev;
-        for (uint i = 0; i < unlockQueueArray.length - 1; i++) {
-            availableAmount += unlockQueueArray[i].cvxAmount;
+        uint storedPrice = price();
+        uint currentIndex = 0;
+        uint count = 0;
+
+        // while (currentIndex != 0) {
+        //     result[count] = elements[currentIndex].data;
+        //     currentIndex = elements[currentIndex].next;
+        //     count++;
+        // }
+        for (uint i = 0; i < unlockQueueArray.length; i++) {
+            // if (unlockQueueArray[i].next == i) continue;
+            availableAmount += (unlockQueueArray[i].afAmount);
+            require(
+                availableAmount <= unlockedCvxBalance,
+                "Not enough unlocked CVX"
+            );
             if (sender == unlockQueueArray[i].account) {
-                console.log("FOUND", unlockQueueArray[i].cvxAmount);
-                require(
-                    availableAmount <= unlockedCvxBalance,
-                    "Not enough unlocked CVX"
-                );
                 position = int(i);
-                prev = unlockQueueArray[i].prev;
             }
             if (position > -1) {
-                if (unlockQueueArray[i].prev == uint(position)) {
-                    unlockQueueArray[i].prev = prev;
+                if (unlockQueueArray[i].next == uint(position)) {
+                    unlockQueueArray[i].next = unlockQueueArray[uint(position)]
+                        .next;
                     break;
                 }
             }
         }
-        return position;
+        return (position, storedPrice);
     }
 
-    // TODO look into gas costs of this
     function withdrawArray() public {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
         if (unlockable == 0) return;
-
-        // TODO Remove position from array
 
         // unlock all (theres no way to unlock individual locks)
         ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
@@ -98,18 +96,23 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         require(unlockedCvxBalance > 0, "No unlocked CVX to process");
         console.log("unlockedCvxBalance", unlockedCvxBalance);
 
-        int index = findIndexInArrayAndVerifyAvailableWithdraw(
-            msg.sender,
-            unlockedCvxBalance
-        );
+        (
+            int index,
+            uint storedPrice
+        ) = findIndexInArrayAndVerifyAvailableWithdraw(
+                msg.sender,
+                unlockedCvxBalance
+            );
         if (index == -1) revert("ERROR");
         uint position = uint(index);
         console.log("Position", position);
         require(msg.sender == unlockQueueArray[position].account, "Not owner"); // replace with original msg.sender
+        uint256 afAmount = unlockQueueArray[position].afAmount;
+        uint256 cvxAmount = (afAmount * storedPrice) / 1e18;
+        _burn(msg.sender, afAmount); // TODO don't allow transfers once requested to withdraw
+        sellCvx(cvxAmount);
 
-        sellCvx(unlockQueueArray[position].cvxAmount);
-        // removeFromArray(position);
-        // use call to send eth instead & replace with owner of account
+        // TODO: use call to send eth instead & replace with owner of account
         payable(msg.sender).transfer(address(this).balance);
     }
 

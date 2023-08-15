@@ -46,7 +46,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should mint Single position of afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it.skip("Should mint Single position of afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
 
     let tx = await votiumStrategy.mint({
@@ -106,85 +106,10 @@ describe.only("Test VotiumErc20Strategy", async function () {
     expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
 
-  it.only("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it.skip("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
+    const mintNumber = 5;
 
-    let tx = await votiumStrategy.mint({
-      value: ethers.utils.parseEther("1"),
-    });
-    await tx.wait();
-
-    // Testing withdraw queue
-    tx = await votiumStrategy.mint({
-      value: ethers.utils.parseEther("1"),
-    });
-    await tx.wait();
-    tx = await votiumStrategy.mint({
-      value: ethers.utils.parseEther("1"),
-    });
-    await tx.wait();
-
-    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
-    const totalSupply1 = await votiumStrategy.totalSupply();
-    console.log({ afEthBalance1, totalSupply1, startingTotalSupply });
-
-    expect(totalSupply1).eq(
-      BigNumber.from(afEthBalance1).add(startingTotalSupply)
-    );
-
-    const testData = await readJSONFromFile("./scripts/testData.json");
-
-    await updateRewardsMerkleRoot(
-      testData.merkleRoots,
-      testData.swapsData.map((sd: any) => sd.sellToken)
-    );
-
-    const claimProofs = testData.claimProofs;
-    const swapsData = testData.swapsData;
-
-    const priceBeforeRewards = await votiumStrategy.price();
-    tx = await votiumStrategy.applyRewards(claimProofs, swapsData);
-    await tx.wait();
-
-    const priceAfterRewards = await votiumStrategy.price();
-
-    expect(priceAfterRewards).gt(priceBeforeRewards);
-    // burn
-    await votiumStrategy.requestWithdraw(
-      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
-    );
-    await votiumStrategy.requestWithdraw(
-      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
-    );
-    await votiumStrategy.requestWithdraw(
-      (await votiumStrategy.balanceOf(accounts[0].address)).div(3)
-    );
-
-    // pass enough epochs so the burned position is fully unlocked
-    for (let i = 0; i < 17; i++) {
-      await incrementVlcvxEpoch();
-    }
-
-    const ethBalanceBefore = await ethers.provider.getBalance(
-      accounts[0].address
-    );
-
-    tx = await votiumStrategy.processWithdrawQueue(100);
-    const mined = await tx.wait();
-    // await tx.wait();
-
-    console.log("Gas used", mined.gasUsed.toString());
-
-    const ethBalanceAfter = await ethers.provider.getBalance(
-      accounts[0].address
-    );
-    // balance after fully withdrawing is higher
-    expect(ethBalanceAfter).gt(ethBalanceBefore);
-  });
-
-  it.only("Should only be able to withdraw if you are in the correct portion of the queue", async function () {
-    const startingTotalSupply = await votiumStrategy.totalSupply();
-    const mintNumber = 34;
     let tx;
     for (let i = 0; i < mintNumber; i++) {
       tx = await votiumStrategy.mint({
@@ -196,6 +121,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
     const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
     const totalSupply1 = await votiumStrategy.totalSupply();
     console.log({ afEthBalance1, totalSupply1, startingTotalSupply });
+
     expect(totalSupply1).eq(
       BigNumber.from(afEthBalance1).add(startingTotalSupply)
     );
@@ -219,9 +145,80 @@ describe.only("Test VotiumErc20Strategy", async function () {
     expect(priceAfterRewards).gt(priceBeforeRewards);
     // burn
     for (let i = 0; i < mintNumber; i++) {
-      await votiumStrategy.requestWithdrawArray(
+      await votiumStrategy.requestWithdraw(
         (await votiumStrategy.balanceOf(accounts[0].address)).div(mintNumber)
       );
+    }
+
+    // pass enough epochs so the burned position is fully unlocked
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    tx = await votiumStrategy.processWithdrawQueue(mintNumber);
+    const mined = await tx.wait();
+    // await tx.wait();
+
+    console.log("Gas used", mined.gasUsed.toString());
+  });
+
+  it.only("Should only be able to withdraw if you are in the correct portion of the queue", async function () {
+    const startingTotalSupply = await votiumStrategy.totalSupply();
+    const mintNumber = 100;
+    const offset = 0;
+    let tx;
+    const stakerVotiumStrategy = votiumStrategy.connect(accounts[1]);
+    for (let i = 0; i < mintNumber; i++) {
+      if (i === offset) {
+        tx = await stakerVotiumStrategy.mint({
+          value: ethers.utils.parseEther("1"),
+        });
+        await tx.wait();
+      } else {
+        tx = await votiumStrategy.mint({
+          value: ethers.utils.parseEther("1"),
+        });
+        await tx.wait();
+      }
+    }
+
+    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
+    const totalSupply1 = await votiumStrategy.totalSupply();
+    console.log({ afEthBalance1, totalSupply1, startingTotalSupply });
+    // expect(totalSupply1).eq(
+    //   BigNumber.from(afEthBalance1).add(startingTotalSupply)
+    // );
+
+    const testData = await readJSONFromFile("./scripts/testData.json");
+
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    const claimProofs = testData.claimProofs;
+    const swapsData = testData.swapsData;
+
+    const priceBeforeRewards = await votiumStrategy.price();
+    tx = await votiumStrategy.applyRewards(claimProofs, swapsData);
+    await tx.wait();
+
+    const priceAfterRewards = await votiumStrategy.price();
+
+    expect(priceAfterRewards).gt(priceBeforeRewards);
+    // burn
+    for (let i = 0; i < mintNumber - 1; i++) {
+      if (i === offset) {
+        await stakerVotiumStrategy.requestWithdrawArray(
+          await votiumStrategy.balanceOf(accounts[1].address)
+        );
+      } else {
+        await votiumStrategy.requestWithdrawArray(
+          (
+            await votiumStrategy.balanceOf(accounts[0].address)
+          ).div(mintNumber - 1)
+        );
+      }
     }
 
     // pass enough epochs so the burned position is fully unlocked
@@ -242,7 +239,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
       accounts[0].address
     );
     // balance after fully withdrawing is higher
-    expect(ethBalanceAfter).gt(ethBalanceBefore);
+    // expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
 
   it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {

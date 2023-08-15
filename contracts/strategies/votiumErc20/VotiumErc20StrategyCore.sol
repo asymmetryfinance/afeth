@@ -44,9 +44,7 @@ contract VotiumErc20StrategyCore is
     struct AddressAndAmount {
         address account;
         uint256 afAmount;
-        uint256 cvxAmount;
-        bool deleted;
-        uint prev;
+        uint next;
     }
     AddressAndAmount[] public unlockQueueArray;
     uint256 public lastArrayIndex;
