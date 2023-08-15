@@ -40,8 +40,15 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function requestWithdrawArray(uint256 _amount) public {
         _burn(msg.sender, _amount);
         unlockQueueArray.push(
-            AddressAndAmount(msg.sender, _amount, (_amount * price()) / 1e18) // TODO change from msg.sender to real owner
+            AddressAndAmount(
+                msg.sender,
+                _amount,
+                (_amount * price()) / 1e18,
+                false,
+                lastArrayIndex
+            ) // TODO change from msg.sender to real owner
         ); // TODO maybe allow for rewards from cvx amount
+        lastArrayIndex = unlockQueueArray.length - 1;
     }
 
     // will only find first available
@@ -52,11 +59,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         // Check total amount of CVX to withdraw for user & everyone in front
         uint availableAmount = 0;
         int256 position = -1;
+        uint256 prev;
         for (uint i = 0; i < unlockQueueArray.length - 1; i++) {
-            if (position > -1) {
-                unlockQueueArray[i] = unlockQueueArray[i + 1];
-                continue;
-            }
             availableAmount += unlockQueueArray[i].cvxAmount;
             if (sender == unlockQueueArray[i].account) {
                 console.log("FOUND", unlockQueueArray[i].cvxAmount);
@@ -65,20 +69,17 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     "Not enough unlocked CVX"
                 );
                 position = int(i);
+                prev = unlockQueueArray[i].prev;
+            }
+            if (position > -1) {
+                if (unlockQueueArray[i].prev == uint(position)) {
+                    unlockQueueArray[i].prev = prev;
+                    break;
+                }
             }
         }
         return position;
-
-        // return -1; //throw
     }
-
-    // function removeFromArray(uint _index) private {
-    //     require(_index < unlockQueueArray.length, "index out of bound");
-    //     for (uint i = _index; i < unlockQueueArray.length - 1; i++) {
-    //         unlockQueueArray[i] = unlockQueueArray[i + 1];
-    //     }
-    //     unlockQueueArray.pop();
-    // }
 
     // TODO look into gas costs of this
     function withdrawArray() public {

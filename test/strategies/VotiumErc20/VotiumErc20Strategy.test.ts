@@ -184,7 +184,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
 
   it.only("Should only be able to withdraw if you are in the correct portion of the queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
-    const mintNumber = 25;
+    const mintNumber = 34;
     let tx;
     for (let i = 0; i < mintNumber; i++) {
       tx = await votiumStrategy.mint({

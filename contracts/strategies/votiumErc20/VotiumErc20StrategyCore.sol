@@ -45,8 +45,11 @@ contract VotiumErc20StrategyCore is
         address account;
         uint256 afAmount;
         uint256 cvxAmount;
+        bool deleted;
+        uint prev;
     }
     AddressAndAmount[] public unlockQueueArray;
+    uint256 public lastArrayIndex;
 
     uint256 public afEthUnlockObligations;
 
