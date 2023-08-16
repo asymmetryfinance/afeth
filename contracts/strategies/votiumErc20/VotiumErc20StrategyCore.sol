@@ -60,16 +60,11 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     }
 
     /// apply rewards, price goes up
-    function applyRewards(
-        IVotiumMerkleStash.ClaimParam[] calldata _claimProofs,
-        SwapData[] calldata _swapsData
-    ) public onlyOwner {
+    function claimRewards(
+        IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
+    ) public {
         claimVotiumRewards(_claimProofs);
         claimvlCvxRewards();
-        sellRewards(_swapsData);
-        uint256 cvxAmount = buyCvx(address(this).balance); // TODO use exact amount from rewards sold
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
     }
 
     /// anyone can deposit eth to make price go up
@@ -122,9 +117,9 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     }
 
     /// sell any number of erc20's via 0x in a single tx
-    function sellRewards(
+    function applyRewards(
         SwapData[] calldata _swapsData
-    ) private returns (uint256 ethReceived) {
+    ) public {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             IERC20(_swapsData[i].sellToken).approve(
@@ -141,7 +136,9 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             }
         }
         uint256 ethBalanceAfter = address(this).balance;
-        ethReceived = ethBalanceAfter - ethBalanceBefore;
+        uint256 cvxAmount = buyCvx(ethBalanceAfter - ethBalanceBefore);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
     }
 
     function claimVotiumRewards(
