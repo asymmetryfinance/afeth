@@ -28,17 +28,20 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     }
 
     struct UnlockQueuePosition {
-        address owner; // address of who owns the position
         uint256 afEthOwed; // how much afEth total is owed for this position
-        uint256 afEthWithdrawn; // how much of whats owed has been withdrawn
     }
 
-    uint256 public queueSize;
-    uint256 public nextQueuePositionToProcess;
-    mapping(uint => UnlockQueuePosition) public unlockQueue;
+    mapping(address => mapping(uint256 => UnlockQueuePosition)) public unlockQueues;
 
     uint256 public afEthUnlockObligations;
-    
+
+    struct PriceHistoryItem {
+        uint256 price;
+        uint256 timestamp;
+    }
+    mapping(uint256 => PriceHistoryItem) public priceHistory;
+    uint256 priceHistoryCount;
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -59,6 +62,17 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         _transferOwnership(msg.sender);
     }
 
+    function price() public view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (supply == 0) return 1e18;
+        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+            address(this)
+        );
+        if (total == 0) return 1e18;
+        return (total * 1e18) / supply;
+    }
+
+
     /// apply rewards, price goes up
     function claimRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
@@ -69,8 +83,8 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
 
     /// anyone can deposit eth to make price go up
     /// useful if we need to manually sell rewards ourselves
-    function depositRewards() public payable {
-        uint256 cvxAmount = buyCvx(msg.value);
+    function depositRewards(uint256 _amount) public payable {
+        uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
     }
@@ -136,9 +150,14 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             }
         }
         uint256 ethBalanceAfter = address(this).balance;
-        uint256 cvxAmount = buyCvx(ethBalanceAfter - ethBalanceBefore);
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+
+        depositRewards(ethBalanceAfter - ethBalanceBefore);
+
+        priceHistory[priceHistoryCount] = PriceHistoryItem({
+            price: this.price(),
+            timestamp: block.timestamp
+        });
+        priceHistoryCount++;
     }
 
     function claimVotiumRewards(

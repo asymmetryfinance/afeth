@@ -6,9 +6,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgradeable {
     
-    // price to mint or burn afEth (in cvx)
-    function price() external view virtual returns (uint256);
-
     /// mint afEth
     function mint() external payable virtual;
 
@@ -16,5 +13,5 @@ abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgrade
     function requestWithdraw(uint256 _amount) external virtual;
 
     /// withdraw any unlocked vlcvx
-    function processWithdrawQueue(uint256 _maxIterations) external virtual;
+    function withdraw() external virtual;
 }
