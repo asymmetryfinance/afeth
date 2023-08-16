@@ -33,15 +33,15 @@ contract VotiumErc20StrategyCore is
 
     struct UnlockQueuePosition {
         uint256 afEthOwed; // how much afEth total is owed for this position
-        uint256 afEthWithdrawn; // how much of whats owed has been withdrawn
         uint256 timestamp; // timestamp of available position
+        bool claimed;
     }
 
     uint256 public queueSize;
     uint256 public nextQueuePositionToProcess;
     mapping(uint => UnlockQueuePosition) public unlockQueue;
     mapping(address => UnlockQueuePosition[]) public withdrawQueue;
-    mapping(uint => uint) public heldWithdraw;
+    mapping(uint => uint) public requestedByTimestamp;
 
     uint256 public afEthUnlockObligations;
 

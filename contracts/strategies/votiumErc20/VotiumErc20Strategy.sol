@@ -25,103 +25,105 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         _mint(msg.sender, ((cvxAmount * 1e18) / priceBefore));
     }
 
-    function requestWithdraw(uint256 _amount) public override {
-        unlockQueue[queueSize] = UnlockQueuePosition({
-            afEthOwed: (_amount),
-            afEthWithdrawn: 0,
-            timestamp: block.timestamp
-        });
-        afEthUnlockObligations += unlockQueue[queueSize].afEthOwed;
-        queueSize++;
-    }
+    // function requestWithdraw(uint256 _amount) public override {
+    //     unlockQueue[queueSize] = UnlockQueuePosition({
+    //         afEthOwed: (_amount),
+    //         timestamp: block.timestamp,
+    //         claime
+    //     });
+    //     afEthUnlockObligations += unlockQueue[queueSize].afEthOwed;
+    //     queueSize++;
+    // }
 
     function requestWithdrawNew(uint256 _amount) public {
         require(balanceOf(msg.sender) > _amount);
         (, , , ILockedCvx.LockedBalance[] memory lockData) = ILockedCvx(
             VLCVX_ADDRESS
         ).lockedBalances(address(this));
-
         
+        uint256 timestamp = lockData[0].amount + _amount;
+
         withdrawQueue[msg.sender].push(
             UnlockQueuePosition({
                 afEthOwed: _amount,
-                afEthWithdrawn: 0,
-                timestamp: block.timestamp
+                timestamp: block.timestamp,
+                claimed: false
             })
         );
         afEthUnlockObligations += _amount;
+        requestedByTimestamp[timestamp] += _amount;
         queueSize++;
     }
 
     function withdraw() public {}
 
     // TODO look into gas costs of this
-    function processWithdrawQueue(uint _maxIterations) public override {
-        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
-            address(this)
-        );
-        if (unlockable == 0) return;
+    // function processWithdrawQueue(uint _maxIterations) public override {
+    //     (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+    //         address(this)
+    //     );
+    //     if (unlockable == 0) return;
 
-        // get price before nlocking change the prices
-        uint256 priceBeforeUnlock = price();
+    //     // get price before nlocking change the prices
+    //     uint256 priceBeforeUnlock = price();
 
-        // unlock all (theres no way to unlock individual locks)
-        ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-        uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
-            address(this)
-        );
-        require(unlockedCvxBalance > 0, "No unlocked CVX to process queue");
+    //     // unlock all (theres no way to unlock individual locks)
+    //     ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
+    //     uint256 unlockedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(
+    //         address(this)
+    //     );
+    //     require(unlockedCvxBalance > 0, "No unlocked CVX to process queue");
 
-        uint256 cvxUnlockObligations = afEthUnlockObligations *
-            priceBeforeUnlock;
+    //     uint256 cvxUnlockObligations = afEthUnlockObligations *
+    //         priceBeforeUnlock;
 
-        // relock everything minus unlock queue obligations
-        uint256 cvxAmountToRelock = cvxUnlockObligations > unlockedCvxBalance
-            ? 0
-            : unlockedCvxBalance - cvxUnlockObligations;
-        if (cvxAmountToRelock > 0) {
-            IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
-            ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
-        }
-        uint256 i;
+    //     // relock everything minus unlock queue obligations
+    //     uint256 cvxAmountToRelock = cvxUnlockObligations > unlockedCvxBalance
+    //         ? 0
+    //         : unlockedCvxBalance - cvxUnlockObligations;
+    //     if (cvxAmountToRelock > 0) {
+    //         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
+    //         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
+    //     }
+    //     uint256 i;
 
-        for (i = nextQueuePositionToProcess; i < queueSize; i++) {
-            if (unlockedCvxBalance == 0) return;
-            if (_maxIterations == 0) break;
-            _maxIterations--;
+    //     for (i = nextQueuePositionToProcess; i < queueSize; i++) {
+    //         if (unlockedCvxBalance == 0) return;
+    //         if (_maxIterations == 0) break;
+    //         _maxIterations--;
 
-            UnlockQueuePosition storage position = unlockQueue[i];
+    //         UnlockQueuePosition storage position = unlockQueue[i];
 
-            // look into precision loss here, why does it become inexact?
-            uint256 remainingCvxToWithdrawFromPosition = ((position.afEthOwed -
-                position.afEthWithdrawn) * priceBeforeUnlock) / 1e18;
+    //         // look into precision loss here, why does it become inexact?
+    //         uint256 remainingCvxToWithdrawFromPosition = ((position.afEthOwed -
+    //             position.afEthWithdrawn) * priceBeforeUnlock) / 1e18;
 
-            if (remainingCvxToWithdrawFromPosition == 0) continue;
+    //         if (remainingCvxToWithdrawFromPosition == 0) continue;
 
-            uint256 cvxToSell = remainingCvxToWithdrawFromPosition >=
-                unlockedCvxBalance
-                ? unlockedCvxBalance
-                : remainingCvxToWithdrawFromPosition;
-            // fix edge case where roundoff error can made it higher than balance on edge case
-            cvxToSell = unlockedCvxBalance > cvxToSell
-                ? cvxToSell
-                : unlockedCvxBalance;
+    //         uint256 cvxToSell = remainingCvxToWithdrawFromPosition >=
+    //             unlockedCvxBalance
+    //             ? unlockedCvxBalance
+    //             : remainingCvxToWithdrawFromPosition;
+    //         // fix edge case where roundoff error can made it higher than balance on edge case
+    //         cvxToSell = unlockedCvxBalance > cvxToSell
+    //             ? cvxToSell
+    //             : unlockedCvxBalance;
 
-            uint256 afEthToBurn = (cvxToSell * 1e18) / priceBeforeUnlock;
+    //         uint256 afEthToBurn = (cvxToSell * 1e18) / priceBeforeUnlock;
 
-            // fixes roundoff error bug that can cause underflow edge case
-            afEthToBurn = afEthToBurn > address(this).balance
-                ? address(this).balance
-                : afEthToBurn;
-            unlockedCvxBalance -= cvxToSell;
-            afEthUnlockObligations -= afEthToBurn;
-            position.afEthWithdrawn += afEthToBurn;
-            _burn(msg.sender, afEthToBurn);
-            sellCvx(cvxToSell);
+    //         // fixes roundoff error bug that can cause underflow edge case
+    //         afEthToBurn = afEthToBurn > address(this).balance
+    //             ? address(this).balance
+    //             : afEthToBurn;
+    //         unlockedCvxBalance -= cvxToSell;
+    //         afEthUnlockObligations -= afEthToBurn;
+    //         position.afEthWithdrawn += afEthToBurn;
+    //         _burn(msg.sender, afEthToBurn);
+    //         sellCvx(cvxToSell);
 
-            // use call to send eth instead
-            payable(position.owner).transfer(address(this).balance);
-        }
-        nextQueuePositionToProcess = i;
-    }
+    //         // use call to send eth instead
+    //         payable(position.owner).transfer(address(this).balance);
+    //     }
+    //     nextQueuePositionToProcess = i;
+    // }
 }
