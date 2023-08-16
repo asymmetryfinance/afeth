@@ -41,7 +41,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 uint256 previousAfEthOwed = unlockQueues[msg.sender][currentEpoch + epochOffset].afEthOwed;
                 unlockQueues[msg.sender][currentEpoch + epochOffset] = 
                     UnlockQueuePosition({
-                        afEthOwed: previousAfEthOwed + _amount
+                        afEthOwed: previousAfEthOwed + _amount,
+                        priceWhenRequested: price()
                 });
             }
         }
@@ -54,11 +55,36 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
+
         UnlockQueuePosition memory positionToWithdraw =  unlockQueues[msg.sender][currentEpoch];
 
-        require(positionToWithdraw.afEthOwed > 0, "Nothing to withdraw");
+        require(positionToWithdraw.afEthOwed > 0, "Nothing to withdraw");   
 
-        
+        uint256 startingPrice = unlockQueues[msg.sender][currentEpoch].priceWhenRequested;
+        uint256 endingPrice = priceAtEpoch[currentEpoch];
+        uint256 averagePrice = (startingPrice + endingPrice) / 2;
+
+        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+            address(this)
+        );
+        if (unlockable == 0) return;  
+
+        ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
+
+        uint256 cvxToWithdraw = positionToWithdraw.afEthOwed * averagePrice;
+
+        uint256 cvxUnlockObligations = afEthUnlockObligations * averagePrice;
+
+        uint256 cvxAmountToRelock = cvxToWithdraw - cvxUnlockObligations;
+        // relock everything minus unlock queue obligations
+        if(cvxToWithdraw > 0) {
+            IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
+            ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
+        }
+        _burn(address(this), positionToWithdraw.afEthOwed);
+        sellCvx(cvxToWithdraw);
+        // use call to send eth instead
+        payable(msg.sender).transfer(address(this).balance);
     }
 
     // // TODO look into gas costs of this

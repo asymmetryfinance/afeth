@@ -29,18 +29,15 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
 
     struct UnlockQueuePosition {
         uint256 afEthOwed; // how much afEth total is owed for this position
+        uint256 priceWhenRequested; // afEth price when withdraw requested
     }
 
     mapping(address => mapping(uint256 => UnlockQueuePosition)) public unlockQueues;
 
     uint256 public afEthUnlockObligations;
 
-    struct PriceHistoryItem {
-        uint256 price;
-        uint256 timestamp;
-    }
-    mapping(uint256 => PriceHistoryItem) public priceHistory;
-    uint256 priceHistoryCount;
+    // epoch -> price
+    mapping(uint256 => uint256) public priceAtEpoch;
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -153,11 +150,12 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
 
         depositRewards(ethBalanceAfter - ethBalanceBefore);
 
-        priceHistory[priceHistoryCount] = PriceHistoryItem({
-            price: this.price(),
-            timestamp: block.timestamp
-        });
-        priceHistoryCount++;
+
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
+
+        priceAtEpoch[currentEpoch] = this.price();
     }
 
     function claimVotiumRewards(
