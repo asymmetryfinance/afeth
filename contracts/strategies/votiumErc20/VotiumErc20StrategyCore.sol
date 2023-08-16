@@ -38,8 +38,13 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
 
     uint256 public afEthUnlockObligations;
 
-    // epoch -> price
-    mapping(uint256 => uint256) public priceAtEpoch;
+    struct PriceUpdate {
+        uint256 price;
+        uint256 epoch;
+    }
+
+    PriceUpdate[] public priceUpdates;
+
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -59,6 +64,8 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             votiumVoteProxyAddress
         );
         _transferOwnership(msg.sender);
+
+        recordPriceUpdate();
     }
 
     function price() public view returns (uint256) {
@@ -86,6 +93,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        recordPriceUpdate();
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {
@@ -154,13 +162,17 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         uint256 ethBalanceAfter = address(this).balance;
 
         depositRewards(ethBalanceAfter - ethBalanceBefore);
+    }
 
-
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+    function recordPriceUpdate() private {
+                uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
 
-        priceAtEpoch[currentEpoch] = this.price();
+        priceUpdates.push(PriceUpdate({
+            price: price(),
+            epoch: currentEpoch
+        }));
     }
 
     function claimVotiumRewards(
