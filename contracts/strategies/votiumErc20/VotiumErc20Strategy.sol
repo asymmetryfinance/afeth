@@ -6,6 +6,8 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./VotiumErc20StrategyCore.sol";
 
 // TODO rename things from afEth to something else
+import "hardhat/console.sol";
+
 contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function mint() public payable override {
         uint256 priceBefore = price();
@@ -36,7 +38,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             // we found the epoch at which there is enough to unlock this position
             if (totalLockedBalancePlusUnlockable >= afEthUnlockObligations) {
                 (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(currentEpoch);
-                uint256 timeDifference = currentEpochStartingTime - lockedBalances[i].unlockTime;
+                uint256 timeDifference = lockedBalances[i].unlockTime - currentEpochStartingTime;
                 uint256 epochOffset = timeDifference / ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
                 uint256 previousAfEthOwed = unlockQueues[msg.sender][currentEpoch + epochOffset].afEthOwed;
                 unlockQueues[msg.sender][currentEpoch + epochOffset] = 
@@ -46,23 +48,27 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 });
             }
         }
+        console.log('shit6');
        _transfer(msg.sender, address(this), _amount);
     }
 
     function withdraw(
     ) external       override
 {
+        console.log('fuck1');
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
 
         UnlockQueuePosition memory positionToWithdraw =  unlockQueues[msg.sender][currentEpoch];
+        console.log('fuck2');
 
         require(positionToWithdraw.afEthOwed > 0, "Nothing to withdraw");   
 
         uint256 startingPrice = unlockQueues[msg.sender][currentEpoch].priceWhenRequested;
         uint256 endingPrice = priceAtEpoch[currentEpoch];
         uint256 averagePrice = (startingPrice + endingPrice) / 2;
+        console.log('fuck3');
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
@@ -70,18 +76,24 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         if (unlockable == 0) return;  
 
         ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
+        console.log('fuck4 averagePrice', averagePrice);
 
-        uint256 cvxToWithdraw = positionToWithdraw.afEthOwed * averagePrice;
+        uint256 cvxToWithdraw = (positionToWithdraw.afEthOwed * averagePrice) / 1e18;
 
-        uint256 cvxUnlockObligations = afEthUnlockObligations * averagePrice;
+        uint256 cvxUnlockObligations = (afEthUnlockObligations * averagePrice)  / 1e18;
 
         uint256 cvxAmountToRelock = cvxToWithdraw - cvxUnlockObligations;
+        console.log('fuck5', cvxToWithdraw, cvxUnlockObligations);
         // relock everything minus unlock queue obligations
-        if(cvxToWithdraw > 0) {
+        if(cvxAmountToRelock > 0) {
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
         }
+        console.log('fuck6');
+
         _burn(address(this), positionToWithdraw.afEthOwed);
+                console.log('fuck7');
+
         sellCvx(cvxToWithdraw);
         // use call to send eth instead
         payable(msg.sender).transfer(address(this).balance);

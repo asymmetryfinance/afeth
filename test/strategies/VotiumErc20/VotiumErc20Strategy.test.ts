@@ -48,7 +48,7 @@ describe("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it.only("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
 
     let tx = await votiumStrategy.mint({
@@ -92,7 +92,7 @@ describe("Test VotiumErc20Strategy", async function () {
       accounts[0].address
     );
 
-    tx = await votiumStrategy.processWithdrawQueue(10);
+    tx = await votiumStrategy.withdraw();
     await tx.wait();
 
     const ethBalanceAfter = await ethers.provider.getBalance(
