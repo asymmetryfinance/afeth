@@ -4,7 +4,7 @@ import axios from "axios";
 import { BigNumber } from "ethers";
 import { wethAbi } from "../test/abis/wethAbi";
 import { ethers } from "hardhat";
-import { parseBalanceMap } from "../test/merkle_helpers/parse-balance-map";
+import { parseBalanceMap } from "../test/helpers/parse-balance-map";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 
 function writeJSONToFile(obj: any, filePath: string): Promise<void> {
