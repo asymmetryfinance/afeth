@@ -1,5 +1,5 @@
 import { network, ethers, upgrades } from "hardhat";
-import { VotiumErc20Strategy } from "../typechain-types";
+import { VotiumErc20Strategy } from "../../../typechain-types";
 import { expect } from "chai";
 import {
   incrementVlcvxEpoch,
@@ -241,7 +241,10 @@ describe.only("Test VotiumErc20Strategy", async function () {
       unlockEpoch = event.args.unlockEpoch;
     }
     console.log("TRY");
-    const unlock0 = await votiumStrategy.unlockQueues(0, 91);
+    const unlock0 = await votiumStrategy.unlockQueues(
+      accounts[0].address,
+      BigNumber.from(0)
+    );
     // const unlock1 = await votiumStrategy.unlockQueues(1, 91);
 
     console.log({ unlock0 });
