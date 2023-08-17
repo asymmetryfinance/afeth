@@ -231,23 +231,20 @@ describe.only("Test VotiumErc20Strategy", async function () {
     // request withdraw
     let unlockEpoch;
     for (let i = 0; i < stakerAmounts; i++) {
-      const stakerVotiumStrategy = votiumStrategy.connect(accounts[0]);
+      const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
       tx = await stakerVotiumStrategy.requestWithdraw(
-        await stakerVotiumStrategy.balanceOf(accounts[0].address)
+        await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
       const mined = await tx.wait();
-      console.log("requested withdraw", mined.events);
       const event = mined.events.find((e) => e?.event === "WithdrawRequest");
       unlockEpoch = event.args.unlockEpoch;
     }
     console.log("TRY");
-    const unlock0 = await votiumStrategy.unlockQueues(
-      accounts[0].address,
-      BigNumber.from(0)
-    );
-    // const unlock1 = await votiumStrategy.unlockQueues(1, 91);
+    const unlock0 = await votiumStrategy.unlockQueues(accounts[0].address, 91);
+    const unlock1 = await votiumStrategy.unlockQueues(accounts[1].address, 91);
+    const unlock2 = await votiumStrategy.unlockQueues(accounts[2].address, 91);
 
-    console.log({ unlock0 });
+    console.log({ unlock0, unlock1, unlock2 });
 
     for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
