@@ -38,12 +38,9 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
 
     uint256 public afEthUnlockObligations;
 
-    struct PriceUpdate {
-        uint256 price;
-        uint256 epoch;
-    }
-
-    PriceUpdate[] public priceUpdates;
+    // epoch => price
+    mapping(uint256 => uint256) public priceUpdates;
+    uint256 priceUpdateslength;
 
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
@@ -168,11 +165,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
                 uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
-
-        priceUpdates.push(PriceUpdate({
-            price: price(),
-            epoch: currentEpoch
-        }));
+        priceUpdates[currentEpoch] = price();
     }
 
     function claimVotiumRewards(

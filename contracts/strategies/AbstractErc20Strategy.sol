@@ -14,7 +14,6 @@ abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgrade
 
     /// withdraw any unlocked vlcvx
     function withdraw(
-        uint256 epochToWithdraw,
-        uint256 withdrawPriceEpoch
+        uint256 epochToWithdraw
     ) external virtual;
 }

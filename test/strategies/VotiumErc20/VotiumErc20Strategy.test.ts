@@ -2,6 +2,7 @@ import { network, ethers, upgrades } from "hardhat";
 import { VotiumErc20Strategy } from "../typechain-types";
 import { expect } from "chai";
 import {
+  getCurrentEpoch,
   incrementVlcvxEpoch,
   readJSONFromFile,
   updateRewardsMerkleRoot,
@@ -77,7 +78,7 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const priceAfterRewards = await votiumStrategy.price();
 
-    // expect(priceAfterRewards).gt(priceBeforeRewards);
+    expect(priceAfterRewards).gt(priceBeforeRewards);
     // burn
 
     tx = await votiumStrategy.requestWithdraw(
@@ -89,8 +90,7 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const unlockEpoch = event.args.unlockEpoch;
 
-    console.log("unlockEpoch is", JSON.stringify(unlockEpoch, null, 2));
-    console.log("mined is", mined.events[0].args.unlockEpoch);
+    console.log("unlockEpoch is", unlockEpoch);
 
     // pass enough epochs so the burned position is fully unlocked
     for (let i = 0; i < 17; i++) {
@@ -100,8 +100,8 @@ describe("Test VotiumErc20Strategy", async function () {
     const ethBalanceBefore = await ethers.provider.getBalance(
       accounts[0].address
     );
-    console.log("about to withdraw");
-    tx = await votiumStrategy.withdraw(unlockEpoch, 0);
+    console.log("about to withdraw", unlockEpoch);
+    tx = await votiumStrategy.withdraw(unlockEpoch);
     await tx.wait();
 
     const ethBalanceAfter = await ethers.provider.getBalance(

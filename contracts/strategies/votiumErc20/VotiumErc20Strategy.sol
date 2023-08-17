@@ -61,8 +61,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     }
 
     function withdraw(
-        uint256 epochToWithdraw,
-        uint256 withdrawPriceEpochIndex
+        uint256 epochToWithdraw
     ) external override
 {
         UnlockQueuePosition memory positionToWithdraw =  unlockQueues[msg.sender][epochToWithdraw];
@@ -71,21 +70,15 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
         uint256 startingPrice = unlockQueues[msg.sender][epochToWithdraw].priceWhenRequested;
 
-        PriceUpdate memory withdrawPriceUpdate = priceUpdates[withdrawPriceEpochIndex];
-
-        if(withdrawPriceEpochIndex < priceUpdates.length - 1) {
-            PriceUpdate memory withdrawPriceUpdateCheck = priceUpdates[withdrawPriceEpochIndex + 1];
-            require(withdrawPriceUpdateCheck.epoch > epochToWithdraw, "withdrawPriceUpdate > currentEpoch failed");            
+        uint256 endingPrice;
+        for(uint256 i=epochToWithdraw;i>0;i--) {
+            if(priceUpdates[i] != 0) {
+                endingPrice = priceUpdates[i];
+                break;
+            }
         }
 
-        require(withdrawPriceUpdate.epoch <= epochToWithdraw, "withdrawPriceEpoch <= currentEpoch failed");
-
-       uint256 endingPrice = withdrawPriceUpdate.price;
-
-        console.log('endingPrice at epoch', epochToWithdraw, endingPrice);
-        console.log('startingPrice', startingPrice);
         uint256 averagePrice = (startingPrice + endingPrice) / 2;
-        console.log('fuck3', averagePrice);
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
