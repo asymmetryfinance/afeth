@@ -46,8 +46,7 @@ export async function votiumSellRewards(
   ) as VotiumErc20Strategy;
   if (swapsDataOverride) {
     const tx = await votiumStrategy.applyRewards(swapsDataOverride);
-    const mined = await tx.wait();
-    console.log("votiumSellRewards", mined.transactionHash);
+    await tx.wait();
     return;
   }
 
@@ -55,6 +54,5 @@ export async function votiumSellRewards(
   const tokenAmounts = proofs.map((p: any[]) => p[2]);
   const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
   const tx = await votiumStrategy.applyRewards(swapsData);
-  const mined = await tx.wait();
-  console.log("votiumSellRewards", mined.transactionHash);
+   await tx.wait();
 }

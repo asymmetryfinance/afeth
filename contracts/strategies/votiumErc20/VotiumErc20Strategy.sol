@@ -18,10 +18,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function mint() public payable override {
         uint256 priceBefore = price();
         uint256 cvxAmount = buyCvx(msg.value);
-        console.log("CVX", cvxAmount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        console.log("priceBefore", priceBefore);
         _mint(msg.sender, ((cvxAmount * 1e18) / priceBefore));
     }
 
@@ -42,7 +40,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         afEthUnlockObligations += _amount;
 
         uint256 totalLockedBalancePlusUnlockable = unlockable;
-        console.log("you", lockedBalances.length);
 
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
@@ -55,7 +52,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 uint256 epochOffset = timeDifference /
                     ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
                 uint256 withdrawEpoch = currentEpoch + epochOffset;
-                console.log("withdrawEpoch", withdrawEpoch);
                 uint256 previousAfEthOwed = unlockQueues[msg.sender][
                     withdrawEpoch
                 ].afEthOwed;
@@ -73,7 +69,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         UnlockQueuePosition memory positionToWithdraw = unlockQueues[
             msg.sender
         ][epochToWithdraw];
-        console.log("position", positionToWithdraw.afEthOwed);
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
@@ -85,6 +80,11 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         );
 
         require(positionToWithdraw.afEthOwed > 0, "Nothing to withdraw");
+        console.log("afEthUnlockObligations", afEthUnlockObligations);
+        console.log(
+            "positionToWithdraw.afEthOwed",
+            positionToWithdraw.afEthOwed
+        );
 
         uint256 startingPrice = unlockQueues[msg.sender][epochToWithdraw]
             .priceWhenRequested;
@@ -99,14 +99,14 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
         uint256 averagePrice = (startingPrice + endingPrice) / 2;
         console.log("averagePrice", averagePrice);
-        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
-            address(this)
-        );
+        (uint256 total, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS)
+            .lockedBalances(address(this));
         console.log("unlockable", unlockable);
+        console.log("total", total);
 
-        require(unlockable > 0, "nothing unlockable");
-
-        ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
+        // require(unlockable > 0, "nothing unlockable");
+        if (unlockable > 0)
+            ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
 
         uint256 cvxToWithdraw = (positionToWithdraw.afEthOwed * averagePrice) /
             1e18;
@@ -114,8 +114,17 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
         uint256 cvxUnlockObligations = (afEthUnlockObligations * averagePrice) /
             1e18;
+        afEthUnlockObligations -= positionToWithdraw.afEthOwed;
 
-        uint256 cvxAmountToRelock = cvxToWithdraw - cvxUnlockObligations;
+        console.log("afEthUnlockObligations", afEthUnlockObligations);
+        console.log("cvxUnlockObligations", cvxUnlockObligations);
+
+        uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        console.log("cvxBalance", cvxBalance);
+
+        uint256 cvxAmountToRelock = cvxBalance - cvxUnlockObligations;
+        console.log("cvxAmountToRelock", cvxAmountToRelock);
+
         // relock everything minus unlock queue obligations
         if (cvxAmountToRelock > 0) {
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
