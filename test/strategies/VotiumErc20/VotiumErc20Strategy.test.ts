@@ -242,7 +242,7 @@ describe("Test VotiumErc20Strategy", async function () {
     console.log(
       "Totalrewards",
       BigNumber.from(priceAfterRewards).sub(priceBeforeRewards)
-    ); // TODO: .5 ETH in rewards for a total of 3 ETH staked?
+    ); // TODO: Price is being set to .5
 
     // request withdraw for each account
     let unlockEpoch;
