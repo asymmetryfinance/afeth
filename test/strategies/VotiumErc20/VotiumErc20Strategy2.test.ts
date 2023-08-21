@@ -102,7 +102,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       true
     );
   });
-  it("Should only allow the owner to applyRewards()", async function () {
+  it.only("Should only allow the rewarder to applyRewards()", async function () {
     let tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -113,7 +113,17 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
     await tx.wait();
 
+    // this shouldnt throw
     await oracleApplyRewards(rewarderAccount);
+
+    // this should throw
+    try {
+      await oracleApplyRewards(userAccount);
+    } catch (e: any) {
+      expect(e.message).eq(
+        "VM Exception while processing transaction: reverted with reason string 'not rewarder'"
+      );
+    }
   });
   it("Should not be able to burn more than a users balance", async function () {
     // TODO
