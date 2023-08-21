@@ -4,6 +4,8 @@ import axios from "axios";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { wethAbi } from "../test/abis/wethAbi";
 import { BigNumber } from "ethers";
+import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
+import { parseBalanceMap } from "../test/helpers/parse-balance-map";
 
 export const generate0xSwapData = async (
   tokenAddresses: string[],
@@ -127,4 +129,75 @@ export async function votiumSellRewards(
   const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
   const tx = await votiumStrategy.applyRewards(swapsData);
   await tx.wait();
+}
+
+const generateMockMerkleData = async (
+  recipients: string[],
+  divisibility: BigNumber
+) => {
+  const votiumRewardsContractAddress =
+    "0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A";
+  const { data } = await axios.get(
+    "https://raw.githubusercontent.com/oo-00/Votium/main/merkle/activeTokens.json"
+  );
+
+  const tokenAddresses = data.map((d: any) => d.value).slice(0, 6);
+
+  console.log('tokenAddresses length is', tokenAddresses.length);
+  const accounts = await ethers.getSigners();
+
+  const balances: any[] = [];
+  for (let i = 0; i < tokenAddresses.length; i++) {
+    const contract = new ethers.Contract(
+      tokenAddresses[i],
+      ERC20.abi,
+      accounts[0]
+    );
+    const balanceBeforeClaim = await contract.balanceOf(
+      votiumRewardsContractAddress
+    );
+    console.log('pushing balance for', tokenAddresses[i], balanceBeforeClaim, i);
+    balances.push(balanceBeforeClaim);
+  }
+  const proofData = {} as any;
+  for (let i = 0; i < tokenAddresses.length; i++) {
+    const recipientAmounts = {} as any;
+    for (let j = 0; j < recipients.length; j++)
+      recipientAmounts[recipients[j]] = balances[i]
+        .div(recipients.length)
+        .div(divisibility); // this means after 10 claims it will be out of tokens
+
+    console.log('calculating proofData for', tokenAddresses[i], i);
+    proofData[tokenAddresses[i]] = await parseBalanceMap(recipientAmounts);
+  }
+
+  return proofData;
+};
+
+export async function generateMockProofsAndSwaps(
+  recipients: string[],
+  strategyAddress: string,
+  divisibility: BigNumber
+) {
+  const proofData = await generateMockMerkleData(recipients, divisibility);
+  const tokenAddresses = Object.keys(proofData);
+
+  const claimProofs = tokenAddresses.map((_: any, i: number) => {
+    const pd = proofData[tokenAddresses[i]];
+    return [
+      tokenAddresses[i],
+      pd.claims[strategyAddress].index,
+      pd.claims[strategyAddress].amount,
+      pd.claims[strategyAddress].proof,
+    ];
+  });
+
+  const merkleRoots = tokenAddresses.map(
+    (ta: string) => proofData[ta].merkleRoot
+  );
+
+  const tokenAmounts = claimProofs.map((cp: any[]) => cp[2]);
+  const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
+
+  return { claimProofs, swapsData, merkleRoots };
 }
