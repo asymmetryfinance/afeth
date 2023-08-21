@@ -12,12 +12,15 @@ import {
   votiumClaimRewards,
   votiumSellRewards,
 } from "../../../scripts/applyVotiumRewardsHelpers";
-import { within1Percent, within1Pip } from "../../helpers/helpers";
+import { within1Pip } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: SignerWithAddress[];
+  let rewarderAccount: SignerWithAddress;
+  let userAccount: SignerWithAddress;
+  let ownerAccount: SignerWithAddress;
 
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -32,13 +35,17 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       ],
     });
     accounts = await ethers.getSigners();
+    userAccount = accounts[0];
+    rewarderAccount = accounts[1];
+    ownerAccount = accounts[2];
+
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumErc20Strategy"
     );
-    votiumStrategy = (await upgrades.deployProxy(
-      votiumStrategyFactory,
-      []
-    )) as VotiumErc20Strategy;
+    votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
+      ownerAccount.address,
+      rewarderAccount.address,
+    ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
@@ -52,14 +59,14 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
+  it("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
     let tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
 
     tx = await votiumStrategy.requestWithdraw(
-      await votiumStrategy.balanceOf(accounts[0].address)
+      await votiumStrategy.balanceOf(userAccount.address)
     );
     const mined1 = await tx.wait();
     const totalGasFees1 = mined1.gasUsed.mul(mined1.effectiveGasPrice);
@@ -77,7 +84,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     }
 
     const ethBalanceBefore = await ethers.provider.getBalance(
-      accounts[0].address
+      userAccount.address
     );
 
     tx = await votiumStrategy.withdraw(unlockEpoch);
@@ -88,7 +95,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const totalGasFees = totalGasFees1.add(totalGasFees2);
 
     const ethBalanceAfter = await ethers.provider.getBalance(
-      accounts[0].address
+      userAccount.address
     );
 
     expect(within1Pip(ethBalanceBefore, ethBalanceAfter.add(totalGasFees))).eq(
@@ -96,7 +103,17 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
   });
   it("Should only allow the owner to applyRewards()", async function () {
-    // TODO
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(userAccount.address)
+    );
+    await tx.wait();
+
+    await oracleApplyRewards(rewarderAccount);
   });
   it("Should not be able to burn more than a users balance", async function () {
     // TODO
@@ -116,4 +133,23 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
     // TODO
   });
+
+  const oracleApplyRewards = async (account: SignerWithAddress) => {
+    const testData = await readJSONFromFile("./scripts/testData.json");
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+    await votiumClaimRewards(
+      account,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      account,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
+  };
 });

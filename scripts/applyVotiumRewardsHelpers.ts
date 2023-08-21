@@ -2,18 +2,22 @@ import { ethers } from "hardhat";
 import { VotiumErc20Strategy } from "../typechain-types";
 import axios from "axios";
 import { generate0xSwapData } from "./generateTestData";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 // Claims all rewards using public votium merkle proofs
 // or pass in proofs to override
-export async function votiumClaimRewards(strategyAddress: string, proofsOverride?: any): Promise<any> {
-  const accounts = await ethers.getSigners();
+export async function votiumClaimRewards(
+  account: SignerWithAddress,
+  strategyAddress: string,
+  proofsOverride?: any
+): Promise<any> {
   const VotiumInterface = (
     await ethers.getContractFactory("VotiumErc20Strategy")
   ).interface as any;
   const votiumStrategy = new ethers.Contract(
     strategyAddress,
     VotiumInterface,
-    accounts[0]
+    account
   ) as VotiumErc20Strategy;
 
   let proofs: any;
@@ -31,18 +35,18 @@ export async function votiumClaimRewards(strategyAddress: string, proofsOverride
 // Sell rewards that were claimed by the given proofs
 // or override with swapsDataOverride
 export async function votiumSellRewards(
+  account: SignerWithAddress,
   strategyAddress: string,
   proofs: any,
   swapsDataOverride?: any
 ) {
-  const accounts = await ethers.getSigners();
   const VotiumInterface = (
     await ethers.getContractFactory("VotiumErc20Strategy")
   ).interface as any;
   const votiumStrategy = new ethers.Contract(
     strategyAddress,
     VotiumInterface,
-    accounts[0]
+    account
   ) as VotiumErc20Strategy;
   if (swapsDataOverride) {
     const tx = await votiumStrategy.applyRewards(swapsDataOverride);
@@ -54,5 +58,5 @@ export async function votiumSellRewards(
   const tokenAmounts = proofs.map((p: any[]) => p[2]);
   const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
   const tx = await votiumStrategy.applyRewards(swapsData);
-   await tx.wait();
+  await tx.wait();
 }
