@@ -127,8 +127,6 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
-        console.log('cvx amount in: ', _cvxAmountIn);
-        console.log('cvx balance: ', IERC20(CVX_ADDRESS).balanceOf(address(this)));
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
@@ -158,7 +156,6 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             }
         }
         uint256 ethBalanceAfter = address(this).balance;
-
         depositRewards(ethBalanceAfter - ethBalanceBefore);
     }
 

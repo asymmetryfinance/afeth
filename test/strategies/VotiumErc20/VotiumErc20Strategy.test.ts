@@ -213,7 +213,7 @@ describe("Test VotiumErc20Strategy", async function () {
     for (let i = 1; i <= stakerAmounts; i++) {
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
       tx = await stakerVotiumStrategy.mint({
-        value: ethers.utils.parseEther("1"),
+        value: ethers.utils.parseEther("1").div(i),
       });
       await tx.wait();
       const afEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
@@ -239,10 +239,6 @@ describe("Test VotiumErc20Strategy", async function () {
     const priceAfterRewards = await votiumStrategy.price();
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
-    console.log(
-      "Totalrewards",
-      BigNumber.from(priceAfterRewards).sub(priceBeforeRewards)
-    ); // TODO: Price is being set to .5
 
     // request withdraw for each account
     let unlockEpoch;
@@ -280,6 +276,7 @@ describe("Test VotiumErc20Strategy", async function () {
       const ethBalanceAfter = await ethers.provider.getBalance(
         accounts[i].address
       );
+
       balancesAfter.push(ethBalanceAfter);
       // balance after fully withdrawing is higher
       expect(ethBalanceAfter).gt(ethBalanceBefore);
