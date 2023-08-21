@@ -78,8 +78,11 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             epochToWithdraw <= currentEpoch,
             "Can't withdraw from future epoch"
         );
-
         require(positionToWithdraw.afEthOwed > 0, "Nothing to withdraw");
+        require(
+            positionToWithdraw.afEthOwed <= afEthUnlockObligations,
+            "Invalid amount"
+        );
 
         uint256 startingPrice = unlockQueues[msg.sender][epochToWithdraw]
             .priceWhenRequested;
@@ -93,7 +96,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         }
 
         uint256 averagePrice = (startingPrice + endingPrice) / 2;
-        console.log("averagePrice", averagePrice);
         (uint256 total, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS)
             .lockedBalances(address(this));
 
@@ -102,7 +104,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
         uint256 cvxToWithdraw = (positionToWithdraw.afEthOwed * averagePrice) /
             1e18;
-        console.log("cvxToWithdraw", cvxToWithdraw);
         uint256 cvxUnlockObligations = (afEthUnlockObligations * averagePrice) /
             1e18;
         afEthUnlockObligations -= positionToWithdraw.afEthOwed;
