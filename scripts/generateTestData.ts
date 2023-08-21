@@ -6,6 +6,7 @@ import { wethAbi } from "../test/abis/wethAbi";
 import { ethers } from "hardhat";
 import { parseBalanceMap } from "../test/helpers/parse-balance-map";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
+import { generate0xSwapData } from "./applyVotiumRewardsHelpers";
 
 function writeJSONToFile(obj: any, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -54,72 +55,6 @@ const generateMockMerkleData = async (recipients: string[]) => {
   return proofData;
 };
 
-export const generate0xSwapData = async (
-  tokenAddresses: string[],
-  tokenAmounts: string[]
-) => {
-  const accounts = await ethers.getSigners();
-
-  const swapsData = [];
-  // swap reward tokens for eth
-  for (let i = 0; i < tokenAddresses.length; i++) {
-    const sellToken = tokenAddresses[i];
-    const buyToken = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-
-    // we use weth abi because we sometimes need to call withdraw on weth but its otherwise an erc20 abi
-    const tokenContract = new ethers.Contract(
-      tokenAddresses[i],
-      wethAbi,
-      accounts[0]
-    );
-
-    const sellAmount = BigNumber.from(tokenAmounts[i]);
-
-    // special case unwrap weth
-    if (
-      sellToken.toLowerCase() ===
-      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".toLowerCase()
-    ) {
-      const data = await tokenContract.populateTransaction.withdraw(sellAmount);
-      const newData = {
-        sellToken,
-        spender: tokenContract.address,
-        swapTarget: tokenContract.address,
-        swapCallData: data.data,
-      };
-      swapsData.push(newData);
-    } else {
-      let result;
-      // TODO do we want slippage protection or does it not matter and we just dump all the tokens anyway?
-      try {
-        result = await axios.get(
-          `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${sellAmount}`,
-          {
-            headers: {
-              "0x-api-key":
-                process.env.API_KEY_0X ||
-                "35aa607c-1e98-4404-ad87-4bed10a538ae",
-            },
-          }
-        );
-
-        const newData = {
-          sellToken,
-          spender: result.data.allowanceTarget,
-          swapTarget: result.data.to,
-          swapCallData: result.data.data,
-        };
-
-        swapsData.push(newData);
-      } catch (e) {
-        console.log("0x doesnt support", i, sellToken, buyToken, sellAmount, e);
-      }
-    }
-    // prevent 429s
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  return swapsData;
-};
 async function main() {
   // address of VotiumStrategy contract that will be used in the tests
   const votiumStrategyAddress = "0x38628490c3043E5D0bbB26d5a0a62fC77342e9d5";
@@ -160,7 +95,9 @@ async function main() {
 }
 
 main()
-  .then(() => process.exit(0))
+  .then(() => {
+    return process.exit(0);
+  })
   .catch((error) => {
     console.error(error);
     process.exit(1);

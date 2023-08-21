@@ -14,7 +14,7 @@ import {
 import { within1Pip } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe.only("Test VotiumErc20Strategy (Part 2)", async function () {
+describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
@@ -124,7 +124,7 @@ describe.only("Test VotiumErc20Strategy (Part 2)", async function () {
       );
     }
   });
-  it.only("Should not be able to requestWithdraw for more than a users balance", async function () {
+  it("Should not be able to requestWithdraw for more than a users balance", async function () {
     const tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
