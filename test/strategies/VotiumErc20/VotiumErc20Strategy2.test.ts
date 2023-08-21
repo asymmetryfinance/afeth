@@ -52,7 +52,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should withdraw ~original deposit if applyRewards() is never called", async function () {
+  it.only("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
     let tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -94,12 +94,6 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(within1Pip(ethBalanceBefore, ethBalanceAfter.add(totalGasFees))).eq(
       true
     );
-  });
-  it("Should allow a user to burn and fully withdraw from the queue without needing the owner to ever call anything", async function () {
-    // TODO
-  });
-  it("Should process multiple queue positions in a single call if there are enough unlockable cvx built up", async function () {
-    // TODO
   });
   it("Should only allow the owner to applyRewards()", async function () {
     // TODO
