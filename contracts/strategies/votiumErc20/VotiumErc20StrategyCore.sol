@@ -12,6 +12,8 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
+import "hardhat/console.sol";
+
 contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -28,17 +30,19 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     }
 
     struct UnlockQueuePosition {
-        address owner; // address of who owns the position
         uint256 afEthOwed; // how much afEth total is owed for this position
-        uint256 afEthWithdrawn; // how much of whats owed has been withdrawn
+        uint256 priceWhenRequested; // afEth price when withdraw requested
     }
 
-    uint256 public queueSize;
-    uint256 public nextQueuePositionToProcess;
-    mapping(uint => UnlockQueuePosition) public unlockQueue;
+    mapping(address => mapping(uint256 => UnlockQueuePosition)) public unlockQueues;
 
     uint256 public afEthUnlockObligations;
-    
+
+    // epoch => price
+    mapping(uint256 => uint256) public priceUpdates;
+    uint256 priceUpdateslength;
+
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -57,7 +61,20 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             votiumVoteProxyAddress
         );
         _transferOwnership(msg.sender);
+
+        recordPriceUpdate();
     }
+
+    function price() public view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (supply == 0) return 1e18;
+        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+            address(this)
+        );
+        if (total == 0) return 1e18;
+        return (total * 1e18) / supply;
+    }
+
 
     /// apply rewards, price goes up
     function claimRewards(
@@ -69,10 +86,12 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
 
     /// anyone can deposit eth to make price go up
     /// useful if we need to manually sell rewards ourselves
-    function depositRewards() public payable {
-        uint256 cvxAmount = buyCvx(msg.value);
+    // TODO: anyone can lock all eth in the contract, maybe we should make this onlyOwner? Maybe ok?
+    function depositRewards(uint256 _amount) public payable {
+        uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        recordPriceUpdate();
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {
@@ -107,6 +126,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         // cvx -> eth
         uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
+
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
@@ -136,9 +156,14 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
             }
         }
         uint256 ethBalanceAfter = address(this).balance;
-        uint256 cvxAmount = buyCvx(ethBalanceAfter - ethBalanceBefore);
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        depositRewards(ethBalanceAfter - ethBalanceBefore);
+    }
+
+    function recordPriceUpdate() private {
+                uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
+        priceUpdates[currentEpoch] = price();
     }
 
     function claimVotiumRewards(
