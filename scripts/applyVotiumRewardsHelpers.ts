@@ -152,7 +152,8 @@ const generateMockMerkleData = async (
           "0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F".toLowerCase() && // electronic dollar token
         d.toLowerCase() !==
           "0x402f878bdd1f5c66fdaf0fababcf74741b68ac36".toLowerCase() && // stake dao fxs
-        d.toLowerCase() !== "0xa2E3356610840701BDf5611a53974510Ae27E2e1".toLowerCase() // Wrapped Binance Beacon ETH
+        d.toLowerCase() !==
+          "0xa2E3356610840701BDf5611a53974510Ae27E2e1".toLowerCase() // Wrapped Binance Beacon ETH
     );
   const accounts = await ethers.getSigners();
 
