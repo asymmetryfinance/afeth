@@ -458,12 +458,12 @@ describe("Test VotiumErc20Strategy", async function () {
     const priceBeforeRewards = await votiumStrategy.price();
 
     await votiumClaimRewards(
-      accounts[0],
+      rewarderAccount,
       votiumStrategy.address,
       testData.claimProofs
     );
     await votiumSellRewards(
-      accounts[0],
+      rewarderAccount,
       votiumStrategy.address,
       [],
       testData.swapsData

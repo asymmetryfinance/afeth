@@ -7,7 +7,6 @@ import {
   readJSONFromFile,
   updateRewardsMerkleRoot,
 } from "./VotiumTestHelpers";
-import { BigNumber, utils } from "ethers";
 import {
   votiumClaimRewards,
   votiumSellRewards,
@@ -102,7 +101,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       true
     );
   });
-  it("Should only allow the owner to applyRewards()", async function () {
+  it("Should only allow the rewarder to applyRewards()", async function () {
     let tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -113,9 +112,33 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
     await tx.wait();
 
+    // this shouldnt throw
     await oracleApplyRewards(rewarderAccount);
+
+    // this should throw
+    try {
+      await oracleApplyRewards(userAccount);
+    } catch (e: any) {
+      expect(e.message).eq(
+        "VM Exception while processing transaction: reverted with reason string 'not rewarder'"
+      );
+    }
   });
-  it("Should not be able to burn more than a users balance", async function () {
+  it("Should not be able to requestWithdraw for more than a users balance", async function () {
+    const tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const tooMuch = (await votiumStrategy.balanceOf(userAccount.address)).add(
+      1
+    );
+
+    await expect(votiumStrategy.requestWithdraw(tooMuch)).to.be.revertedWith(
+      "ERC20: transfer amount exceeds balance"
+    );
+  });
+  it("Should decrease users balance when requestWithdraw is called", async function () {
     // TODO
   });
   it("Should be able to millions of dollars in rewards with minimal slippage", async function () {
