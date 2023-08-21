@@ -2,19 +2,20 @@ import { network, ethers, upgrades } from "hardhat";
 import { VotiumErc20Strategy } from "../../../typechain-types";
 import { expect } from "chai";
 import {
+  getCurrentEpoch,
   incrementVlcvxEpoch,
   readJSONFromFile,
   updateRewardsMerkleRoot,
 } from "./VotiumTestHelpers";
-import { BigNumber } from "ethers";
+import { BigNumber, utils } from "ethers";
 import {
   votiumClaimRewards,
   votiumSellRewards,
 } from "../../../scripts/applyVotiumRewardsHelpers";
-import { within1Percent } from "../../helpers/helpers";
+import { within1Percent, within1Pip } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe("Test VotiumErc20Strategy", async function () {
+describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: SignerWithAddress[];
 
@@ -51,8 +52,48 @@ describe("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should always receive greater than or equal to the original cvx deposit value, even if applyRewards() is never called", async function () {
-    // TODO
+  it.only("Should withdraw ~original deposit if applyRewards() is never called", async function () {
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+    const mined1 = await tx.wait();
+    const totalGasFees1 = mined1.gasUsed.mul(mined1.effectiveGasPrice);
+
+    const event = mined1?.events?.find((e) => e?.event === "WithdrawRequest");
+
+    const unlockEpoch = event?.args?.unlockEpoch;
+
+    const currentEpoch = await getCurrentEpoch();
+
+    const epochsUntilUnlock = unlockEpoch.sub(currentEpoch);
+
+    for (let i = 0; i < epochsUntilUnlock; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const ethBalanceBefore = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    tx = await votiumStrategy.withdraw(unlockEpoch);
+    const mined2 = await tx.wait();
+
+    const totalGasFees2 = mined2.gasUsed.mul(mined2.effectiveGasPrice);
+
+    const totalGasFees = totalGasFees1.add(totalGasFees2);
+
+    const ethBalanceAfter = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    expect(within1Pip(ethBalanceBefore, ethBalanceAfter.add(totalGasFees))).eq(
+      true
+    );
   });
   it("Should allow a user to burn and fully withdraw from the queue without needing the owner to ever call anything", async function () {
     // TODO

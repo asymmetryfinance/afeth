@@ -15,3 +15,8 @@ export const getDifferenceRatio = (amount1: BigNumber, amount2: BigNumber) => {
     : amount2.sub(amount1);
   return amount1.div(difference);
 };
+
+export const within1Pip = (amount1: BigNumber, amount2: BigNumber) => {
+  if (amount1.eq(amount2)) return true;
+  return getDifferenceRatio(amount1, amount2).gt("10000");
+};
