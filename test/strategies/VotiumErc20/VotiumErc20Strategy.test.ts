@@ -17,6 +17,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 describe("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: SignerWithAddress[];
+  let rewarderAccount: SignerWithAddress;
 
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -34,10 +35,11 @@ describe("Test VotiumErc20Strategy", async function () {
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumErc20Strategy"
     );
-    votiumStrategy = (await upgrades.deployProxy(
-      votiumStrategyFactory,
-      []
-    )) as VotiumErc20Strategy;
+    rewarderAccount = accounts[2];
+    votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
+      accounts[0].address,
+      rewarderAccount.address,
+    ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
@@ -75,8 +77,17 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const priceBeforeRewards = await votiumStrategy.price();
 
-    await votiumClaimRewards(votiumStrategy.address, testData.claimProofs);
-    await votiumSellRewards(votiumStrategy.address, [], testData.swapsData);
+    await votiumClaimRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
 
     const priceAfterRewards = await votiumStrategy.price();
 
@@ -139,8 +150,17 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const priceBeforeRewards = await votiumStrategy.price();
 
-    await votiumClaimRewards(votiumStrategy.address, testData.claimProofs);
-    await votiumSellRewards(votiumStrategy.address, [], testData.swapsData);
+    await votiumClaimRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
 
     const priceAfterRewards = await votiumStrategy.price();
 
@@ -204,7 +224,7 @@ describe("Test VotiumErc20Strategy", async function () {
   it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
     // TODO
   });
-  it.only("Should show an account with twice as many tokens receive twice as many rewards as another", async function () {
+  it("Should show an account with twice as many tokens receive twice as many rewards as another", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const stakerAmounts = 2;
 
@@ -233,8 +253,17 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const priceBeforeRewards = await votiumStrategy.price();
 
-    await votiumClaimRewards(votiumStrategy.address, testData.claimProofs);
-    await votiumSellRewards(votiumStrategy.address, [], testData.swapsData);
+    await votiumClaimRewards(
+      accounts[0],
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      accounts[0],
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
 
     const priceAfterRewards = await votiumStrategy.price();
 
