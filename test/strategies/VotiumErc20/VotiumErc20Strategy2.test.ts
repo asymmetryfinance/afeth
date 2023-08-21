@@ -124,7 +124,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       );
     }
   });
-  it("Should not be able to requestWithdraw for more than a users balance", async function () {
+  it("Should not be able to requestWithdraw() for more than a users balance", async function () {
     const tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -138,10 +138,23 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       "ERC20: transfer amount exceeds balance"
     );
   });
-  it("Should decrease users balance when requestWithdraw is called", async function () {
-    // TODO
+  it("Should decrease users balance when requestWithdraw() is called", async function () {
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const balanceBefore = await votiumStrategy.balanceOf(userAccount.address);
+
+    const halfBalance = balanceBefore.div(2);
+    tx = await votiumStrategy.requestWithdraw(halfBalance);
+    await tx.wait();
+
+    const balanceAfter = await votiumStrategy.balanceOf(userAccount.address);
+
+    expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
-  it("Should be able to millions of dollars in rewards with minimal slippage", async function () {
+  it("Should be able to sell millions of dollars in rewards with minimal slippage", async function () {
     // TODO
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
