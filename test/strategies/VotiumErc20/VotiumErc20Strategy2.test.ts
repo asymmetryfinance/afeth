@@ -13,6 +13,7 @@ import {
 } from "../../../scripts/applyVotiumRewardsHelpers";
 import { within1Pip } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { BigNumber } from "ethers";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
@@ -154,8 +155,54 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
-  it("Should be able to sell millions of dollars in rewards with minimal slippage", async function () {
-    // TODO
+  it("Should be able to sell & apply millions of dollars in rewards with minimal slippage", async function () {
+    const startingTotalSupply = await votiumStrategy.totalSupply();
+
+    const tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
+    const totalSupply1 = await votiumStrategy.totalSupply();
+
+    expect(totalSupply1).eq(
+      BigNumber.from(afEthBalance1).add(startingTotalSupply)
+    );
+
+    const testData = await readJSONFromFile("./scripts/testData.json");
+
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    await votiumClaimRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+
+    const priceBefore = await votiumStrategy.price();
+
+    await votiumSellRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
+
+    const priceAfter = await votiumStrategy.price();
+
+    console.log(
+      "priceBefore",
+      ethers.utils.formatEther(priceBefore)
+    );
+    console.log(
+      "priceAfter",
+      ethers.utils.formatEther(priceAfter)
+    );
+    // TODO show that selling small amount of rewards has same slippage as large amount
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
     // TODO
