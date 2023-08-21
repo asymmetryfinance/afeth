@@ -17,6 +17,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     function mint() public payable override {
         uint256 priceBefore = price();
+        console.log("priceBefore", priceBefore);
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
@@ -93,16 +94,16 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         }
 
         uint256 averagePrice = (startingPrice + endingPrice) / 2;
+        console.log("averagePrice", averagePrice);
         (uint256 total, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS)
             .lockedBalances(address(this));
 
-        // require(unlockable > 0, "nothing unlockable");
         if (unlockable > 0)
             ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
 
         uint256 cvxToWithdraw = (positionToWithdraw.afEthOwed * averagePrice) /
             1e18;
-
+        console.log("cvxToWithdraw", cvxToWithdraw);
         uint256 cvxUnlockObligations = (afEthUnlockObligations * averagePrice) /
             1e18;
         afEthUnlockObligations -= positionToWithdraw.afEthOwed;
