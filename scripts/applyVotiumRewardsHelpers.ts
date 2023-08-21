@@ -19,6 +19,8 @@ export const generate0xSwapData = async (
     const sellToken = tokenAddresses[i];
     const buyToken = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
+    console.log('generating swapData for', sellToken, i)
+
     // we use weth abi because we sometimes need to call withdraw on weth but its otherwise an erc20 abi
     const tokenContract = new ethers.Contract(
       tokenAddresses[i],
@@ -141,8 +143,9 @@ const generateMockMerkleData = async (
     "https://raw.githubusercontent.com/oo-00/Votium/main/merkle/activeTokens.json"
   );
 
-  // we only generate mock data for the first 5 tokens to show because the tests are very slow
-  const tokenAddresses = data.map((d: any) => d.value).slice(0, 5);
+  const tokenAddresses = data.map((d: any) => d.value).slice(0, 6);
+
+  console.log('tokenAddresses length is', tokenAddresses.length);
   const accounts = await ethers.getSigners();
 
   const balances: any[] = [];
@@ -155,6 +158,7 @@ const generateMockMerkleData = async (
     const balanceBeforeClaim = await contract.balanceOf(
       votiumRewardsContractAddress
     );
+    console.log('pushing balance for', tokenAddresses[i], balanceBeforeClaim, i);
     balances.push(balanceBeforeClaim);
   }
   const proofData = {} as any;
@@ -164,6 +168,8 @@ const generateMockMerkleData = async (
       recipientAmounts[recipients[j]] = balances[i]
         .div(recipients.length)
         .div(divisibility); // this means after 10 claims it will be out of tokens
+
+    console.log('calculating proofData for', tokenAddresses[i], i);
     proofData[tokenAddresses[i]] = await parseBalanceMap(recipientAmounts);
   }
 

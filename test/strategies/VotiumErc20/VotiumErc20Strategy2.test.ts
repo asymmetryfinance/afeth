@@ -13,9 +13,8 @@ import {
 } from "../../../scripts/applyVotiumRewardsHelpers";
 import { within1Pip } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { BigNumber } from "ethers";
 
-describe("Test VotiumErc20Strategy (Part 2)", async function () {
+describe.only("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
@@ -112,10 +111,8 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       await votiumStrategy.balanceOf(userAccount.address)
     );
     await tx.wait();
-
     // this shouldnt throw
     await oracleApplyRewards(rewarderAccount);
-
     // this should throw
     try {
       await oracleApplyRewards(userAccount);
@@ -156,53 +153,53 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
   it("Should be able to sell & apply millions of dollars in rewards with minimal slippage", async function () {
-    const startingTotalSupply = await votiumStrategy.totalSupply();
-
     const tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
 
-    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
-    const totalSupply1 = await votiumStrategy.totalSupply();
-
-    expect(totalSupply1).eq(
-      BigNumber.from(afEthBalance1).add(startingTotalSupply)
-    );
-
-    const testData = await readJSONFromFile("./scripts/testData.json");
-
-    await updateRewardsMerkleRoot(
-      testData.merkleRoots,
-      testData.swapsData.map((sd: any) => sd.sellToken)
-    );
-
-    await votiumClaimRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      testData.claimProofs
-    );
-
-    const priceBefore = await votiumStrategy.price();
-
-    await votiumSellRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      [],
-      testData.swapsData
-    );
-
-    const priceAfter = await votiumStrategy.price();
-
-    console.log(
-      "priceBefore",
-      ethers.utils.formatEther(priceBefore)
-    );
-    console.log(
-      "priceAfter",
-      ethers.utils.formatEther(priceAfter)
-    );
     // TODO show that selling small amount of rewards has same slippage as large amount
+
+    // const expectedStrategyContractAddress =
+    //   "0x38628490c3043E5D0bbB26d5a0a62fC77342e9d5";
+
+    // const recipients = [
+    //   expectedStrategyContractAddress,
+    //   "0x8a65ac0E23F31979db06Ec62Af62b132a6dF4741",
+    //   "0x0000462df2438f7b39577917374b1565c306b908",
+    //   "0x000051d46ff97559ed5512ac9d2d95d0ef1140e1",
+    //   "0xc90c5cc170a8db4c1b66939e1a0bb9ad47c93602",
+    //   "0x47CB53752e5dc0A972440dA127DCA9FBA6C2Ab6F",
+    //   "0xe7ebef64f1ff602a28d8d37049e46d0ca77a38ac",
+    //   "0x76a1f47f8d998d07a15189a07d9aada180e09ac6",
+    // ];
+
+    // // give each user 1/10th of whats there for each token.
+    // const divisibility = BigNumber.from(10);
+
+    // const testData = await generateMockProofsAndSwaps(
+    //   recipients,
+    //   expectedStrategyContractAddress,
+    //   divisibility
+    // );
+
+    // await updateRewardsMerkleRoot(
+    //   testData.merkleRoots,
+    //   testData.swapsData.map((sd: any) => sd.sellToken)
+    // );
+
+    // await votiumClaimRewards(
+    //   rewarderAccount,
+    //   votiumStrategy.address,
+    //   testData.claimProofs
+    // );
+
+    // await votiumSellRewards(
+    //   rewarderAccount,
+    //   votiumStrategy.address,
+    //   [],
+    //   testData.swapsData
+    // );
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
     // TODO

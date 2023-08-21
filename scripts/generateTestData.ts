@@ -1,15 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
-import axios from "axios";
 import { BigNumber } from "ethers";
-import { wethAbi } from "../test/abis/wethAbi";
-import { ethers } from "hardhat";
-import { parseBalanceMap } from "../test/helpers/parse-balance-map";
-import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
-import {
-  generate0xSwapData,
-  generateMockProofsAndSwaps,
-} from "./applyVotiumRewardsHelpers";
+import { generateMockProofsAndSwaps } from "./applyVotiumRewardsHelpers";
 
 function writeJSONToFile(obj: any, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -27,7 +19,7 @@ function writeJSONToFile(obj: any, filePath: string): Promise<void> {
 async function main() {
   // address of VotiumStrategy contract that will be deployed for the tests
   const expectedStrategyContractAddress =
-    "0x38628490c3043E5D0bbB26d5a0a62fC77342e9d5";
+    "0xa85EffB2658CFd81e0B1AaD4f2364CdBCd89F3a1";
 
   const recipients = [
     expectedStrategyContractAddress,
