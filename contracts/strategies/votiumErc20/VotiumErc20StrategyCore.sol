@@ -14,7 +14,11 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 import "hardhat/console.sol";
 
-contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeable {
+contract VotiumErc20StrategyCore is
+    Initializable,
+    OwnableUpgradeable,
+    ERC20Upgradeable
+{
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
@@ -34,7 +38,8 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         uint256 priceWhenRequested; // afEth price when withdraw requested
     }
 
-    mapping(address => mapping(uint256 => UnlockQueuePosition)) public unlockQueues;
+    mapping(address => mapping(uint256 => UnlockQueuePosition))
+        public unlockQueues;
 
     uint256 public afEthUnlockObligations;
 
@@ -54,11 +59,15 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     constructor() {
         _disableInitializers();
     }
+
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
     */
-    function initialize(address _owner, address _rewarder) external initializer {
+    function initialize(
+        address _owner,
+        address _rewarder
+    ) external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
         address votiumVoteProxyAddress = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
@@ -75,7 +84,6 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         rewarder = _rewarder;
     }
 
-
     function price() public view returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0) return 1e18;
@@ -85,7 +93,6 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
         if (total == 0) return 1e18;
         return (total * 1e18) / supply;
     }
-
 
     /// apply rewards, price goes up
     function claimRewards(
@@ -99,6 +106,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     /// useful if we need to manually sell rewards ourselves
     // TODO: anyone can lock all eth in the contract, maybe we should make this onlyOwner? Maybe ok?
     function depositRewards(uint256 _amount) public payable {
+        console.log("Deposit Rewards", _amount);
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
@@ -148,15 +156,26 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     }
 
     /// sell any number of erc20's via 0x in a single tx
-    function applyRewards(
-        SwapData[] calldata _swapsData
-    ) public onlyRewarder {
+    function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
-            IERC20(_swapsData[i].sellToken).approve(
-                address(_swapsData[i].spender),
-                type(uint256).max
+            // Some tokens do not allow approval if allowance already exists
+            uint256 allowance = IERC20(_swapsData[i].sellToken).allowance(
+                address(this),
+                address(_swapsData[i].spender)
             );
+            if (allowance != type(uint256).max) {
+                if (allowance > 0) {
+                    IERC20(_swapsData[i].sellToken).approve(
+                        address(_swapsData[i].spender),
+                        0
+                    );
+                }
+                IERC20(_swapsData[i].sellToken).approve(
+                    address(_swapsData[i].spender),
+                    type(uint256).max
+                );
+            }
             (bool success, ) = _swapsData[i].swapTarget.call(
                 _swapsData[i].swapCallData
             );
@@ -171,7 +190,7 @@ contract VotiumErc20StrategyCore is Initializable, OwnableUpgradeable, ERC20Upgr
     }
 
     function recordPriceUpdate() private {
-                uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
         priceUpdates[currentEpoch] = price();
