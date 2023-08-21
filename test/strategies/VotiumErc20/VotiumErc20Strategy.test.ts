@@ -222,6 +222,9 @@ describe("Test VotiumErc20Strategy", async function () {
     const stakeAmount = ethers.utils.parseEther("4");
 
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
+    const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
+
+    // first account mints before rewards are claimed
     let tx = await stakerVotiumStrategy1.mint({
       value: stakeAmount,
     });
@@ -230,6 +233,7 @@ describe("Test VotiumErc20Strategy", async function () {
     // claim rewards
     const testData = await readJSONFromFile("./scripts/testData.json");
 
+    // Claim rewards
     await updateRewardsMerkleRoot(
       testData.merkleRoots,
       testData.swapsData.map((sd: any) => sd.sellToken)
@@ -248,10 +252,26 @@ describe("Test VotiumErc20Strategy", async function () {
       [],
       testData.swapsData
     );
-    // go to next epoch
-    for (let i = 0; i < 17; i++) {
-      await incrementVlcvxEpoch();
-    }
+
+    const priceAfterRewardsBeforeSecondStake = await votiumStrategy.price();
+
+    // second account mints after rewards are claimed
+    tx = await stakerVotiumStrategy2.mint({
+      value: stakeAmount,
+    });
+    await tx.wait();
+
+    const priceAfterRewardsAfterSecondStake = await votiumStrategy.price();
+
+    expect(priceAfterRewardsBeforeSecondStake).eq(
+      priceAfterRewardsAfterSecondStake
+    );
+
+    // Claim rewards again
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
     await votiumClaimRewards(
       accounts[0],
       votiumStrategy.address,
