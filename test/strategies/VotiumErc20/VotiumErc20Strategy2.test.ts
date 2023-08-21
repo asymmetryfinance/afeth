@@ -57,9 +57,6 @@ describe("Test VotiumErc20Strategy", async function () {
   it("Should allow a user to burn and fully withdraw from the queue without needing the owner to ever call anything", async function () {
     // TODO
   });
-  it("Should withdraw from the queue in order of who burned their tokens first", async function () {
-    // TODO
-  });
   it("Should process multiple queue positions in a single call if there are enough unlockable cvx built up", async function () {
     // TODO
   });
