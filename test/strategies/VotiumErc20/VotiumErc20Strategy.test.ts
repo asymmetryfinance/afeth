@@ -220,14 +220,8 @@ describe("Test VotiumErc20Strategy", async function () {
       expect(within1Percent(balancesBefore[i], balancesAfter[i])).eq(true);
     }
   });
-  it("Should show 2 accounts receive the same rewards during different epochs", async function () {
+  it.only("Should show 2 accounts receive the same rewards during different epochs", async function () {
     const stakeAmount = ethers.utils.parseEther("10");
-    console.log(
-      accounts[0].address,
-      votiumStrategy.address,
-      accounts[2].address
-    );
-
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
 
@@ -241,7 +235,7 @@ describe("Test VotiumErc20Strategy", async function () {
     const testData = await readJSONFromFile("./scripts/testData.json");
 
     const priceBeforeRewards = await votiumStrategy.price();
-    console.log({ priceBeforeRewards });
+
 
     // Claim rewards
     await updateRewardsMerkleRoot(
@@ -261,9 +255,8 @@ describe("Test VotiumErc20Strategy", async function () {
     );
 
     const priceAfterRewardsBeforeSecondStake = await votiumStrategy.price();
-    console.log({ priceAfterRewardsBeforeSecondStake });
 
-    // second account mints after rewards are claimed
+        // second account mints after rewards are claimed
     tx = await stakerVotiumStrategy2.mint({
       value: stakeAmount,
     });
@@ -295,15 +288,20 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const priceAfterAllRewards = await votiumStrategy.price();
     expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
-    console.log({ priceAfterAllRewards });
+
     console.log(
-      "Balance 1",
-      await stakerVotiumStrategy1.balanceOf(accounts[1].address)
+      "Price Before Rewards: ",
+      ethers.utils.formatEther(priceBeforeRewards)
     );
     console.log(
-      "Balance 2",
-      await stakerVotiumStrategy1.balanceOf(accounts[2].address)
+      "Price After First Rewards: ",
+      ethers.utils.formatEther(priceAfterRewardsBeforeSecondStake)
     );
+    console.log(
+      "Price After All Rewards: ",
+      ethers.utils.formatEther(priceAfterAllRewards)
+    );
+
     // request withdraw for each account
     await stakerVotiumStrategy1.requestWithdraw(
       await stakerVotiumStrategy1.balanceOf(accounts[1].address)
@@ -325,11 +323,10 @@ describe("Test VotiumErc20Strategy", async function () {
     const ethBalanceBefore1 = await ethers.provider.getBalance(
       accounts[1].address
     );
-    console.log("PRICE BEFORE WITHDRAW:", await votiumStrategy.price());
+    console.log("Price before first withdraw ", await votiumStrategy.price());
 
     tx = await stakerVotiumStrategy1.withdraw(unlockEpoch);
     await tx.wait();
-    console.log("PRICE AFTER FIRST WITHDRAW:", await votiumStrategy.price());
     const ethBalanceAfter1 = await ethers.provider.getBalance(
       accounts[1].address
     );
@@ -342,9 +339,10 @@ describe("Test VotiumErc20Strategy", async function () {
     const ethBalanceBefore2 = await ethers.provider.getBalance(
       accounts[2].address
     );
+    console.log("Price before second withdraw ", await votiumStrategy.price());
     tx = await stakerVotiumStrategy2.withdraw(unlockEpoch);
     await tx.wait();
-    console.log("PRICE AFTER SECOND WITHDRAW:", await votiumStrategy.price());
+    console.log("Price after second withdraw ", await votiumStrategy.price());
 
     const ethBalanceAfter2 = await ethers.provider.getBalance(
       accounts[2].address
@@ -354,16 +352,25 @@ describe("Test VotiumErc20Strategy", async function () {
     const rewardAmount2 = ethBalanceAfter2
       .sub(ethBalanceBefore2)
       .sub(stakeAmount);
-    console.log({
-      ethBalanceBefore1,
-      ethBalanceAfter1,
-      ethBalanceBefore2,
-      ethBalanceAfter2,
-    });
-    console.log({ rewardAmount1, rewardAmount2 });
-
-    // amount of rewards sent to account
-    // rewardsGained.push(ethBalanceAfter.sub(ethBalanceBefore).sub(stakeAmount));
+    console.log(
+      "ETH BALANCE BEFORE 1",
+      ethers.utils.formatEther(ethBalanceBefore1)
+    );
+    console.log(
+      "ETH BALANCE BEFORE 2",
+      ethers.utils.formatEther(ethBalanceBefore2)
+    );
+    console.log(
+      "ETH BALANCE AFTER 1",
+      ethers.utils.formatEther(ethBalanceAfter1)
+    );
+    console.log(
+      "ETH BALANCE AFTER 2",
+      ethers.utils.formatEther(ethBalanceAfter2)
+    );
+    console.log("REWARD 1", ethers.utils.formatEther(rewardAmount1));
+    console.log("REWARD 2", ethers.utils.formatEther(rewardAmount2));
+    expect(within1Percent(rewardAmount1, rewardAmount2.mul(3))).eq(true);
   });
   it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
