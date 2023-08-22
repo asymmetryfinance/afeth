@@ -16,6 +16,7 @@ export const generate0xSwapData = async (
   const swapsData = [];
   // swap reward tokens for eth
   for (let i = 0; i < tokenAddresses.length; i++) {
+    console.log("generating swapdata for", i, tokenAddresses[i]);
     const sellToken = tokenAddresses[i];
     const buyToken = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
@@ -69,7 +70,7 @@ export const generate0xSwapData = async (
       }
     }
     // prevent 429s
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 1100));
   }
   return swapsData;
 };
@@ -141,9 +142,19 @@ const generateMockMerkleData = async (
     "https://raw.githubusercontent.com/oo-00/Votium/main/merkle/activeTokens.json"
   );
 
-  const tokenAddresses = data.map((d: any) => d.value).slice(0, 6);
-
-  console.log('tokenAddresses length is', tokenAddresses.length);
+  const tokenAddresses = data
+    .map((d: any) => d.value)
+    .filter(
+      (d: any) =>
+        d.toLowerCase() !==
+          "0x2EBfF165CB363002C5f9cBcfd6803957BA0B7208".toLowerCase() && // geist token
+        d.toLowerCase() !==
+          "0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F".toLowerCase() && // electronic dollar token
+        d.toLowerCase() !==
+          "0x402f878bdd1f5c66fdaf0fababcf74741b68ac36".toLowerCase() && // stake dao fxs
+        d.toLowerCase() !==
+          "0xa2E3356610840701BDf5611a53974510Ae27E2e1".toLowerCase() // Wrapped Binance Beacon ETH
+    );
   const accounts = await ethers.getSigners();
 
   const balances: any[] = [];
@@ -156,7 +167,6 @@ const generateMockMerkleData = async (
     const balanceBeforeClaim = await contract.balanceOf(
       votiumRewardsContractAddress
     );
-    console.log('pushing balance for', tokenAddresses[i], balanceBeforeClaim, i);
     balances.push(balanceBeforeClaim);
   }
   const proofData = {} as any;
@@ -167,7 +177,6 @@ const generateMockMerkleData = async (
         .div(recipients.length)
         .div(divisibility); // this means after 10 claims it will be out of tokens
 
-    console.log('calculating proofData for', tokenAddresses[i], i);
     proofData[tokenAddresses[i]] = await parseBalanceMap(recipientAmounts);
   }
 
