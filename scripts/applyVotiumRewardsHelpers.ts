@@ -172,11 +172,13 @@ const generateMockMerkleData = async (
   const proofData = {} as any;
   for (let i = 0; i < tokenAddresses.length; i++) {
     const recipientAmounts = {} as any;
-    for (let j = 0; j < recipients.length; j++)
+    for (let j = 0; j < recipients.length; j++) {
+      if (balances[i].eq(0)) continue;
       recipientAmounts[recipients[j]] = balances[i]
         .div(recipients.length)
-        .div(divisibility); // this means after 10 claims it will be out of tokens
-
+        .div(divisibility);
+    }
+    if (Object.keys(recipientAmounts).length === 0) continue;
     proofData[tokenAddresses[i]] = await parseBalanceMap(recipientAmounts);
   }
 
