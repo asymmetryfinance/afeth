@@ -20,6 +20,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        console.log("cvxAmount", cvxAmount);
         console.log("MINT", ((cvxAmount * 1e18) / priceBefore));
         _mint(msg.sender, ((cvxAmount * 1e18) / priceBefore));
     }

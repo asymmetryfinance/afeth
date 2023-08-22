@@ -221,7 +221,7 @@ describe("Test VotiumErc20Strategy", async function () {
     }
   });
   it.only("Should show 2 accounts receive the same rewards during different epochs", async function () {
-    const stakeAmount = ethers.utils.parseEther("10");
+    const stakeAmount = ethers.utils.parseEther("100");
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
 
@@ -235,7 +235,6 @@ describe("Test VotiumErc20Strategy", async function () {
     const testData = await readJSONFromFile("./scripts/testData.json");
 
     const priceBeforeRewards = await votiumStrategy.price();
-
 
     // Claim rewards
     await updateRewardsMerkleRoot(
@@ -256,7 +255,7 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const priceAfterRewardsBeforeSecondStake = await votiumStrategy.price();
 
-        // second account mints after rewards are claimed
+    // second account mints after rewards are claimed
     tx = await stakerVotiumStrategy2.mint({
       value: stakeAmount,
     });
@@ -323,7 +322,10 @@ describe("Test VotiumErc20Strategy", async function () {
     const ethBalanceBefore1 = await ethers.provider.getBalance(
       accounts[1].address
     );
-    console.log("Price before first withdraw ", await votiumStrategy.price());
+    console.log(
+      "Price before first withdraw ",
+      ethers.utils.formatEther(await votiumStrategy.price())
+    );
 
     tx = await stakerVotiumStrategy1.withdraw(unlockEpoch);
     await tx.wait();
@@ -339,10 +341,16 @@ describe("Test VotiumErc20Strategy", async function () {
     const ethBalanceBefore2 = await ethers.provider.getBalance(
       accounts[2].address
     );
-    console.log("Price before second withdraw ", await votiumStrategy.price());
+    console.log(
+      "Price before second withdraw ",
+      ethers.utils.formatEther(await votiumStrategy.price())
+    );
     tx = await stakerVotiumStrategy2.withdraw(unlockEpoch);
     await tx.wait();
-    console.log("Price after second withdraw ", await votiumStrategy.price());
+    console.log(
+      "Price after second withdraw ",
+      ethers.utils.formatEther(await votiumStrategy.price())
+    );
 
     const ethBalanceAfter2 = await ethers.provider.getBalance(
       accounts[2].address
