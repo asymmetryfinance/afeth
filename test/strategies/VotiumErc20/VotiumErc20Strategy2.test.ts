@@ -50,7 +50,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).mint({
-      value: ethers.utils.parseEther("0.0001"),
+      value: ethers.utils.parseEther("0.000001"),
     });
     await tx.wait();
   };
@@ -175,9 +175,9 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     .mul(totalSupplyBefore)
     .div("1000000000000000000");
 
-    console.log("priceBefore", priceBefore.toString());
-    console.log("totalSupplyBefore", totalSupplyBefore.toString());
-    console.log("cvxBefore", cvxBefore.toString());
+    console.log("priceBefore", ethers.utils.parseEther(priceBefore.toString()));
+    console.log("totalSupplyBefore", ethers.utils.parseEther(totalSupplyBefore.toString()));
+    console.log("cvxBefore", ethers.utils.parseEther(cvxBefore.toString()));
     await votiumClaimRewards(
       rewarderAccount,
       votiumStrategy.address,
@@ -195,9 +195,9 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const cvxAfter = priceAfter
     .mul(totalSupplyAfter)
     .div("1000000000000000000");
-    console.log("priceAfter", priceAfter.toString());
-    console.log("totalSupplyAfter", totalSupplyAfter.toString());
-    console.log('cvxAfter', cvxAfter.toString());
+    console.log("priceAfter", ethers.utils.parseEther(priceAfter.toString()));
+    console.log("totalSupplyAfter", ethers.utils.parseEther(totalSupplyAfter.toString()));
+    console.log('cvxAfter', ethers.utils.parseEther(cvxAfter.toString()));
 
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
