@@ -49,6 +49,9 @@ contract VotiumErc20StrategyCore is
 
     address rewarder;
 
+    // used to add storage variables in the future
+    uint256[50] private __gap;
+
     modifier onlyRewarder() {
         require(msg.sender == rewarder, "not rewarder");
         _;
@@ -90,7 +93,8 @@ contract VotiumErc20StrategyCore is
         (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        uint256 cvxInSystem = total + IERC20(CVX_ADDRESS).balanceOf(address(this));
+        uint256 cvxInSystem = total +
+            IERC20(CVX_ADDRESS).balanceOf(address(this));
         if (cvxInSystem == 0) return 1e18;
         return (cvxInSystem * 1e18) / supply;
     }

@@ -220,7 +220,7 @@ describe("Test VotiumErc20Strategy", async function () {
       expect(within1Percent(balancesBefore[i], balancesAfter[i])).eq(true);
     }
   });
-  it.only("Should show 2 accounts receive the same rewards during different epochs", async function () {
+  it("Should show 2 accounts receive the same rewards during different epochs", async function () {
     const stakeAmount = ethers.utils.parseEther("10");
     console.log(
       accounts[0].address,
