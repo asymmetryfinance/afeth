@@ -90,8 +90,9 @@ contract VotiumErc20StrategyCore is
         (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        if (total == 0) return 1e18;
-        return (total * 1e18) / supply;
+        uint256 cvxInSystem = total + IERC20(CVX_ADDRESS).balanceOf(address(this));
+        if (cvxInSystem == 0) return 1e18;
+        return (cvxInSystem * 1e18) / supply;
     }
 
     /// apply rewards, price goes up
@@ -106,8 +107,10 @@ contract VotiumErc20StrategyCore is
     /// useful if we need to manually sell rewards ourselves
     // TODO: anyone can lock all eth in the contract, maybe we should make this onlyOwner? Maybe ok?
     function depositRewards(uint256 _amount) public payable {
-        console.log("Deposit Rewards", _amount);
+        console.log("Deposit ETH Rewards", _amount);
         uint256 cvxAmount = buyCvx(_amount);
+        console.log("Deposit CVX Rewards", cvxAmount);
+
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         recordPriceUpdate();

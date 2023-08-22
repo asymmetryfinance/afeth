@@ -43,7 +43,7 @@ describe("Test VotiumErc20Strategy", async function () {
     await votiumStrategy.deployed();
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).mint({
-      value: ethers.utils.parseEther("1"),
+      value: ethers.utils.parseEther(".0001"),
     });
     await tx.wait();
   };
@@ -220,8 +220,13 @@ describe("Test VotiumErc20Strategy", async function () {
       expect(within1Percent(balancesBefore[i], balancesAfter[i])).eq(true);
     }
   });
-  it.skip("Should show 2 accounts receive the same rewards during different epochs", async function () {
-    const stakeAmount = ethers.utils.parseEther("5");
+  it.only("Should show 2 accounts receive the same rewards during different epochs", async function () {
+    const stakeAmount = ethers.utils.parseEther("10");
+    console.log(
+      accounts[0].address,
+      votiumStrategy.address,
+      accounts[2].address
+    );
 
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
@@ -291,7 +296,14 @@ describe("Test VotiumErc20Strategy", async function () {
     const priceAfterAllRewards = await votiumStrategy.price();
     expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
     console.log({ priceAfterAllRewards });
-
+    console.log(
+      "Balance 1",
+      await stakerVotiumStrategy1.balanceOf(accounts[1].address)
+    );
+    console.log(
+      "Balance 2",
+      await stakerVotiumStrategy1.balanceOf(accounts[2].address)
+    );
     // request withdraw for each account
     await stakerVotiumStrategy1.requestWithdraw(
       await stakerVotiumStrategy1.balanceOf(accounts[1].address)
@@ -313,8 +325,11 @@ describe("Test VotiumErc20Strategy", async function () {
     const ethBalanceBefore1 = await ethers.provider.getBalance(
       accounts[1].address
     );
+    console.log("PRICE BEFORE WITHDRAW:", await votiumStrategy.price());
+
     tx = await stakerVotiumStrategy1.withdraw(unlockEpoch);
     await tx.wait();
+    console.log("PRICE AFTER FIRST WITHDRAW:", await votiumStrategy.price());
     const ethBalanceAfter1 = await ethers.provider.getBalance(
       accounts[1].address
     );
@@ -329,6 +344,8 @@ describe("Test VotiumErc20Strategy", async function () {
     );
     tx = await stakerVotiumStrategy2.withdraw(unlockEpoch);
     await tx.wait();
+    console.log("PRICE AFTER SECOND WITHDRAW:", await votiumStrategy.price());
+
     const ethBalanceAfter2 = await ethers.provider.getBalance(
       accounts[2].address
     );
@@ -572,7 +589,13 @@ describe("Test VotiumErc20Strategy", async function () {
   it("Should allow anyone apply rewards manually with depositRewards()", async function () {
     // TODO
   });
-  it("Should allow a new minter to burn and immediately withdraw from the queue if is cvx waiting to be unlocked", async function () {
+  it("Should allow 1 user to withdraw over two epochs", async function () {
+    // TODO
+  });
+  it("Should allow multiple users to withdraw over two epochs", async function () {
+    // TODO
+  });
+  it("Should allow multiple users to withdraw over multiple epochs", async function () {
     // TODO
   });
   it("Should never take more than 16 weeks to withdraw from the queue", async function () {
