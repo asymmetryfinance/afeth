@@ -13,6 +13,7 @@ import {
 } from "../../../scripts/applyVotiumRewardsHelpers";
 import { within1Pip } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { BigNumber } from "ethers";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
@@ -49,7 +50,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).mint({
-      value: ethers.utils.parseEther("1"),
+      value: ethers.utils.parseEther("0.0001"),
     });
     await tx.wait();
   };
@@ -139,10 +140,65 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
   });
   it("Should decrease users balance when requestWithdraw is called", async function () {
-    // TODO
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const balanceBefore = await votiumStrategy.balanceOf(userAccount.address);
+
+    const halfBalance = balanceBefore.div(2);
+    tx = await votiumStrategy.requestWithdraw(halfBalance);
+    await tx.wait();
+
+    const balanceAfter = await votiumStrategy.balanceOf(userAccount.address);
+
+    expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
-  it("Should be able to millions of dollars in rewards with minimal slippage", async function () {
-    // TODO
+  it.only("Should be able to sell & apply a large proportion of the total rewards with minimal slippage", async function () {
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    // claim rewards
+    const testData = await readJSONFromFile("./scripts/testDataSlippage.json");
+
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    const priceBefore = await votiumStrategy.price();
+    const totalSupplyBefore = await votiumStrategy.totalSupply();
+    const cvxBefore = priceBefore
+    .mul(totalSupplyBefore)
+    .div("1000000000000000000");
+
+    console.log("priceBefore", priceBefore.toString());
+    console.log("totalSupplyBefore", totalSupplyBefore.toString());
+    console.log("cvxBefore", cvxBefore.toString());
+    await votiumClaimRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
+
+    const priceAfter = await votiumStrategy.price();
+    const totalSupplyAfter = await votiumStrategy.totalSupply();
+    const cvxAfter = priceAfter
+    .mul(totalSupplyAfter)
+    .div("1000000000000000000");
+    console.log("priceAfter", priceAfter.toString());
+    console.log("totalSupplyAfter", totalSupplyAfter.toString());
+    console.log('cvxAfter', cvxAfter.toString());
+
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
     // TODO
