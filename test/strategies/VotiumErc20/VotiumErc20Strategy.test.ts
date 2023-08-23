@@ -338,7 +338,7 @@ describe("Test VotiumErc20Strategy", async function () {
       .sub(stakeAmount);
     expect(rewardAmount1).gt(rewardAmount2.mul(2));
   });
-  it.only("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function () {
+  it("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function () {
     const stakeAmount = ethers.utils.parseEther("10");
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
