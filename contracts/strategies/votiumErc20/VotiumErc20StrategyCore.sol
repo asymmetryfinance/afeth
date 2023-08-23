@@ -49,6 +49,9 @@ contract VotiumErc20StrategyCore is
 
     address rewarder;
 
+    // used to add storage variables in the future
+    uint256[50] private __gap;
+
     modifier onlyRewarder() {
         require(msg.sender == rewarder, "not rewarder");
         _;
@@ -78,6 +81,7 @@ contract VotiumErc20StrategyCore is
         rewarder = _rewarder;
         _transferOwnership(_owner);
         recordPriceUpdate();
+        _mint(address(this), 100);
     }
 
     function setRewarder(address _rewarder) external onlyOwner {
@@ -90,8 +94,10 @@ contract VotiumErc20StrategyCore is
         (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        if (total == 0) return 1e18;
-        return (total * 1e18) / supply;
+        uint256 cvxInSystem = total +
+            IERC20(CVX_ADDRESS).balanceOf(address(this));
+        if (cvxInSystem == 0) return 1e18;
+        return (cvxInSystem * 1e18) / supply;
     }
 
     /// apply rewards, price goes up
@@ -106,7 +112,6 @@ contract VotiumErc20StrategyCore is
     /// useful if we need to manually sell rewards ourselves
     // TODO: anyone can lock all eth in the contract, maybe we should make this onlyOwner? Maybe ok?
     function depositRewards(uint256 _amount) public payable {
-        console.log("Deposit Rewards", _amount);
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
