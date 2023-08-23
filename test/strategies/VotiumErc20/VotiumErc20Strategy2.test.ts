@@ -4,6 +4,7 @@ import { expect } from "chai";
 import {
   getCurrentEpoch,
   incrementVlcvxEpoch,
+  oracleApplyRewards,
   readJSONFromFile,
   updateRewardsMerkleRoot,
 } from "./VotiumTestHelpers";
@@ -114,11 +115,11 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     await tx.wait();
 
     // this shouldnt throw
-    await oracleApplyRewards(rewarderAccount);
+    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
     // this should throw
     try {
-      await oracleApplyRewards(userAccount);
+      await oracleApplyRewards(userAccount, votiumStrategy.address);
     } catch (e: any) {
       expect(e.message).eq(
         "VM Exception while processing transaction: reverted with reason string 'not rewarder'"
@@ -178,17 +179,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     console.log("priceBefore", ethers.utils.parseEther(priceBefore.toString()));
     console.log("totalSupplyBefore", ethers.utils.parseEther(totalSupplyBefore.toString()));
     console.log("cvxBefore", ethers.utils.parseEther(cvxBefore.toString()));
-    await votiumClaimRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      testData.claimProofs
-    );
-    await votiumSellRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      [],
-      testData.swapsData
-    );
+
 
     const priceAfter = await votiumStrategy.price();
     const totalSupplyAfter = await votiumStrategy.totalSupply();
@@ -198,7 +189,6 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     console.log("priceAfter", ethers.utils.parseEther(priceAfter.toString()));
     console.log("totalSupplyAfter", ethers.utils.parseEther(totalSupplyAfter.toString()));
     console.log('cvxAfter', ethers.utils.parseEther(cvxAfter.toString()));
-
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
     // TODO
@@ -212,23 +202,4 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
     // TODO
   });
-
-  const oracleApplyRewards = async (account: SignerWithAddress) => {
-    const testData = await readJSONFromFile("./scripts/testData.json");
-    await updateRewardsMerkleRoot(
-      testData.merkleRoots,
-      testData.swapsData.map((sd: any) => sd.sellToken)
-    );
-    await votiumClaimRewards(
-      account,
-      votiumStrategy.address,
-      testData.claimProofs
-    );
-    await votiumSellRewards(
-      account,
-      votiumStrategy.address,
-      [],
-      testData.swapsData
-    );
-  };
 });
