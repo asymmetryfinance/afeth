@@ -106,7 +106,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
         uint256 cvxToWithdraw = (positionToWithdraw.afEthOwed * averagePrice) /
             1e18;
-        // TODO: can't assume cvxUnlockObligations is using this withdrawals price
         uint256 cvxUnlockObligations = (afEthUnlockObligations * price()) /
             1e18;
         afEthUnlockObligations -= positionToWithdraw.afEthOwed;
