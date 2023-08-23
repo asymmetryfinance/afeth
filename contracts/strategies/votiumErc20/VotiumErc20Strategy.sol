@@ -112,8 +112,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         afEthUnlockObligations -= positionToWithdraw.afEthOwed;
 
         uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
-
-        uint256 cvxAmountToRelock = cvxBalance - cvxUnlockObligations;
+        uint256 cvxAmountToRelock = cvxUnlockObligations > cvxBalance ? 0 : cvxBalance - cvxUnlockObligations;
 
         // relock everything minus unlock queue obligations
         if (cvxAmountToRelock > 0) {
