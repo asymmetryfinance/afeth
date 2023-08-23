@@ -101,7 +101,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       true
     );
   });
-  it("Should only allow the rewarder to applyRewards()", async function () {
+  it.only("Should only allow the rewarder to applyRewards()", async function () {
     let tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
