@@ -20,8 +20,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        console.log("cvxAmount", cvxAmount);
-        console.log("MINT", ((cvxAmount * 1e18) / priceBefore));
         _mint(msg.sender, ((cvxAmount * 1e18) / priceBefore));
     }
 
@@ -98,14 +96,17 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         }
 
         uint256 averagePrice = (startingPrice + endingPrice) / 2;
-        (uint256 total, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS)
-            .lockedBalances(address(this));
+
+        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+            address(this)
+        );
 
         if (unlockable > 0)
             ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
 
         uint256 cvxToWithdraw = (positionToWithdraw.afEthOwed * averagePrice) /
             1e18;
+        // TODO: can't assume cvxUnlockObligations is using this withdrawals price
         uint256 cvxUnlockObligations = (afEthUnlockObligations * averagePrice) /
             1e18;
         afEthUnlockObligations -= positionToWithdraw.afEthOwed;
@@ -124,7 +125,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 balanceBefore = address(this).balance;
         sellCvx(cvxToWithdraw);
         uint256 balanceAfter = address(this).balance;
-        // use call to send eth instead
+        // TODO: use call to send eth instead
         payable(msg.sender).transfer(balanceAfter - balanceBefore);
     }
 }

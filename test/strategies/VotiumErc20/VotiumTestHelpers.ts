@@ -54,7 +54,7 @@ export const incrementVlcvxEpoch = async () => {
   const vlCvxContract = new ethers.Contract(
     vlCvxAddress,
     vlCvxAbi,
-    accounts[2]
+    accounts[9]
   );
   await time.increaseTo(blockTime + epochDuration);
   const tx = await vlCvxContract.checkpointEpoch();
