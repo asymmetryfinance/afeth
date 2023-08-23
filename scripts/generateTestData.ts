@@ -44,6 +44,13 @@ async function main() {
     BigNumber.from(1)
   );
 
+  // this represents 0.125% of all token rewards to each mock user (0.125% to our contract)
+  const mockProofsAndSwapSlippageTestSmall = await generateMockProofsAndSwaps(
+    recipients,
+    expectedVotiumStrategyAddress,
+    BigNumber.from(100)
+  );
+
   await writeJSONToFile(
     mockProofsAndSwaps,
     path.resolve(__dirname, "testData.json")
@@ -52,6 +59,10 @@ async function main() {
   await writeJSONToFile(
     mockProofsAndSwapSlippageTest,
     path.resolve(__dirname, "testDataSlippage.json")
+  );
+  await writeJSONToFile(
+    mockProofsAndSwapSlippageTestSmall,
+    path.resolve(__dirname, "testDataSlippageSmall.json")
   );
 }
 

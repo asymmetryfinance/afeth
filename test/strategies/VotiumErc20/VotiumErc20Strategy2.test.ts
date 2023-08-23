@@ -8,13 +8,8 @@ import {
   readJSONFromFile,
   updateRewardsMerkleRoot,
 } from "./VotiumTestHelpers";
-import {
-  votiumClaimRewards,
-  votiumSellRewards,
-} from "../../../scripts/applyVotiumRewardsHelpers";
 import { within1Pip } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { BigNumber } from "ethers";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
@@ -157,38 +152,46 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
   it.only("Should be able to sell & apply a large proportion of the total rewards with minimal slippage", async function () {
-    let tx = await votiumStrategy.mint({
-      value: ethers.utils.parseEther("1"),
-    });
-    await tx.wait();
-
-    // claim rewards
-    const testData = await readJSONFromFile("./scripts/testDataSlippage.json");
-
-    await updateRewardsMerkleRoot(
-      testData.merkleRoots,
-      testData.swapsData.map((sd: any) => sd.sellToken)
-    );
-
     const priceBefore = await votiumStrategy.price();
     const totalSupplyBefore = await votiumStrategy.totalSupply();
     const cvxBefore = priceBefore
-    .mul(totalSupplyBefore)
-    .div("1000000000000000000");
+      .mul(totalSupplyBefore)
+      .div("1000000000000000000");
 
     console.log("priceBefore", ethers.utils.parseEther(priceBefore.toString()));
-    console.log("totalSupplyBefore", ethers.utils.parseEther(totalSupplyBefore.toString()));
+    console.log(
+      "totalSupplyBefore",
+      ethers.utils.parseEther(totalSupplyBefore.toString())
+    );
     console.log("cvxBefore", ethers.utils.parseEther(cvxBefore.toString()));
 
+    // merkle proof with large claim amount (12.5% of each reward token)
+    const slippageTestData = await readJSONFromFile(
+      "./scripts/testDataSlippage.json"
+    );
+
+    // merkle proof with small claim amount (0.125% of each reward token)
+    const slippageTestDataSmall = await readJSONFromFile(
+      "./scripts/testDataSlippageSmall.json"
+    );
+
+    await oracleApplyRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      slippageTestDataSmall
+    );
 
     const priceAfter = await votiumStrategy.price();
     const totalSupplyAfter = await votiumStrategy.totalSupply();
     const cvxAfter = priceAfter
-    .mul(totalSupplyAfter)
-    .div("1000000000000000000");
+      .mul(totalSupplyAfter)
+      .div("1000000000000000000");
     console.log("priceAfter", ethers.utils.parseEther(priceAfter.toString()));
-    console.log("totalSupplyAfter", ethers.utils.parseEther(totalSupplyAfter.toString()));
-    console.log('cvxAfter', ethers.utils.parseEther(cvxAfter.toString()));
+    console.log(
+      "totalSupplyAfter",
+      ethers.utils.parseEther(totalSupplyAfter.toString())
+    );
+    console.log("cvxAfter", ethers.utils.parseEther(cvxAfter.toString()));
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
     // TODO

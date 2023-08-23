@@ -114,9 +114,11 @@ export const getNextEpochStartTime = async () => {
 
 export const oracleApplyRewards = async (
   account: SignerWithAddress,
-  votiumStrategyAddress: string
+  votiumStrategyAddress: string,
+  testDataOverride?: string
 ) => {
-  const testData = await readJSONFromFile("./scripts/testData.json");
+  const testData =
+    testDataOverride || (await readJSONFromFile("./scripts/testData.json"));
   await updateRewardsMerkleRoot(
     testData.merkleRoots,
     testData.swapsData.map((sd: any) => sd.sellToken)
