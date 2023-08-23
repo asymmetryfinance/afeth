@@ -49,6 +49,12 @@ contract VotiumErc20StrategyCore is
 
     address rewarder;
 
+    event DepositReward(
+        uint256 indexed newPrice,
+        uint256 indexed ethAmount,
+        uint256 indexed cvxAmount
+    );
+
     // used to add storage variables in the future
     uint256[50] private __gap;
 
@@ -81,26 +87,27 @@ contract VotiumErc20StrategyCore is
         rewarder = _rewarder;
         _transferOwnership(_owner);
         recordPriceUpdate();
-        _mint(address(this), 100);
     }
 
     function setRewarder(address _rewarder) external onlyOwner {
         rewarder = _rewarder;
     }
 
+    function cvxInSystem() public view returns (uint256) {
+                (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+            address(this)
+        );
+        return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
+    }
+
     function price() public view returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0) return 1e18;
-        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
-            address(this)
-        );
-        uint256 cvxInSystem = total +
-            IERC20(CVX_ADDRESS).balanceOf(address(this));
-        if (cvxInSystem == 0) return 1e18;
-        return (cvxInSystem * 1e18) / supply;
+        uint256 totalCvx = cvxInSystem();
+        if (totalCvx == 0) return 1e18;
+        return (totalCvx * 1e18) / supply;
     }
 
-    /// apply rewards, price goes up
     function claimRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
     ) public onlyRewarder {
@@ -112,10 +119,27 @@ contract VotiumErc20StrategyCore is
     /// useful if we need to manually sell rewards ourselves
     // TODO: anyone can lock all eth in the contract, maybe we should make this onlyOwner? Maybe ok?
     function depositRewards(uint256 _amount) public payable {
+        console.log('****DEPOSIT REWARDS****');
+        console.log("cvx in contract before buying cvx:", IERC20(CVX_ADDRESS).balanceOf(address(this)));
+        console.log('eth ampount of cvx to buy', _amount);
+
+        revert('stop here');
+
+
+
+                        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+            address(this)
+        );
+
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         recordPriceUpdate();
+        emit DepositReward(price(), _amount, cvxAmount);
+
+                        (uint256 total2, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+            address(this)
+        );
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {
@@ -162,6 +186,11 @@ contract VotiumErc20StrategyCore is
 
     /// sell any number of erc20's via 0x in a single tx
     function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
+
+        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
+
+        console.log('cvx balance at tome of applyRewards', cvxBalanceBefore);
+
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
@@ -185,12 +214,17 @@ contract VotiumErc20StrategyCore is
                 _swapsData[i].swapCallData
             );
             if (!success) {
+                console.log('its all fucked', _swapsData[i].sellToken);
                 // TODO emit an event or something?
                 // this causes unsold tokens to build up in the contract, see:
                 // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478
             }
         }
         uint256 ethBalanceAfter = address(this).balance;
+
+        uint256 ethRewardAmount = ethBalanceAfter - ethBalanceBefore;
+        console.log('ethRewardAmount', ethRewardAmount);
+
         depositRewards(ethBalanceAfter - ethBalanceBefore);
     }
 

@@ -5,7 +5,6 @@ import "../AbstractErc20Strategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./VotiumErc20StrategyCore.sol";
 
-// TODO rename things from afEth to something else
 import "hardhat/console.sol";
 
 contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {

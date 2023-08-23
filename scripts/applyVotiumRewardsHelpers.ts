@@ -121,15 +121,19 @@ export async function votiumSellRewards(
   ) as VotiumErc20Strategy;
   if (swapsDataOverride) {
     const tx = await votiumStrategy.applyRewards(swapsDataOverride);
-    await tx.wait();
-    return;
+    const mined1 = await tx.wait();
+    return mined1?.events?.find((e) => e?.event === "DepositReward");
   }
 
   const tokenAddresses = proofs.map((p: any) => p[0]);
   const tokenAmounts = proofs.map((p: any[]) => p[2]);
   const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
   const tx = await votiumStrategy.applyRewards(swapsData);
-  await tx.wait();
+  const mined2 = await tx.wait();
+
+  console.log('mined2 is', mined2)
+
+  return mined2?.events?.find((e) => e?.event === "DepositReward");
 }
 
 const generateMockMerkleData = async (

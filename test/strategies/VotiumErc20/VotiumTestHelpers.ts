@@ -128,10 +128,12 @@ export const oracleApplyRewards = async (
     votiumStrategyAddress,
     testData.claimProofs
   );
-  await votiumSellRewards(
+  const sellEvent = await votiumSellRewards(
     account,
     votiumStrategyAddress,
     [],
     testData.swapsData
   );
+
+  return sellEvent;
 };

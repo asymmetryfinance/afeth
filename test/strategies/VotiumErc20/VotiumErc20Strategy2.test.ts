@@ -152,46 +152,71 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
   it.only("Should be able to sell & apply a large proportion of the total rewards with minimal slippage", async function () {
-    const priceBefore = await votiumStrategy.price();
-    const totalSupplyBefore = await votiumStrategy.totalSupply();
-    const cvxBefore = priceBefore
-      .mul(totalSupplyBefore)
-      .div("1000000000000000000");
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
 
-    console.log("priceBefore", ethers.utils.parseEther(priceBefore.toString()));
-    console.log(
-      "totalSupplyBefore",
-      ethers.utils.parseEther(totalSupplyBefore.toString())
-    );
-    console.log("cvxBefore", ethers.utils.parseEther(cvxBefore.toString()));
+    const underlyingCvx0 = await votiumStrategy.cvxInSystem();
 
+    console.log('underlyingCvx0', ethers.utils.formatEther(underlyingCvx0).toString());
     // merkle proof with large claim amount (12.5% of each reward token)
-    const slippageTestData = await readJSONFromFile(
+    const slippageTestDataSmall = await readJSONFromFile(
       "./scripts/testDataSlippage.json"
     );
 
-    // merkle proof with small claim amount (0.125% of each reward token)
-    const slippageTestDataSmall = await readJSONFromFile(
-      "./scripts/testDataSlippageSmall.json"
-    );
-
-    await oracleApplyRewards(
+    console.log('about to apply rewards');
+    const sellEvent = await oracleApplyRewards(
       rewarderAccount,
       votiumStrategy.address,
       slippageTestDataSmall
     );
 
-    const priceAfter = await votiumStrategy.price();
-    const totalSupplyAfter = await votiumStrategy.totalSupply();
-    const cvxAfter = priceAfter
-      .mul(totalSupplyAfter)
-      .div("1000000000000000000");
-    console.log("priceAfter", ethers.utils.parseEther(priceAfter.toString()));
-    console.log(
-      "totalSupplyAfter",
-      ethers.utils.parseEther(totalSupplyAfter.toString())
-    );
-    console.log("cvxAfter", ethers.utils.parseEther(cvxAfter.toString()));
+    // const ethReceivedFromRewards = sellEvent?.args?.ethAmount;
+    // const cvxReceivedFromRewards = sellEvent?.args?.cvxAmount;
+    // console.log(
+    //   "ethReceivedFromRewards is",
+    //   ethers.utils.formatEther(ethReceivedFromRewards)
+    // );
+    // console.log(
+    //   "cvxReceivedFromRewards is",
+    //   ethers.utils.formatEther(cvxReceivedFromRewards)
+    // );
+
+    // console.log('sellEvent is', sellEvent)
+
+    // const cvxGained0 = (await votiumStrategy.cvxInSystem()).sub(underlyingCvx0);
+
+    // console.log("cvxGained0", ethers.utils.formatEther(cvxGained0).toString());
+    // await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
+
+    // tx = await votiumStrategy.requestWithdraw(
+    //   await votiumStrategy.balanceOf(userAccount.address)
+    // );
+    // const mined1 = await tx.wait();
+    // const event = mined1?.events?.find((e) => e?.event === "WithdrawRequest");
+    // const unlockEpoch = event?.args?.unlockEpoch;
+    // const currentEpoch = await getCurrentEpoch();
+    // const epochsUntilUnlock = unlockEpoch.sub(currentEpoch);
+
+    // for (let i = 0; i < epochsUntilUnlock; i++) {
+    //   await incrementVlcvxEpoch();
+    // }
+
+    // const ethBalanceBefore = await ethers.provider.getBalance(
+    //   userAccount.address
+    // );
+
+    // tx = await votiumStrategy.withdraw(unlockEpoch);
+    // await tx.wait();
+
+    // const ethBalanceAfter = await ethers.provider.getBalance(
+    //   userAccount.address
+    // );
+
+    // const ethReceived = ethBalanceAfter.sub(ethBalanceBefore);
+
+    // console.log("ethReceived", ethers.utils.formatEther(ethReceived));
   });
   it("Should test everything about the queue to be sure it works correctly", async function () {
     // TODO
