@@ -193,14 +193,13 @@ contract VotiumErc20StrategyCore is
                 _swapsData[i].swapCallData
             );
             if (!success) {
+                console.log('FAILED TO SELL TOKEN', _swapsData[i].sellToken);
                 // TODO emit an event or something?
                 // this causes unsold tokens to build up in the contract, see:
                 // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478
             }
         }
         uint256 ethBalanceAfter = address(this).balance;
-
-        uint256 ethRewardAmount = ethBalanceAfter - ethBalanceBefore;
 
         depositRewards(ethBalanceAfter - ethBalanceBefore);
     }

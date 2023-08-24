@@ -172,6 +172,8 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       slippageTestDataSmall
     );
 
+    console.log('sellEvent is', sellEvent);
+
     // const ethReceivedFromRewards = sellEvent?.args?.ethAmount;
     // const cvxReceivedFromRewards = sellEvent?.args?.cvxAmount;
     // console.log(
