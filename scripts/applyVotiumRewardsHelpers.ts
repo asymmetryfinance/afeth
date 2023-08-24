@@ -44,8 +44,6 @@ export const generate0xSwapData = async (
       swapsData.push(newData);
     } else {
       let result;
-
-      console.log('calling 0x api for', i, sellToken, buyToken, sellAmount.toString());
       // TODO do we want slippage protection or does it not matter and we just dump all the tokens anyway?
       try {
         result = await axios.get(
@@ -65,15 +63,8 @@ export const generate0xSwapData = async (
           swapTarget: result.data.to,
           swapCallData: result.data.data,
         };
-
-        console.log('pushing swap data', newData);
         swapsData.push(newData);
       } catch (e) {
-        console.log('**************************')
-        console.log('**************************')
-        console.log('**************************')
-        console.log('**************************')
-        console.log('**************************')
         console.log("0x doesnt support", i, sellToken, buyToken, sellAmount, e);
       }
     }
@@ -144,7 +135,8 @@ export async function votiumSellRewards(
 
 const generateMockMerkleData = async (
   recipients: string[],
-  divisibility: BigNumber
+  divisibility: BigNumber,
+  slice?: number
 ) => {
   const votiumRewardsContractAddress =
     "0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A";
@@ -152,7 +144,7 @@ const generateMockMerkleData = async (
     "https://raw.githubusercontent.com/oo-00/Votium/main/merkle/activeTokens.json"
   );
 
-  const tokenAddresses = data
+  let tokenAddresses = data
     .map((d: any) => d.value)
     .filter(
       (d: any) =>
@@ -165,6 +157,7 @@ const generateMockMerkleData = async (
         d.toLowerCase() !==
           "0xa2E3356610840701BDf5611a53974510Ae27E2e1".toLowerCase() // Wrapped Binance Beacon ETH
     );
+  if (slice) tokenAddresses = tokenAddresses.slice(0, slice);
   const accounts = await ethers.getSigners();
 
   const balances: any[] = [];
@@ -198,9 +191,14 @@ const generateMockMerkleData = async (
 export async function generateMockProofsAndSwaps(
   recipients: string[],
   strategyAddress: string,
-  divisibility: BigNumber
+  divisibility: BigNumber,
+  slice?: number
 ) {
-  const proofData = await generateMockMerkleData(recipients, divisibility);
+  const proofData = await generateMockMerkleData(
+    recipients,
+    divisibility,
+    slice
+  );
   const tokenAddresses = Object.keys(proofData);
 
   const claimProofs = tokenAddresses.map((_: any, i: number) => {
