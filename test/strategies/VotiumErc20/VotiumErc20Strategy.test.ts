@@ -11,7 +11,7 @@ import {
   votiumClaimRewards,
   votiumSellRewards,
 } from "../../../scripts/applyVotiumRewardsHelpers";
-import { within1Percent } from "../../helpers/helpers";
+import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("Test VotiumErc20Strategy", async function () {
@@ -54,7 +54,6 @@ describe("Test VotiumErc20Strategy", async function () {
 
   it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
-
     let tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -338,7 +337,7 @@ describe("Test VotiumErc20Strategy", async function () {
       .sub(stakeAmount);
     expect(rewardAmount1).gt(rewardAmount2.mul(2));
   });
-  it.skip("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function () {
+  it("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function () {
     const stakeAmount = ethers.utils.parseEther("10");
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
@@ -372,10 +371,11 @@ describe("Test VotiumErc20Strategy", async function () {
     );
 
     const priceAfterRewardsBeforeSecondStake = await votiumStrategy.price();
+    console.log(priceAfterRewardsBeforeSecondStake);
 
     // second account mints after rewards are claimed
     tx = await stakerVotiumStrategy2.mint({
-      value: ethers.utils.parseEther("20.6"), // 20 is the amount of ETH in system after rewards, doing a little extra to account for slippage
+      value: ethers.utils.parseEther("30.6"), // 20 is the amount of ETH in system after rewards, doing a little extra to account for slippage
     });
     await tx.wait();
 
@@ -405,14 +405,12 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const priceAfterAllRewards = await votiumStrategy.price();
     expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
-
+    const balance1 = await stakerVotiumStrategy1.balanceOf(accounts[1].address);
+    const balance2 = await stakerVotiumStrategy2.balanceOf(accounts[2].address);
+    expect(within1Percent(balance1, balance2)).eq(true);
     // request withdraw for each account
-    await stakerVotiumStrategy1.requestWithdraw(
-      await stakerVotiumStrategy1.balanceOf(accounts[1].address)
-    );
-    tx = await stakerVotiumStrategy2.requestWithdraw(
-      await stakerVotiumStrategy2.balanceOf(accounts[2].address)
-    );
+    await stakerVotiumStrategy1.requestWithdraw(balance1);
+    tx = await stakerVotiumStrategy2.requestWithdraw(balance2);
     const mined = await tx.wait();
     const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
     const unlockEpoch = event?.args?.unlockEpoch;
@@ -662,23 +660,109 @@ describe("Test VotiumErc20Strategy", async function () {
       ).eq(true);
     }
   });
-  it("Should show an account staked for twice as long receive twice as many rewards as another", async function () {
-    // TODO
-  });
-  it("Should show an account staked for twice as long receive twice as many rewards as another", async function () {
-    // TODO
-  });
   it("Should increase price proportionally to how much rewards were added vs tvl", async function () {
-    // TODO
+    const startingTotalSupply = await votiumStrategy.totalSupply();
+
+    const tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("20.4"),
+    });
+    await tx.wait();
+
+    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
+    const totalSupply1 = await votiumStrategy.totalSupply();
+
+    expect(totalSupply1).eq(
+      BigNumber.from(afEthBalance1).add(startingTotalSupply)
+    );
+
+    const testData = await readJSONFromFile("./scripts/testData.json");
+
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    const priceBeforeRewards = await votiumStrategy.price();
+
+    await votiumClaimRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
+
+    const priceAfterRewards = await votiumStrategy.price();
+
+    // Price should be around double the price before rewards
+    expect(within1Percent(priceAfterRewards, priceBeforeRewards.mul(2))).eq(
+      true
+    );
   });
   it("Should increase price twice as much when depositing twice as much rewards", async function () {
-    // TODO
-  });
-  it("Should allow owner to withdraw stuck tokens with withdrawStuckTokens()", async function () {
-    // TODO
-  });
-  it("Should allow anyone apply rewards manually with depositRewards()", async function () {
-    // TODO
+    const startingTotalSupply = await votiumStrategy.totalSupply();
+
+    const tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("20.4"),
+    });
+    await tx.wait();
+
+    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
+    const totalSupply1 = await votiumStrategy.totalSupply();
+
+    expect(totalSupply1).eq(
+      BigNumber.from(afEthBalance1).add(startingTotalSupply)
+    );
+
+    const testData = await readJSONFromFile("./scripts/testData.json");
+
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    const priceBeforeRewards = await votiumStrategy.price();
+
+    await votiumClaimRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
+
+    // deposit rewards again
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    await votiumClaimRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
+
+    const priceAfterRewards = await votiumStrategy.price();
+
+    // Price should be around triple the price before rewards
+    expect(within2Percent(priceAfterRewards, priceBeforeRewards.mul(3))).eq(
+      true
+    );
   });
   it("Should allow 1 user to withdraw over two epochs", async function () {
     // TODO
@@ -690,6 +774,12 @@ describe("Test VotiumErc20Strategy", async function () {
     // TODO
   });
   it("Should never take more than 16 weeks to withdraw from the queue", async function () {
+    // TODO
+  });
+  it("Should allow owner to withdraw stuck tokens with withdrawStuckTokens()", async function () {
+    // TODO
+  });
+  it("Should allow anyone apply rewards manually with depositRewards()", async function () {
     // TODO
   });
 });

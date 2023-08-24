@@ -81,7 +81,6 @@ contract VotiumErc20StrategyCore is
         rewarder = _rewarder;
         _transferOwnership(_owner);
         recordPriceUpdate();
-        _mint(address(this), 100);
     }
 
     function setRewarder(address _rewarder) external onlyOwner {
