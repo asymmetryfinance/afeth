@@ -37,9 +37,41 @@ async function main() {
     BigNumber.from(10)
   );
 
+  // this represents 12.5% of all token rewards to each user (12.5% of total to our contract)
+  const mockProofsAndSwapSlippageTest = await generateMockProofsAndSwaps(
+    recipients,
+    expectedVotiumStrategyAddress,
+    BigNumber.from(1)
+  );
+  // this represents 0.125% of all token rewards to each mock user (0.125% to our contract)
+  const mockProofsAndSwapSlippageTestSmall = await generateMockProofsAndSwaps(
+    recipients,
+    expectedVotiumStrategyAddress,
+    BigNumber.from(100)
+  );
+  // this represents a smaller subset of all assets to test that we dont have to claim all assets
+  const mockProofsAndSwapsSliced = await generateMockProofsAndSwaps(
+    recipients,
+    expectedVotiumStrategyAddress,
+    BigNumber.from(100),
+    5
+  );
+
   await writeJSONToFile(
     mockProofsAndSwaps,
     path.resolve(__dirname, "testData.json")
+  );
+  await writeJSONToFile(
+    mockProofsAndSwapSlippageTest,
+    path.resolve(__dirname, "testDataSlippage.json")
+  );
+  await writeJSONToFile(
+    mockProofsAndSwapSlippageTestSmall,
+    path.resolve(__dirname, "testDataSlippageSmall.json")
+  );
+  await writeJSONToFile(
+    mockProofsAndSwapsSliced,
+    path.resolve(__dirname, "testDataSliced.json")
   );
 }
 

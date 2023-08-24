@@ -4,14 +4,14 @@ import { expect } from "chai";
 import {
   getCurrentEpoch,
   incrementVlcvxEpoch,
+  oracleApplyRewards,
   readJSONFromFile,
-  updateRewardsMerkleRoot,
 } from "./VotiumTestHelpers";
 import {
-  votiumClaimRewards,
-  votiumSellRewards,
-} from "../../../scripts/applyVotiumRewardsHelpers";
-import { within1Pip } from "../../helpers/helpers";
+  within1Percent,
+  within1Pip,
+  within2Percent,
+} from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
@@ -49,7 +49,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).mint({
-      value: ethers.utils.parseEther("1"),
+      value: ethers.utils.parseEther("0.000001"),
     });
     await tx.wait();
   };
@@ -113,11 +113,11 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     await tx.wait();
 
     // this shouldnt throw
-    await oracleApplyRewards(rewarderAccount);
+    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
     // this should throw
     try {
-      await oracleApplyRewards(userAccount);
+      await oracleApplyRewards(userAccount, votiumStrategy.address);
     } catch (e: any) {
       expect(e.message).eq(
         "VM Exception while processing transaction: reverted with reason string 'not rewarder'"
@@ -139,40 +139,182 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
   });
   it("Should decrease users balance when requestWithdraw is called", async function () {
-    // TODO
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const balanceBefore = await votiumStrategy.balanceOf(userAccount.address);
+
+    const halfBalance = balanceBefore.div(2);
+    tx = await votiumStrategy.requestWithdraw(halfBalance);
+    await tx.wait();
+
+    const balanceAfter = await votiumStrategy.balanceOf(userAccount.address);
+
+    expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
-  it("Should be able to millions of dollars in rewards with minimal slippage", async function () {
-    // TODO
-  });
-  it("Should test everything about the queue to be sure it works correctly", async function () {
-    // TODO
-  });
-  it("Should allow owner to manually deposit eth rewards and price goes up", async function () {
-    // TODO
-  });
-  it("Should not change the price when minting, burning or withdrawing", async function () {
-    // TODO
-  });
-  it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
-    // TODO
+  it("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
+    const tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const sellEventSmall = await oracleApplyRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      await readJSONFromFile("./scripts/testDataSlippageSmall.json")
+    );
+    const ethReceived0 = sellEventSmall?.args?.ethAmount;
+
+    const sellEventLarge = await oracleApplyRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      await readJSONFromFile("./scripts/testDataSlippage.json")
+    );
+    const ethReceived1 = sellEventLarge?.args?.ethAmount;
+
+    // second sell should be 100x the first sell
+    const expectedEthReceived1 = ethReceived0.mul(100);
+    expect(within2Percent(ethReceived1, expectedEthReceived1)).eq(true);
   });
 
-  const oracleApplyRewards = async (account: SignerWithAddress) => {
-    const testData = await readJSONFromFile("./scripts/testData.json");
-    await updateRewardsMerkleRoot(
-      testData.merkleRoots,
-      testData.swapsData.map((sd: any) => sd.sellToken)
+  it("Should be able to deposit 100 eth depositRewards() with minimal slippage and price go up", async function () {
+    const depositAmountSmall = ethers.utils.parseEther("0.1");
+    const depositAmountLarge = ethers.utils.parseEther("100");
+
+    const tx1 = await votiumStrategy.depositRewards(depositAmountSmall, {
+      value: depositAmountSmall,
+    });
+    const mined1 = await tx1.wait();
+    const e1 = mined1.events?.find((e) => e.event === "DepositReward");
+    const cvxOut1 = e1?.args?.cvxAmount;
+
+    const tx2 = await votiumStrategy.depositRewards(depositAmountLarge, {
+      value: depositAmountLarge,
+    });
+    const mined2 = await tx2.wait();
+    const e2 = mined2.events?.find((e) => e.event === "DepositReward");
+    const cvxOut2 = e2?.args?.cvxAmount;
+
+    const expectedCvxOut2 = cvxOut1.mul(1000);
+
+    expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
+  });
+  it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
+    const price0 = await votiumStrategy.price();
+
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const price1 = await votiumStrategy.price();
+
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(accounts[0].address)
     );
-    await votiumClaimRewards(
-      account,
+    const mined = await tx.wait();
+
+    const price2 = await votiumStrategy.price();
+
+    const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
+
+    const unlockEpoch = event?.args?.unlockEpoch;
+
+    // pass enough epochs so the burned position is fully unlocked
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    tx = await votiumStrategy.withdraw(unlockEpoch);
+    await tx.wait();
+
+    const price3 = await votiumStrategy.price();
+
+    expect(price0).eq(price1).eq(price2).eq(price3);
+  });
+
+  it("Should receive same cvx amount if withdrawing on the unlock epoch or after the unlock epoch", async function () {
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+    const mined = await tx.wait();
+
+    const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
+
+    const unlockEpoch = event?.args?.unlockEpoch;
+
+    // incremement to unlock epoch
+    for (let i = 0; i < 17; i++) {
+      const currentEpoch = await getCurrentEpoch();
+      if (currentEpoch.eq(unlockEpoch)) break;
+      await incrementVlcvxEpoch();
+    }
+
+    const ethBalanceBefore0 = await ethers.provider.getBalance(
+      userAccount.address
+    );
+
+    tx = await votiumStrategy.withdraw(unlockEpoch);
+    await tx.wait();
+
+    const ethBalanceAfter0 = await ethers.provider.getBalance(
+      userAccount.address
+    );
+
+    const ethReceived0 = ethBalanceAfter0.sub(ethBalanceBefore0);
+
+    await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"));
+
+    tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+    await tx.wait();
+
+    // increment way past unlock epoch
+    for (let i = 0; i < 17 * 10; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const ethBalanceBefore1 = await ethers.provider.getBalance(
+      userAccount.address
+    );
+
+    tx = await votiumStrategy.withdraw(unlockEpoch);
+    await tx.wait();
+
+    const ethBalanceAfter1 = await ethers.provider.getBalance(
+      userAccount.address
+    );
+
+    const ethReceived1 = ethBalanceAfter1.sub(ethBalanceBefore1);
+
+    expect(within1Pip(ethReceived0, ethReceived1)).eq(true);
+  });
+
+  it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
+    const cvxTotalBefore = await votiumStrategy.cvxInSystem();
+    const sellEventSmall = await oracleApplyRewards(
+      rewarderAccount,
       votiumStrategy.address,
-      testData.claimProofs
+      await readJSONFromFile("./scripts/testDataSliced.json")
     );
-    await votiumSellRewards(
-      account,
-      votiumStrategy.address,
-      [],
-      testData.swapsData
-    );
-  };
+    const cvxTotalAfter = await votiumStrategy.cvxInSystem();
+    const totalCvxGain = cvxTotalAfter.sub(cvxTotalBefore);
+    const eventCvx = sellEventSmall?.args?.cvxAmount;
+
+    expect(totalCvxGain).eq(eventCvx);
+    expect(totalCvxGain).gt(0);
+  });
 });

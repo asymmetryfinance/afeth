@@ -5,6 +5,8 @@ import { votiumStashControllerAbi } from "../../abis/votiumStashControllerAbi";
 import * as fs from "fs";
 import * as util from "util";
 import { BigNumber } from "ethers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { votiumClaimRewards, votiumSellRewards } from "../../../scripts/applyVotiumRewardsHelpers";
 
 export const epochDuration = 60 * 60 * 24 * 7;
 export const vlCvxAddress = "0x72a19342e8F1838460eBFCCEf09F6585e32db86E";
@@ -108,4 +110,30 @@ export const getCurrentEpochEndTime = async () => {
 
 export const getNextEpochStartTime = async () => {
   return getEpochStartTime((await getCurrentEpoch()).add(1));
+};
+
+export const oracleApplyRewards = async (
+  account: SignerWithAddress,
+  votiumStrategyAddress: string,
+  testDataOverride?: string
+) => {
+  const testData =
+    testDataOverride || (await readJSONFromFile("./scripts/testData.json"));
+  await updateRewardsMerkleRoot(
+    testData.merkleRoots,
+    testData.swapsData.map((sd: any) => sd.sellToken)
+  );
+  await votiumClaimRewards(
+    account,
+    votiumStrategyAddress,
+    testData.claimProofs
+  );
+  const sellEvent = await votiumSellRewards(
+    account,
+    votiumStrategyAddress,
+    [],
+    testData.swapsData
+  );
+
+  return sellEvent;
 };
