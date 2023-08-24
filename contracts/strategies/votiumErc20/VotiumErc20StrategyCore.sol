@@ -172,28 +172,19 @@ contract VotiumErc20StrategyCore is
     function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
-            // Some tokens do not allow approval if allowance already exists
-            uint256 allowance = IERC20(_swapsData[i].sellToken).allowance(
-                address(this),
-                address(_swapsData[i].spender)
+            IERC20(_swapsData[i].sellToken).approve(
+                address(_swapsData[i].spender),
+                0
             );
-            if (allowance != type(uint256).max) {
-                if (allowance > 0) {
-                    IERC20(_swapsData[i].sellToken).approve(
-                        address(_swapsData[i].spender),
-                        0
-                    );
-                }
-                IERC20(_swapsData[i].sellToken).approve(
-                    address(_swapsData[i].spender),
-                    type(uint256).max
-                );
-            }
+            IERC20(_swapsData[i].sellToken).approve(
+                address(_swapsData[i].spender),
+                type(uint256).max
+            );
             (bool success, ) = _swapsData[i].swapTarget.call(
                 _swapsData[i].swapCallData
             );
             if (!success) {
-                console.log('FAILED TO SELL TOKEN', _swapsData[i].sellToken);
+                console.log('FAILED TO SELL TOKEN!', _swapsData[i].sellToken);
                 // TODO emit an event or something?
                 // this causes unsold tokens to build up in the contract, see:
                 // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478

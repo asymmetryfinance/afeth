@@ -44,10 +44,12 @@ export const generate0xSwapData = async (
       swapsData.push(newData);
     } else {
       let result;
+
+      console.log('calling 0x api for', i, sellToken, buyToken, sellAmount.toString());
       // TODO do we want slippage protection or does it not matter and we just dump all the tokens anyway?
       try {
         result = await axios.get(
-          `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${sellAmount}`,
+          `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${sellAmount}&slippagePercentage=0.50`,
           {
             headers: {
               "0x-api-key":
@@ -64,8 +66,14 @@ export const generate0xSwapData = async (
           swapCallData: result.data.data,
         };
 
+        console.log('pushing swap data', newData);
         swapsData.push(newData);
       } catch (e) {
+        console.log('**************************')
+        console.log('**************************')
+        console.log('**************************')
+        console.log('**************************')
+        console.log('**************************')
         console.log("0x doesnt support", i, sellToken, buyToken, sellAmount, e);
       }
     }
