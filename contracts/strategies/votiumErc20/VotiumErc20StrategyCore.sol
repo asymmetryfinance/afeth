@@ -172,14 +172,23 @@ contract VotiumErc20StrategyCore is
     function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
-            IERC20(_swapsData[i].sellToken).approve(
-                address(_swapsData[i].spender),
-                0
+            // Some tokens do not allow approval if allowance already exists
+            uint256 allowance = IERC20(_swapsData[i].sellToken).allowance(
+                address(this),
+                address(_swapsData[i].spender)
             );
-            IERC20(_swapsData[i].sellToken).approve(
-                address(_swapsData[i].spender),
-                type(uint256).max
-            );
+            if (allowance != type(uint256).max) {
+                if (allowance > 0) {
+                    IERC20(_swapsData[i].sellToken).approve(
+                        address(_swapsData[i].spender),
+                        0
+                    );
+                }
+                IERC20(_swapsData[i].sellToken).approve(
+                    address(_swapsData[i].spender),
+                    type(uint256).max
+                );
+            }
             (bool success, ) = _swapsData[i].swapTarget.call(
                 _swapsData[i].swapCallData
             );
