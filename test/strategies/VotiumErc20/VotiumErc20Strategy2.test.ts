@@ -160,9 +160,10 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const underlyingCvx0 = await votiumStrategy.cvxInSystem();
 
     console.log('underlyingCvx0', ethers.utils.formatEther(underlyingCvx0).toString());
-    // merkle proof with large claim amount (12.5% of each reward token)
+
+    // merkle proof with tiny claims amounts (0.125% of total for each recipient)
     const slippageTestDataSmall = await readJSONFromFile(
-      "./scripts/testDataSlippage.json"
+      "./scripts/testDataSlippageSmall.json"
     );
 
     console.log('about to apply rewards');
