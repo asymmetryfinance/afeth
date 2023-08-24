@@ -19,7 +19,7 @@ function writeJSONToFile(obj: any, filePath: string): Promise<void> {
 async function main() {
   // address of VotiumStrategy contract that will be used in the tests
   const expectedVotiumStrategyAddress =
-    "0x05bB67cB592C1753425192bF8f34b95ca8649f09";
+    "0x64f5219563e28EeBAAd91Ca8D31fa3b36621FD4f";
   const recipients = [
     expectedVotiumStrategyAddress,
     "0x8a65ac0E23F31979db06Ec62Af62b132a6dF4741",
