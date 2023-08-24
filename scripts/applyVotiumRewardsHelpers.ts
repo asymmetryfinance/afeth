@@ -131,8 +131,6 @@ export async function votiumSellRewards(
   const tx = await votiumStrategy.applyRewards(swapsData);
   const mined2 = await tx.wait();
 
-  console.log('mined2 is', mined2)
-
   return mined2?.events?.find((e) => e?.event === "DepositReward");
 }
 

@@ -119,27 +119,11 @@ contract VotiumErc20StrategyCore is
     /// useful if we need to manually sell rewards ourselves
     // TODO: anyone can lock all eth in the contract, maybe we should make this onlyOwner? Maybe ok?
     function depositRewards(uint256 _amount) public payable {
-        console.log('****DEPOSIT REWARDS****');
-        console.log("cvx in contract before buying cvx:", IERC20(CVX_ADDRESS).balanceOf(address(this)));
-        console.log('eth ampount of cvx to buy', _amount);
-
-        revert('stop here');
-
-
-
-                        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
-            address(this)
-        );
-
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         recordPriceUpdate();
         emit DepositReward(price(), _amount, cvxAmount);
-
-                        (uint256 total2, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
-            address(this)
-        );
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {
@@ -186,11 +170,6 @@ contract VotiumErc20StrategyCore is
 
     /// sell any number of erc20's via 0x in a single tx
     function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
-
-        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
-
-        console.log('cvx balance at tome of applyRewards', cvxBalanceBefore);
-
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
@@ -214,7 +193,6 @@ contract VotiumErc20StrategyCore is
                 _swapsData[i].swapCallData
             );
             if (!success) {
-                console.log('its all fucked', _swapsData[i].sellToken);
                 // TODO emit an event or something?
                 // this causes unsold tokens to build up in the contract, see:
                 // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478
@@ -223,7 +201,6 @@ contract VotiumErc20StrategyCore is
         uint256 ethBalanceAfter = address(this).balance;
 
         uint256 ethRewardAmount = ethBalanceAfter - ethBalanceBefore;
-        console.log('ethRewardAmount', ethRewardAmount);
 
         depositRewards(ethBalanceAfter - ethBalanceBefore);
     }
