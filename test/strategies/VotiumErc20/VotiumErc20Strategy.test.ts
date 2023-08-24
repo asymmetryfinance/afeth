@@ -765,7 +765,71 @@ describe("Test VotiumErc20Strategy", async function () {
     );
   });
   it("Should allow 1 user to withdraw over two epochs", async function () {
-    // TODO
+    const startingTotalSupply = await votiumStrategy.totalSupply();
+    let tx = await votiumStrategy.mint({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
+    const totalSupply1 = await votiumStrategy.totalSupply();
+
+    expect(totalSupply1).eq(
+      BigNumber.from(afEthBalance1).add(startingTotalSupply)
+    );
+
+    const testData = await readJSONFromFile("./scripts/testData.json");
+
+    await updateRewardsMerkleRoot(
+      testData.merkleRoots,
+      testData.swapsData.map((sd: any) => sd.sellToken)
+    );
+
+    const priceBeforeRewards = await votiumStrategy.price();
+
+    await votiumClaimRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      testData.claimProofs
+    );
+    await votiumSellRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      [],
+      testData.swapsData
+    );
+
+    const priceAfterRewards = await votiumStrategy.price();
+
+    expect(priceAfterRewards).gt(priceBeforeRewards);
+
+    // burn
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+    const mined = await tx.wait();
+
+    const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
+
+    const unlockEpoch = event?.args?.unlockEpoch;
+
+    // pass enough epochs so the burned position is fully unlocked
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const ethBalanceBefore = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    tx = await votiumStrategy.withdraw(unlockEpoch);
+    await tx.wait();
+
+    const ethBalanceAfter = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+    // balance after fully withdrawing is higher
+    expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
   it("Should allow multiple users to withdraw over two epochs", async function () {
     // TODO
