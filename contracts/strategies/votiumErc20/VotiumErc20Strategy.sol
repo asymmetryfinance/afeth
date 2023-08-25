@@ -13,6 +13,13 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 amount,
         uint256 unlockEpoch
     );
+    event Withdraw(
+        address indexed user,
+        uint256 cvxAmount,
+        uint256 unlockEpoch,
+        uint256 ethAmount,
+        uint256 price
+    );
 
     function mint() public payable override {
         uint256 priceBefore = price();
@@ -78,10 +85,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             "Can't withdraw from future epoch"
         );
         require(positionToWithdraw.afEthOwed > 0, "Nothing to withdraw");
-        require(
-            positionToWithdraw.afEthOwed <= afEthUnlockObligations,
-            "Invalid amount"
-        );
 
         uint256 startingPrice = unlockQueues[msg.sender][epochToWithdraw]
             .priceWhenRequested;
@@ -119,10 +122,21 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         }
 
         _burn(address(this), positionToWithdraw.afEthOwed);
+        unlockQueues[
+            msg.sender
+        ][epochToWithdraw].afEthOwed = 0;
         uint256 balanceBefore = address(this).balance;
+        console.log('cvxToWithdraw', cvxToWithdraw, cvxBalance);
         sellCvx(cvxToWithdraw);
         uint256 balanceAfter = address(this).balance;
         // TODO: use call to send eth instead
         payable(msg.sender).transfer(balanceAfter - balanceBefore);
+        emit Withdraw(
+            msg.sender,
+            cvxToWithdraw,
+            epochToWithdraw,
+            balanceAfter - balanceBefore,
+            averagePrice
+        );
     }
 }
