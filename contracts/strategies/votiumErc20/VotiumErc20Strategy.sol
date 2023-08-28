@@ -43,7 +43,9 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
 
         uint256 _price = price();
-        cvxUnlockObligations += _amount * _price / 1e18;
+
+        uint256 cvxAmount = _amount * _price / 1e18;
+        cvxUnlockObligations += cvxAmount;
 
         uint256 totalLockedBalancePlusUnlockable = unlockable;
 
@@ -62,10 +64,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     withdrawEpoch
                 ].cvxOwed;
                 unlockQueues[msg.sender][withdrawEpoch] = UnlockQueuePosition({
-                    cvxOwed: previousCvxOwed + _amount,
+                    cvxOwed: previousCvxOwed + cvxAmount,
                     priceWhenRequested: _price
                 });
-                emit WithdrawRequest(msg.sender, _amount, withdrawEpoch);
+                emit WithdrawRequest(msg.sender, cvxAmount, withdrawEpoch);
                 break;
             }
         }

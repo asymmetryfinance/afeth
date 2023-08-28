@@ -43,10 +43,6 @@ contract VotiumErc20StrategyCore is
 
     uint256 public cvxUnlockObligations;
 
-    // epoch => price
-    mapping(uint256 => uint256) public priceUpdates;
-    uint256 priceUpdateslength;
-
     address rewarder;
 
     event DepositReward(
@@ -86,7 +82,6 @@ contract VotiumErc20StrategyCore is
         );
         rewarder = _rewarder;
         _transferOwnership(_owner);
-        recordPriceUpdate();
     }
 
     function setRewarder(address _rewarder) external onlyOwner {
@@ -122,7 +117,6 @@ contract VotiumErc20StrategyCore is
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        recordPriceUpdate();
         emit DepositReward(price(), _amount, cvxAmount);
     }
 
@@ -204,13 +198,6 @@ contract VotiumErc20StrategyCore is
         uint256 ethBalanceAfter = address(this).balance;
 
         depositRewards(ethBalanceAfter - ethBalanceBefore);
-    }
-
-    function recordPriceUpdate() private {
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-            block.timestamp
-        );
-        priceUpdates[currentEpoch] = price();
     }
 
     function claimVotiumRewards(
