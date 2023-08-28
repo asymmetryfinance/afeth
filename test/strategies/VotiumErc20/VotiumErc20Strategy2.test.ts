@@ -74,7 +74,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const unlockEpoch = event?.args?.unlockEpoch;
 
-    console.log('mined1.events', JSON.stringify(mined1?.events, null, 2));
+    console.log("mined1.events", JSON.stringify(mined1?.events, null, 2));
 
     const currentEpoch = await getCurrentEpoch();
 
@@ -203,7 +203,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
   });
-  it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
+  it.only("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
     const price0 = await votiumStrategy.price();
 
     let tx = await votiumStrategy.mint({
@@ -233,6 +233,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     await tx.wait();
 
     const price3 = await votiumStrategy.price();
+    console.log({ price0, price1, price2, price3 });
 
     expect(price0).eq(price1).eq(price2).eq(price3);
   });

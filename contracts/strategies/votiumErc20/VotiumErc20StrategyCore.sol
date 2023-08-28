@@ -34,7 +34,8 @@ contract VotiumErc20StrategyCore is
     }
 
     struct UnlockQueuePosition {
-        uint256 cvxOwed; // how much afEth total is owed for this position
+        uint256 afEthOwed; // how much afEth total is owed for this position
+        uint256 cvxOwed; // how much cvxOwed total is owed for this position
         uint256 priceWhenRequested; // afEth price when withdraw requested
     }
 
@@ -89,7 +90,7 @@ contract VotiumErc20StrategyCore is
     }
 
     function cvxInSystem() public view returns (uint256) {
-                (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
         return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
@@ -101,7 +102,7 @@ contract VotiumErc20StrategyCore is
         uint256 totalCvx = cvxInSystem();
         if (totalCvx == 0) return 1e18;
 
-        console.log('price calculation', totalCvx, supply);
+        console.log("price calculation", totalCvx, supply);
         return (totalCvx * 1e18) / supply;
     }
 
@@ -156,7 +157,7 @@ contract VotiumErc20StrategyCore is
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
         uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        console.log('about to sell cvx', _cvxAmountIn, cvxBalance);
+        console.log("about to sell cvx", _cvxAmountIn, cvxBalance);
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
@@ -191,7 +192,7 @@ contract VotiumErc20StrategyCore is
                 _swapsData[i].swapCallData
             );
             if (!success) {
-                console.log('FAILED TO SELL TOKEN', _swapsData[i].sellToken);
+                console.log("FAILED TO SELL TOKEN", _swapsData[i].sellToken);
                 // TODO emit an event or something?
                 // this causes unsold tokens to build up in the contract, see:
                 // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478
