@@ -74,8 +74,6 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const unlockEpoch = event?.args?.unlockEpoch;
 
-    console.log("mined1.events", JSON.stringify(mined1?.events, null, 2));
-
     const currentEpoch = await getCurrentEpoch();
 
     const epochsUntilUnlock = unlockEpoch.sub(currentEpoch);
@@ -233,7 +231,6 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     await tx.wait();
 
     const price3 = await votiumStrategy.price();
-    console.log({ price0, price1, price2, price3 });
 
     expect(price0).eq(price1).eq(price2).eq(price3);
   });

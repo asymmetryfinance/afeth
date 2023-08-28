@@ -76,7 +76,6 @@ describe("Test VotiumErc20Strategy", async function () {
       votiumStrategy,
       await votiumStrategy.balanceOf(accounts[0].address)
     );
-    console.log('unlockEpoch', unlockEpoch)
 
     // pass enough epochs so the burned position is fully unlocked
     for (let i = 0; i < 17; i++) {
@@ -98,16 +97,12 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
   it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function () {
-
-    console.log('wtf0')
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const stakerAmounts = 2;
-    console.log('wtf1')
 
     let tx;
     let runningBalance = BigNumber.from(startingTotalSupply);
     for (let i = 1; i <= stakerAmounts; i++) {
-      console.log('looping', i)
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
       tx = await stakerVotiumStrategy.mint({
         value: ethers.utils.parseEther("1"),
@@ -115,57 +110,44 @@ describe("Test VotiumErc20Strategy", async function () {
       await tx.wait();
       const afEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
       runningBalance = runningBalance.add(afEthBalance);
-      console.log('running balance', runningBalance.toString())
     }
-    console.log('wtf2')
 
     const totalSupply1 = await votiumStrategy.totalSupply();
     expect(totalSupply1).eq(runningBalance);
     const priceBeforeRewards = await votiumStrategy.price();
-    console.log('wtf3')
 
     // claim rewards
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-    console.log('wtf4')
     const priceAfterRewards = await votiumStrategy.price();
-    console.log('wtf5')
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
-    console.log('wtf6')
     expect(
       within1Percent(
         await votiumStrategy.balanceOf(accounts[1].address),
         await votiumStrategy.balanceOf(accounts[2].address)
       )
     ).eq(true);
-    console.log('wtf7')
 
     // request withdraw for each account
     let unlockEpoch;
     for (let i = 1; i <= stakerAmounts; i++) {
-      console.log('looping on',i);
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
-      console.log('loop 2')
       unlockEpoch = await requestWithdrawal(
         stakerVotiumStrategy,
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
-      console.log('loop 3', unlockEpoch);
 
       const unlock = await votiumStrategy.unlockQueues(
         accounts[i].address,
         unlockEpoch
       );
-      console.log('loop 4')
       expect(unlock.cvxOwed).gt(0);
     }
-    console.log('wtf8')
 
     // go to next epoch
     for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
     }
-    console.log('wtf9')
 
     // withdraw from queue
     const balancesBefore = [];
@@ -187,7 +169,6 @@ describe("Test VotiumErc20Strategy", async function () {
       // balance after fully withdrawing is higher
       expect(ethBalanceAfter).gt(ethBalanceBefore);
     }
-    console.log('wtf5')
     // verify balances are within 1% of each other
     for (let i = 0; i < stakerAmounts; i++) {
       expect(within1Percent(balancesBefore[i], balancesAfter[i])).eq(true);
@@ -366,8 +347,6 @@ describe("Test VotiumErc20Strategy", async function () {
       .sub(ethBalanceBefore2)
       .sub(stakeAmount);
 
-      console.log('rewardAmount1', rewardAmount1.toString())
-      console.log('rewardAmount2', rewardAmount2.toString())
     expect(within2Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
   it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {

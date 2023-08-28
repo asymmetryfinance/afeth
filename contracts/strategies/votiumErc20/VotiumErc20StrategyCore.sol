@@ -102,7 +102,6 @@ contract VotiumErc20StrategyCore is
         uint256 totalCvx = cvxInSystem();
         if (totalCvx == 0) return 1e18;
 
-        console.log("price calculation", totalCvx, supply);
         return (totalCvx * 1e18) / supply;
     }
 
@@ -157,7 +156,6 @@ contract VotiumErc20StrategyCore is
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
         uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        console.log("about to sell cvx", _cvxAmountIn, cvxBalance);
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
