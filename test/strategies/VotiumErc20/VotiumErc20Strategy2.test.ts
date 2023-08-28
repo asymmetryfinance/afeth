@@ -203,7 +203,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
   });
-  it.only("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
+  it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
     const price0 = await votiumStrategy.price();
 
     let tx = await votiumStrategy.mint({

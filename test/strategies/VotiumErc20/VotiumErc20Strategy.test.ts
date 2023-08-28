@@ -368,7 +368,7 @@ describe("Test VotiumErc20Strategy", async function () {
 
       console.log('rewardAmount1', rewardAmount1.toString())
       console.log('rewardAmount2', rewardAmount2.toString())
-    // expect(within2Percent(rewardAmount1, rewardAmount2)).eq(true);
+    expect(within2Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
   it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
