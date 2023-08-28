@@ -34,14 +34,14 @@ contract VotiumErc20StrategyCore is
     }
 
     struct UnlockQueuePosition {
-        uint256 afEthOwed; // how much afEth total is owed for this position
+        uint256 cvxOwed; // how much afEth total is owed for this position
         uint256 priceWhenRequested; // afEth price when withdraw requested
     }
 
     mapping(address => mapping(uint256 => UnlockQueuePosition))
         public unlockQueues;
 
-    uint256 public afEthUnlockObligations;
+    uint256 public cvxUnlockObligations;
 
     // epoch => price
     mapping(uint256 => uint256) public priceUpdates;

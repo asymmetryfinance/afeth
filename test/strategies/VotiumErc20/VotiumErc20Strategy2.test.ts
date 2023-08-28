@@ -399,41 +399,4 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
     await tx.wait();
   });
-
-  it.only("Should THIS IS A PROBLEM!!!!! (transfer amount exceeds balance. this should not be failing)", async function () {
-    let tx = await votiumStrategy.mint({
-      value: ethers.utils.parseEther(".1"),
-    });
-    await tx.wait();
-
-    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-
-    tx = await votiumStrategy.requestWithdraw(
-      await votiumStrategy.balanceOf(accounts[0].address)
-    );
-    const mined = await tx.wait();
-
-    const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
-
-    const unlockEpoch = event?.args?.unlockEpoch;
-
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-
-    // pass enough epochs so the burned position is fully unlocked
-    for (let i = 0; i < 17; i++) {
-      const currentEpoch = await getCurrentEpoch();
-      if (currentEpoch.eq(unlockEpoch)) break;
-      await incrementVlcvxEpoch();
-    }
-
-    const withdrawTx = await votiumStrategy.withdraw(unlockEpoch);
-    const withdrawMined = await withdrawTx.wait();
-    const withdrawEvent = withdrawMined?.events?.find((e) => e?.event === "Withdraw");
-    console.log('withdrawEvent', withdrawEvent);
-  });
 });

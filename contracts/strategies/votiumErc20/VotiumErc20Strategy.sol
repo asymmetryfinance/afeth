@@ -17,8 +17,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         address indexed user,
         uint256 cvxAmount,
         uint256 unlockEpoch,
-        uint256 ethAmount,
-        uint256 price
+        uint256 ethAmount
     );
 
     function mint() public payable override {
@@ -43,14 +42,15 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             ILockedCvx.LockedBalance[] memory lockedBalances
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
 
-        afEthUnlockObligations += _amount;
+        uint256 _price = price();
+        cvxUnlockObligations += _amount * _price / 1e18;
 
         uint256 totalLockedBalancePlusUnlockable = unlockable;
 
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
-            if (totalLockedBalancePlusUnlockable >= afEthUnlockObligations) {
+            if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations) {
                 (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS)
                     .epochs(currentEpoch);
                 uint256 timeDifference = lockedBalances[i].unlockTime -
@@ -58,12 +58,12 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 uint256 epochOffset = timeDifference /
                     ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
                 uint256 withdrawEpoch = currentEpoch + epochOffset;
-                uint256 previousAfEthOwed = unlockQueues[msg.sender][
+                uint256 previousCvxOwed = unlockQueues[msg.sender][
                     withdrawEpoch
-                ].afEthOwed;
+                ].cvxOwed;
                 unlockQueues[msg.sender][withdrawEpoch] = UnlockQueuePosition({
-                    afEthOwed: previousAfEthOwed + _amount,
-                    priceWhenRequested: price()
+                    cvxOwed: previousCvxOwed + _amount,
+                    priceWhenRequested: _price
                 });
                 emit WithdrawRequest(msg.sender, _amount, withdrawEpoch);
                 break;
@@ -84,20 +84,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             epochToWithdraw <= currentEpoch,
             "Can't withdraw from future epoch"
         );
-        require(positionToWithdraw.afEthOwed > 0, "Nothing to withdraw");
+        require(positionToWithdraw.cvxOwed > 0, "Nothing to withdraw");
 
-        uint256 startingPrice = unlockQueues[msg.sender][epochToWithdraw]
-            .priceWhenRequested;
-
-        uint256 endingPrice;
-        for (uint256 i = epochToWithdraw; i > 0; i--) {
-            if (priceUpdates[i] != 0) {
-                endingPrice = priceUpdates[i];
-                break;
-            }
-        }
-
-        uint256 averagePrice = (startingPrice + endingPrice) / 2;
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
@@ -106,14 +94,13 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         if (unlockable > 0)
             ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
 
-        uint256 cvxToWithdraw = (positionToWithdraw.afEthOwed * averagePrice) /
-            1e18;
-        uint256 cvxUnlockObligations = (afEthUnlockObligations * price()) /
-            1e18;
-        afEthUnlockObligations -= positionToWithdraw.afEthOwed;
+        uint256 cvxToWithdraw = positionToWithdraw.cvxOwed;
+
+        cvxUnlockObligations -= cvxToWithdraw;
 
         uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        uint256 cvxAmountToRelock = cvxUnlockObligations > cvxBalance ? 0 : cvxBalance - cvxUnlockObligations;
+
+        uint256 cvxAmountToRelock = cvxBalance > cvxUnlockObligations ? cvxBalance - cvxUnlockObligations : 0;
 
         // relock everything minus unlock queue obligations
         if (cvxAmountToRelock > 0) {
@@ -121,12 +108,11 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
         }
 
-        _burn(address(this), positionToWithdraw.afEthOwed);
+        _burn(address(this), positionToWithdraw.cvxOwed);
         unlockQueues[
             msg.sender
-        ][epochToWithdraw].afEthOwed = 0;
+        ][epochToWithdraw].cvxOwed = 0;
         uint256 balanceBefore = address(this).balance;
-        console.log('cvxToWithdraw', cvxToWithdraw, cvxBalance);
         sellCvx(cvxToWithdraw);
         uint256 balanceAfter = address(this).balance;
         // TODO: use call to send eth instead
@@ -135,8 +121,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             msg.sender,
             cvxToWithdraw,
             epochToWithdraw,
-            balanceAfter - balanceBefore,
-            averagePrice
+            balanceAfter - balanceBefore
         );
     }
 }
