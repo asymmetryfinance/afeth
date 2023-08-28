@@ -30,7 +30,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     }
 
     function requestWithdraw(uint256 _amount) public override {
-        uint256 priceBeforeBurn = price();
+        uint256 _price = price();
         _transfer(msg.sender, address(this), _amount);
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
@@ -42,7 +42,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             ,
             ILockedCvx.LockedBalance[] memory lockedBalances
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
-        uint256 cvxAmount = (_amount * priceBeforeBurn) / 1e18;
+        uint256 cvxAmount = (_amount * _price) / 1e18;
         cvxUnlockObligations += cvxAmount;
 
         uint256 totalLockedBalancePlusUnlockable = unlockable;
@@ -61,10 +61,13 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 uint256 previousCvxOwed = unlockQueues[msg.sender][
                     withdrawEpoch
                 ].cvxOwed;
+                uint256 previousAfEthOwed = unlockQueues[msg.sender][
+                    withdrawEpoch
+                ].afEthOwed;
                 unlockQueues[msg.sender][withdrawEpoch] = UnlockQueuePosition({
                     cvxOwed: previousCvxOwed + cvxAmount,
-                    afEthOwed: _amount,
-                    priceWhenRequested: priceBeforeBurn
+                    afEthOwed: previousAfEthOwed + _amount,
+                    priceWhenRequested: _price
                 });
                 emit WithdrawRequest(msg.sender, cvxAmount, withdrawEpoch);
                 break;
@@ -115,6 +118,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
 
         unlockQueues[msg.sender][epochToWithdraw].cvxOwed = 0;
+        unlockQueues[msg.sender][epochToWithdraw].afEthOwed = 0;
         uint256 balanceBefore = address(this).balance;
         sellCvx(cvxToWithdraw);
         uint256 balanceAfter = address(this).balance;
