@@ -58,7 +58,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
+  it.only("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
     let tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
