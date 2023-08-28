@@ -100,6 +100,8 @@ contract VotiumErc20StrategyCore is
         if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
         if (totalCvx == 0) return 1e18;
+
+        console.log('price calculation', totalCvx, supply);
         return (totalCvx * 1e18) / supply;
     }
 

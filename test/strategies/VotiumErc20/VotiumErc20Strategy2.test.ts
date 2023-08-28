@@ -58,7 +58,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
+  it("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
     let tx = await votiumStrategy.mint({
       value: ethers.utils.parseEther("1"),
     });
@@ -73,6 +73,8 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const event = mined1?.events?.find((e) => e?.event === "WithdrawRequest");
 
     const unlockEpoch = event?.args?.unlockEpoch;
+
+    console.log('mined1.events', JSON.stringify(mined1?.events, null, 2));
 
     const currentEpoch = await getCurrentEpoch();
 
