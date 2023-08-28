@@ -35,17 +35,14 @@ contract VotiumErc20StrategyCore is
 
     struct UnlockQueuePosition {
         uint256 afEthOwed; // how much afEth total is owed for this position
+        uint256 cvxOwed; // how much cvxOwed total is owed for this position
         uint256 priceWhenRequested; // afEth price when withdraw requested
     }
 
     mapping(address => mapping(uint256 => UnlockQueuePosition))
         public unlockQueues;
 
-    uint256 public afEthUnlockObligations;
-
-    // epoch => price
-    mapping(uint256 => uint256) public priceUpdates;
-    uint256 priceUpdateslength;
+    uint256 public cvxUnlockObligations;
 
     address rewarder;
 
@@ -86,7 +83,6 @@ contract VotiumErc20StrategyCore is
         );
         rewarder = _rewarder;
         _transferOwnership(_owner);
-        recordPriceUpdate();
     }
 
     function setRewarder(address _rewarder) external onlyOwner {
@@ -94,7 +90,7 @@ contract VotiumErc20StrategyCore is
     }
 
     function cvxInSystem() public view returns (uint256) {
-                (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
         return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
@@ -105,6 +101,7 @@ contract VotiumErc20StrategyCore is
         if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
         if (totalCvx == 0) return 1e18;
+
         return (totalCvx * 1e18) / supply;
     }
 
@@ -122,7 +119,6 @@ contract VotiumErc20StrategyCore is
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        recordPriceUpdate();
         emit DepositReward(price(), _amount, cvxAmount);
     }
 
@@ -159,6 +155,7 @@ contract VotiumErc20StrategyCore is
         uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
+        uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
@@ -193,7 +190,7 @@ contract VotiumErc20StrategyCore is
                 _swapsData[i].swapCallData
             );
             if (!success) {
-                console.log('FAILED TO SELL TOKEN', _swapsData[i].sellToken);
+                console.log("FAILED TO SELL TOKEN", _swapsData[i].sellToken);
                 // TODO emit an event or something?
                 // this causes unsold tokens to build up in the contract, see:
                 // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478
@@ -202,13 +199,6 @@ contract VotiumErc20StrategyCore is
         uint256 ethBalanceAfter = address(this).balance;
 
         depositRewards(ethBalanceAfter - ethBalanceBefore);
-    }
-
-    function recordPriceUpdate() private {
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-            block.timestamp
-        );
-        priceUpdates[currentEpoch] = price();
     }
 
     function claimVotiumRewards(

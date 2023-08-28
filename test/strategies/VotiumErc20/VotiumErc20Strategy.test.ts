@@ -118,7 +118,6 @@ describe("Test VotiumErc20Strategy", async function () {
 
     // claim rewards
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-
     const priceAfterRewards = await votiumStrategy.price();
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
@@ -142,7 +141,7 @@ describe("Test VotiumErc20Strategy", async function () {
         accounts[i].address,
         unlockEpoch
       );
-      expect(unlock.afEthOwed).gt(0);
+      expect(unlock.cvxOwed).gt(0);
     }
 
     // go to next epoch
@@ -170,7 +169,6 @@ describe("Test VotiumErc20Strategy", async function () {
       // balance after fully withdrawing is higher
       expect(ethBalanceAfter).gt(ethBalanceBefore);
     }
-
     // verify balances are within 1% of each other
     for (let i = 0; i < stakerAmounts; i++) {
       expect(within1Percent(balancesBefore[i], balancesAfter[i])).eq(true);
@@ -348,6 +346,7 @@ describe("Test VotiumErc20Strategy", async function () {
     const rewardAmount2 = ethBalanceAfter2
       .sub(ethBalanceBefore2)
       .sub(stakeAmount);
+
     expect(within2Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
   it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
@@ -391,7 +390,7 @@ describe("Test VotiumErc20Strategy", async function () {
         accounts[i].address,
         unlockEpoch
       );
-      expect(unlock.afEthOwed).gt(0);
+      expect(unlock.cvxOwed).gt(0);
     }
 
     // go to next epoch
@@ -473,7 +472,7 @@ describe("Test VotiumErc20Strategy", async function () {
         accounts[i].address,
         unlockEpoch
       );
-      expect(unlock.afEthOwed).gt(0);
+      expect(unlock.cvxOwed).gt(0);
     }
 
     // go to next epoch
