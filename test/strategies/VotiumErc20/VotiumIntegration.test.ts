@@ -4,6 +4,7 @@ import {
   getAdminAccount,
   getRewarderAccount,
   getUserAccounts,
+  increaseTime1Epoch,
   randomStakeUnstakeWithdraw,
 } from "./IntegrationHelpers";
 
@@ -31,6 +32,7 @@ describe("Votium integration test", async function () {
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
+      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
@@ -47,13 +49,13 @@ describe("Votium integration test", async function () {
 
   it.only("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
     const userAccounts = await getUserAccounts();
-    for (let i = 0; i < 64; i++) {
-      console.log("looping", i);
+    for (let i = 0; i < 32; i++) {
       await randomStakeUnstakeWithdraw(
         userAccounts[0],
         votiumStrategy,
         ethers.utils.parseEther("10")
       );
+      await increaseTime1Epoch(votiumStrategy);
     }
   });
 

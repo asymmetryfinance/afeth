@@ -75,8 +75,6 @@ export const randomStakeUnstakeWithdraw = async (
   votiumStrategy: VotiumErc20Strategy,
   maxStakeAmount: BigNumber
 ) => {
-  console.log("randomStakeUnstakeWithdraw", userAcount.address);
-
   const stakeAmount = randomEthAmount(
     0,
     parseFloat(ethers.utils.formatEther(maxStakeAmount))
@@ -93,24 +91,18 @@ export const randomStakeUnstakeWithdraw = async (
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
 
-  console.log("rs1");
   const withdrawAmount = randomEthAmount(
     0,
     parseFloat(ethers.utils.formatEther(votiumBalance))
   );
-  console.log("rs2???", withdrawAmount);
 
   tx = await votiumStrategy
     .connect(userAcount)
     .requestWithdraw(ethers.utils.parseEther(withdrawAmount));
   mined = await tx.wait();
-  console.log("rs2.1");
   txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-  console.log("rs2.2");
   userTxFees[userAcount.address].push(txFee);
-  console.log("rs2.4");
   const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
-  console.log("rs3");
 
   const unlockEpoch = event?.args?.unlockEpoch;
 
@@ -120,7 +112,6 @@ export const randomStakeUnstakeWithdraw = async (
     epochRequested: await getCurrentEpoch(),
     epochEligible: unlockEpoch,
   });
-  console.log("rs4");
 
   // check if there are any eligible withdraws
 
@@ -131,7 +122,6 @@ export const randomStakeUnstakeWithdraw = async (
     console.log('unstakeRequestTime', unstakeRequestTime);
     if (unstakeRequestTime.epochEligible <= (await getCurrentEpoch())) {
         console.log('about to do tx')
-        process.exit(0)
       tx = await votiumStrategy
         .connect(userAcount)
         .withdraw(unstakeRequestTime.epochEligible);
