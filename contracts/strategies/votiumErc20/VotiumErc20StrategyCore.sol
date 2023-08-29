@@ -155,7 +155,6 @@ contract VotiumErc20StrategyCore is
         uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
-        uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,

@@ -1,14 +1,14 @@
 import { network, ethers, upgrades } from "hardhat";
 import { VotiumErc20Strategy } from "../../../typechain-types";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import {
+  getAdminAccount,
+  getRewarderAccount,
+  getUserAccounts,
+  randomStakeUnstakeWithdraw,
+} from "./IntegrationHelpers";
 
 describe("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
-  let accounts: SignerWithAddress[];
-  let rewarderAccount: SignerWithAddress;
-  let userAccount: SignerWithAddress;
-  let ownerAccount: SignerWithAddress;
-
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
       method: "hardhat_reset",
@@ -21,14 +21,13 @@ describe("Votium integration test", async function () {
         },
       ],
     });
-    accounts = await ethers.getSigners();
-    userAccount = accounts[0];
-    rewarderAccount = accounts[1];
-    ownerAccount = accounts[2];
 
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumErc20Strategy"
     );
+
+    const ownerAccount = await getAdminAccount();
+    const rewarderAccount = await getRewarderAccount();
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
@@ -36,7 +35,7 @@ describe("Votium integration test", async function () {
     await votiumStrategy.deployed();
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await votiumStrategy.connect(accounts[11]).mint({
+    const tx = await votiumStrategy.connect(await getAdminAccount()).mint({
       value: ethers.utils.parseEther("0.000001"),
     });
     await tx.wait();
@@ -46,8 +45,16 @@ describe("Votium integration test", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs", async function () {
-    // TODO
+  it.only("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
+    const userAccounts = await getUserAccounts();
+    for (let i = 0; i < 64; i++) {
+      console.log("looping", i);
+      await randomStakeUnstakeWithdraw(
+        userAccounts[0],
+        votiumStrategy,
+        ethers.utils.parseEther("10")
+      );
+    }
   });
 
   it("Should have tvl (or supply * price) be equal to total staked plus rewards minus unstaked", async function () {
