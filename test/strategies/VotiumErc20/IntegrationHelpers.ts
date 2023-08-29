@@ -63,6 +63,7 @@ export const increaseTime1Epoch = async (
 
   const currentEpoch = await getCurrentEpoch();
   if (currentEpoch % 2 === 0) {
+    // TODO this is probbly running out of rewards. make sure its all good and see if se need to fund it more
     await oracleApplyRewards(
       await getRewarderAccount(),
       votiumStrategy.address
