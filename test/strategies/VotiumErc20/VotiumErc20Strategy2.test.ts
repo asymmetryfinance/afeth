@@ -48,7 +48,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     await votiumStrategy.deployed();
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await votiumStrategy.connect(accounts[11]).mint({
+    const tx = await votiumStrategy.connect(accounts[11]).deposit({
       value: ethers.utils.parseEther("0.000001"),
     });
     await tx.wait();
@@ -59,7 +59,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   );
 
   it("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
-    let tx = await votiumStrategy.mint({
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -102,7 +102,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
   });
   it("Should only allow the rewarder to applyRewards()", async function () {
-    let tx = await votiumStrategy.mint({
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -125,7 +125,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     }
   });
   it("Should not be able to requestWithdraw for more than a users balance", async function () {
-    const tx = await votiumStrategy.mint({
+    const tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -139,7 +139,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
   });
   it("Should decrease users balance when requestWithdraw is called", async function () {
-    let tx = await votiumStrategy.mint({
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -155,7 +155,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
   it("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
-    const tx = await votiumStrategy.mint({
+    const tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -204,7 +204,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
     const price0 = await votiumStrategy.price();
 
-    let tx = await votiumStrategy.mint({
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -236,7 +236,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   });
 
   it("Should receive same cvx amount if withdrawing on the unlock epoch or after the unlock epoch", async function () {
-    let tx = await votiumStrategy.mint({
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -272,7 +272,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"));
 
-    tx = await votiumStrategy.mint({
+    tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -319,7 +319,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   });
 
   it("Should fail to withdraw 1 epoch before the withdraw epoch and succeed on or after the withdraw epoch", async function () {
-    let tx = await votiumStrategy.mint({
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -360,7 +360,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   });
 
   it("Should fail to withdraw from the same epoch twice", async function () {
-    let tx = await votiumStrategy.mint({
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();

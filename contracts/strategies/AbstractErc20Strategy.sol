@@ -6,13 +6,14 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgradeable {
     
-    /// mint afEth
-    function mint() external payable virtual;
+    /// deposit into strategy
+    function deposit() external payable virtual;
 
-    /// burn afEth (enter unlock queue)
+    /// request to unlock strategy
+    /// not all strategies will need this, but will use this to keep a consistent interface
     function requestWithdraw(uint256 _amount) external virtual;
 
-    /// withdraw any unlocked vlcvx
+    /// withdraw out of strategy
     function withdraw(
         uint256 epochToWithdraw
     ) external virtual;
