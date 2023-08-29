@@ -1,11 +1,14 @@
 import { expect } from "chai";
 import { SafEthStrategy } from "../../../typechain-types";
 import { ethers, upgrades, network } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { erc20Abi } from "../../abis/erc20Abi";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe.skip("Test SafEth Strategy Specific Functionality", async function () {
+describe("Test SafEth Strategy Specific Functionality", async function () {
   let safEthStrategy: SafEthStrategy;
-  let accounts: any;
+  let accounts: SignerWithAddress[];
+  const SAFETH_ADDRESS = "0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5";
+
   beforeEach(async () => {
     await network.provider.request({
       method: "hardhat_reset",
@@ -30,90 +33,81 @@ describe.skip("Test SafEth Strategy Specific Functionality", async function () {
     await safEthStrategy.deployed();
   });
 
-  it("Should mint() and be able to immediately requestClose() and burn() the position", async function () {
-    const mintTx = await safEthStrategy.deposit(0, {
+  it("Should deposit() and be able to immediately withdraw() the position", async function () {
+    const safEthContract = await ethers.getContractAt(
+      erc20Abi,
+      SAFETH_ADDRESS,
+      accounts[0]
+    );
+    const safEthBalanceBefore = await safEthContract.balanceOf(
+      safEthStrategy.address
+    );
+    const safEthStrategyBalanceBefore = await safEthStrategy.balanceOf(
+      accounts[0].address
+    );
+    const mintTx = await safEthStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
-
-    const positionBeforeClose = await safEthStrategy.positions(0);
-
-    expect(positionBeforeClose.unlockTime).eq(0);
-
-    await expect(safEthStrategy.burn(0)).to.be.revertedWith(
-      "requestClose() not called"
+    const safEthBalanceAfterDeposit = await safEthContract.balanceOf(
+      safEthStrategy.address
     );
+    const safEthStrategyBalanceAfterDeposit = await safEthStrategy.balanceOf(
+      accounts[0].address
+    );
+    expect(safEthBalanceAfterDeposit).gt(safEthBalanceBefore);
+    expect(safEthStrategyBalanceAfterDeposit).gt(safEthStrategyBalanceBefore);
+    expect(safEthStrategyBalanceAfterDeposit).eq(safEthBalanceAfterDeposit);
+    expect(safEthBalanceBefore).eq(0);
+    expect(safEthStrategyBalanceBefore).eq(0);
 
-    const requestCloseTx = await safEthStrategy.requestClose(0);
-    await requestCloseTx.wait();
-
-    const positionAfterClose = await safEthStrategy.positions(0);
-    const currentBlock = await ethers.provider.getBlockNumber();
-    const currentBlockTimestamp = (await ethers.provider.getBlock(currentBlock))
-      .timestamp;
-
-    expect(positionAfterClose.unlockTime).eq(currentBlockTimestamp);
-
-    const lockedValueBeforeBurn = await safEthStrategy.lockedValue(0);
     const balanceBefore = await ethers.provider.getBalance(accounts[0].address);
-    const burnTx = await safEthStrategy.burn(0);
+    const burnTx = await safEthStrategy.withdraw(0);
     await burnTx.wait();
-    const lockedValueAfterBurn = await safEthStrategy.lockedValue(0);
     const balanceAfter = await ethers.provider.getBalance(accounts[0].address);
-    const positionAfterBurn = await safEthStrategy.positions(0);
 
-    expect(positionAfterClose.ethBurned).eq(0);
-    expect(positionAfterBurn.ethBurned).gt(positionAfterClose.ethBurned);
+    const safEthBalanceAfterWithdraw = await safEthContract.balanceOf(
+      safEthStrategy.address
+    );
+    const safEthStrategyBalanceAfterWithdraw = await safEthStrategy.balanceOf(
+      accounts[0].address
+    );
+    expect(safEthBalanceAfterWithdraw).lt(safEthBalanceAfterDeposit);
+    expect(safEthBalanceAfterWithdraw).eq(safEthStrategyBalanceAfterWithdraw);
+
     expect(balanceAfter).gt(balanceBefore);
-
-    expect(lockedValueAfterBurn).eq(0);
-    expect(lockedValueBeforeBurn).gt(lockedValueAfterBurn);
   });
-
-  it("Should be able to call claimRewards() but have no effect because safEth strategy rewards are received upon burning", async function () {
-    const mintTx = await safEthStrategy.deposit(0, {
-      value: ethers.utils.parseEther("1"),
-    });
-    await mintTx.wait();
-
-    await time.increase(60 * 60 * 24 * 30); // wait 30 days
-
-    const claimableNow = await safEthStrategy.claimableNow(0);
-
-    expect(claimableNow).eq(0);
-
-    const balanceBefore = await ethers.provider.getBalance(accounts[0].address);
-    const claimRewardsTx = await safEthStrategy.claimRewards(0);
-    const minedRewardsTx = await claimRewardsTx.wait();
-    const balanceAfter = await ethers.provider.getBalance(accounts[0].address);
-    expect(balanceAfter).eq(
-      balanceBefore.sub(
-        minedRewardsTx.gasUsed.mul(minedRewardsTx.effectiveGasPrice)
-      )
+  it("Should be able to call requestWithdraw() but have no effect because safEth strategy rewards are received upon burning", async function () {
+    const safEthBalanceBefore = await safEthStrategy.balanceOf(
+      accounts[0].address
     );
-  });
-
-  it("Should fail to call burn() if it has already been called", async function () {
-    const mintTx = await safEthStrategy.deposit(0, {
+    const mintTx = await safEthStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
-    const requestCloseTx = await safEthStrategy.requestClose(0);
-    await requestCloseTx.wait();
-    const burnTx = await safEthStrategy.burn(0);
-    await burnTx.wait();
-    await expect(safEthStrategy.burn(0)).to.be.reverted; // TODO: Be more specific to revert
+    const safEthBalanceAfterDeposit = await safEthStrategy.balanceOf(
+      accounts[0].address
+    );
+
+    expect(safEthBalanceAfterDeposit).gt(safEthBalanceBefore);
+    expect(safEthBalanceBefore).eq(0);
+
+    const requestTx = await safEthStrategy.requestWithdraw(
+      safEthBalanceAfterDeposit
+    );
+    await requestTx.wait();
+
+    const safEthBalanceAfterRequestWithdraw = await safEthStrategy.balanceOf(
+      accounts[0].address
+    );
+    expect(safEthBalanceAfterRequestWithdraw).eq(safEthBalanceAfterDeposit);
   });
-
-  it("Should fail to call requestClose() if not the owner", async function () {
-    const mintTx = await safEthStrategy.deposit(0, {
-      value: ethers.utils.parseEther("1"),
-    });
-    await mintTx.wait();
-
-    const nonOwnerSigner = safEthStrategy.connect(accounts[1]);
-    await expect(nonOwnerSigner.requestClose(0)).to.be.revertedWith(
-      "Ownable: caller is not the owner"
+  it("Should fail to call withdraw() if balance is less than amount", async function () {
+    await expect(safEthStrategy.withdraw(10)).to.be.reverted;
+  });
+  it("Should fail to call requestClose() if no balance", async function () {
+    await expect(safEthStrategy.requestWithdraw(10)).to.be.revertedWith(
+      "Insufficient balance"
     );
   });
 });

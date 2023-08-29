@@ -6,6 +6,18 @@ import "../AbstractErc20Strategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
 contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
+    event WithdrawRequest(
+        address indexed account,
+        uint256 amount,
+        uint256 unlockEpoch
+    );
+
+    event Withdraw(
+        address indexed account,
+        uint256 safEthAmount,
+        uint256 ethAmount
+    );
+
     function deposit() external payable virtual override {
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
@@ -14,7 +26,8 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     }
 
     function requestWithdraw(uint256 _amount) external virtual override {
-        /// noop
+        require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
+        emit WithdrawRequest(msg.sender, _amount, block.timestamp);
     }
 
     function withdraw(uint256) external virtual override {
@@ -33,5 +46,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         require(sent, "Failed to send Ether");
+
+        emit WithdrawRequest(msg.sender, amount, ethReceived);
     }
 }

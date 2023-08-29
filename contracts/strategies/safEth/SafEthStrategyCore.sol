@@ -20,6 +20,9 @@ contract SafEthStrategyCore is
 
     mapping(uint256 => SafEthPosition) public safEthPositions;
 
+    // used to add storage variables in the future
+    uint256[50] private __gap;
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

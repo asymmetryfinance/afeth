@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
+
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgradeable {
-    
+abstract contract AbstractErc20Strategy is
+    Initializable,
+    ReentrancyGuardUpgradeable
+{
     /// deposit into strategy
     function deposit() external payable virtual;
 
@@ -14,7 +17,5 @@ abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgrade
     function requestWithdraw(uint256 _amount) external virtual;
 
     /// withdraw out of strategy
-    function withdraw(
-        uint256 epochToWithdraw
-    ) external virtual;
+    function withdraw(uint256) external virtual;
 }
