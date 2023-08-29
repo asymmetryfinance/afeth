@@ -46,10 +46,6 @@ describe("Votium integration test", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should deploy votium erc20 contract", async function () {
-    // TODO
-  });
-
   it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs", async function () {
     // TODO
   });
