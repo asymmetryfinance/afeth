@@ -44,6 +44,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
+      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
