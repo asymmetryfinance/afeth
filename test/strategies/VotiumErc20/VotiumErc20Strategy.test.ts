@@ -585,7 +585,7 @@ describe("Test VotiumErc20Strategy", async function () {
     // burn half of balance
     let unlockEpoch = await requestWithdrawal(
       votiumStrategy,
-      (await votiumStrategy.balanceOf(accounts[0].address)).div(11)
+      (await votiumStrategy.balanceOf(accounts[0].address)).div(2)
     );
 
     // pass enough epochs so the burned position is fully unlocked
