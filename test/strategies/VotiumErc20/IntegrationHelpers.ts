@@ -82,7 +82,7 @@ export const randomStakeUnstakeWithdraw = async (
     parseFloat(ethers.utils.formatEther(maxStakeAmount))
   );
 
-  let tx = await votiumStrategy.mint({
+  let tx = await votiumStrategy.connect(userAcount).mint({
     value: ethers.utils.parseEther(stakeAmount),
   });
   let mined = await tx.wait();
