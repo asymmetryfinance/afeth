@@ -46,23 +46,47 @@ describe("Votium integration test", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should deploy votium contract", async function () {
+  it("Should deploy votium erc20 contract", async function () {
     // TODO
   });
 
-  it("Should mint votiumErc20 for user0", async function () {
+  it("Should mint a random amount for all users", async function () {
     // TODO
   });
 
-  it("Should distribute rewards and user0 tvl goes up accordingly", async function () {
+  it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs", async function () {
     // TODO
   });
 
-  it("Should mint votiumErc20 for user1", async function () {
+  it("Should have tvl (or supply * price) be equal to total staked plus rewards minus unstaked", async function () {
     // TODO
   });
 
-  it("Should distribute rewards and user0 and user1 tvl goes up accordingly", async function () {
+  it("Should request unstake, wait until eligible and unstake everything for all users", async function () {
+    // TODO
+  });
+
+  it("Should be able to predict how much each user earned in rewards based on how much they had staked each time rewards were distributed", async function () {
+    // TODO
+  });
+
+  it("Should be able to predict total rewards earned systemwide based on total staked each time rewards were distributed", async function () {
+    // TODO
+  });
+
+  it("Should have total rewards be equal to sum of amounts from all DepositReward events", async function () {
+    // TODO
+  });
+
+  it("Should have an average unlock time of less than 16 weeks", async function () {
+    // TODO
+  });
+
+  it("Should never take more than 16 weeks to unlock", async function () {
+    // TODO
+  });
+
+  it("Should have some positions that only took 1 week to unlock", async function () {
     // TODO
   });
 });
