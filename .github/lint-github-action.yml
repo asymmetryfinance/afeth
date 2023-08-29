@@ -1,0 +1,36 @@
+# .github/workflows/lint.yml
+
+name: Lint and Test
+
+on: [pull_request]
+
+env:
+  NODE_VERSION: "16.18.0"
+  MAINNET_URL: ${{ secrets.MAINNET_URL }}
+  ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+  MNEMONIC: ${{ secrets.MNEMONIC }}
+  ETHERNAL_ENABLED: false
+  BLOCK_NUMBER: 17984693
+
+jobs:
+  linting:
+    name: Run Tests & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v3
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Run Tests
+        run: yarn test

@@ -4,8 +4,10 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgradeable {
-    
+abstract contract AbstractErc20Strategy is
+    Initializable,
+    ReentrancyGuardUpgradeable
+{
     /// mint afEth
     function mint() external payable virtual;
 
@@ -13,7 +15,5 @@ abstract contract AbstractErc20Strategy is Initializable, ReentrancyGuardUpgrade
     function requestWithdraw(uint256 _amount) external virtual;
 
     /// withdraw any unlocked vlcvx
-    function withdraw(
-        uint256 epochToWithdraw
-    ) external virtual;
+    function withdraw(uint256 epochToWithdraw) external virtual;
 }
