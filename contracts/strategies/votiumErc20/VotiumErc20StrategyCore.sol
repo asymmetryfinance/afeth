@@ -94,7 +94,9 @@ contract VotiumErc20StrategyCore is
         _transferOwnership(_owner);
     }
 
-    function setSafEthRewardsShare(uint256 _safEthRewardsShare) external onlyOwner {
+    function setSafEthRewardsShare(
+        uint256 _safEthRewardsShare
+    ) external onlyOwner {
         safEthRewardsShare = _safEthRewardsShare;
     }
 
@@ -131,7 +133,8 @@ contract VotiumErc20StrategyCore is
     function depositRewards(uint256 _amount) public payable {
         uint256 safEthShare = (_amount * safEthRewardsShare) / 1e18;
         uint256 votiumShare = _amount - safEthShare;
-        if(safEthShare > 0) IAfEth(manager).applySafEthReward{ value: safEthShare }();
+        if (safEthShare > 0)
+            IAfEth(manager).applySafEthReward{value: safEthShare}();
         uint256 cvxAmount = buyCvx(votiumShare);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);

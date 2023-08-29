@@ -52,5 +52,4 @@ contract AfEth is Initializable, OwnableUpgradeable, AbstractErc20Strategy {
     function applyVotiumReward() public payable {
         // TODO mint msg.value to votium strategy tokens
     }
-
 }
