@@ -80,7 +80,7 @@
 //     expect(votiumPosition.cvxAmount).eq(0);
 //     expect(safEthPosition).eq(0);
 //     expect(tokenCount).eq(0);
-//     await afEthManager.mint(
+//     await afEthManager.deposit(
 //       [ethers.utils.parseEther(".3"), ethers.utils.parseEther(".7")],
 //       { value: ethers.utils.parseEther("1") }
 //     );
@@ -108,7 +108,7 @@
 //     expect(vlCvxPosition.cvxAmount).eq(0);
 //     expect(safEthPosition).eq(0);
 //     expect(tokenCount).eq(1);
-//     await afEthManager.mint(
+//     await afEthManager.deposit(
 //       [ethers.utils.parseEther(".5"), ethers.utils.parseEther(".5")],
 //       { value: ethers.utils.parseEther("1") }
 //     );
@@ -122,7 +122,7 @@
 //   });
 //   it("Should fail to mint with wrong ratios", async function () {
 //     await expect(
-//       afEthManager.mint(
+//       afEthManager.deposit(
 //         [ethers.utils.parseEther(".51"), ethers.utils.parseEther(".5")],
 //         { value: ethers.utils.parseEther("1") }
 //       )

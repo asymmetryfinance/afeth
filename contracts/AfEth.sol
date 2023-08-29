@@ -37,7 +37,7 @@ contract AfEth is Initializable, OwnableUpgradeable, AbstractErc20Strategy {
 
     receive() external payable {}
 
-    function mint() external payable virtual override {}
+    function deposit() external payable virtual override {}
 
     function requestWithdraw(uint256 _amount) external virtual override {}
 
