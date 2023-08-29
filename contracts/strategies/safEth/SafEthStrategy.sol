@@ -9,7 +9,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     event WithdrawRequest(
         address indexed account,
         uint256 amount,
-        uint256 unlockEpoch
+        uint256 unlockTimestamp
     );
 
     event Withdraw(
@@ -47,6 +47,6 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         require(sent, "Failed to send Ether");
 
-        emit WithdrawRequest(msg.sender, amount, ethReceived);
+        emit Withdraw(msg.sender, amount, ethReceived);
     }
 }
