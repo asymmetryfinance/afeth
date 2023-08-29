@@ -50,10 +50,6 @@ describe("Votium integration test", async function () {
     // TODO
   });
 
-  it("Should mint a random amount for all users", async function () {
-    // TODO
-  });
-
   it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs", async function () {
     // TODO
   });
