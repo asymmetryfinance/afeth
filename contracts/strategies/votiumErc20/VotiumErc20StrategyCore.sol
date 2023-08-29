@@ -56,6 +56,7 @@ contract VotiumErc20StrategyCore is
     );
 
     // share of votium rewards to be deposited back into safEth
+    // TODO this should come from manager contract
     uint256 safEthRewardsShare; // 1e17 = 50%
 
     // used to add storage variables in the future
