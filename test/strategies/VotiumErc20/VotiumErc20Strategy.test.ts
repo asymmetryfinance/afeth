@@ -36,6 +36,7 @@ describe("Test VotiumErc20Strategy", async function () {
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       accounts[0].address,
       rewarderAccount.address,
+      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)

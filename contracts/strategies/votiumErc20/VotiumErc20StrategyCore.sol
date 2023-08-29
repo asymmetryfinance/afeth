@@ -10,6 +10,7 @@ import "../../external_interfaces/ISnapshotDelegationRegistry.sol";
 import "../../external_interfaces/ILockedCvx.sol";
 import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
+import "../../external_interfaces/IAfEth.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 import "hardhat/console.sol";
@@ -46,11 +47,16 @@ contract VotiumErc20StrategyCore is
 
     address rewarder;
 
+    address manager;
+
     event DepositReward(
         uint256 indexed newPrice,
         uint256 indexed ethAmount,
         uint256 indexed cvxAmount
     );
+
+    // share of votium rewards to be deposited back into safEth
+    uint256 safEthRewardsShare; // 1e17 = 50%
 
     // used to add storage variables in the future
     uint256[50] private __gap;
@@ -72,7 +78,8 @@ contract VotiumErc20StrategyCore is
     */
     function initialize(
         address _owner,
-        address _rewarder
+        address _rewarder,
+        address _manager
     ) external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -82,7 +89,12 @@ contract VotiumErc20StrategyCore is
             votiumVoteProxyAddress
         );
         rewarder = _rewarder;
+        manager = _manager;
         _transferOwnership(_owner);
+    }
+
+    function setSafEthRewardsShare(uint256 _safEthRewardsShare) external onlyOwner {
+        safEthRewardsShare = _safEthRewardsShare;
     }
 
     function setRewarder(address _rewarder) external onlyOwner {
@@ -116,10 +128,13 @@ contract VotiumErc20StrategyCore is
     /// useful if we need to manually sell rewards ourselves
     // TODO: anyone can lock all eth in the contract, maybe we should make this onlyOwner? Maybe ok?
     function depositRewards(uint256 _amount) public payable {
-        uint256 cvxAmount = buyCvx(_amount);
+        uint256 safEthShare = (_amount * safEthRewardsShare) / 1e18;
+        uint256 votiumShare = _amount - safEthShare;
+        if(safEthShare > 0) IAfEth(manager).applySafEthReward{ value: safEthShare }();
+        uint256 cvxAmount = buyCvx(votiumShare);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(price(), _amount, cvxAmount);
+        emit DepositReward(price(), votiumShare, cvxAmount);
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {
@@ -155,7 +170,6 @@ contract VotiumErc20StrategyCore is
         uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
-        uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
