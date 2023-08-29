@@ -18,7 +18,13 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         uint256 ethAmount
     );
 
-    function deposit() external payable virtual override {
+    function deposit()
+        external
+        payable
+        virtual
+        override
+        returns (uint256 mintAmount)
+    {
         uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
         );
@@ -48,5 +54,10 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         require(sent, "Failed to send Ether");
 
         emit Withdraw(msg.sender, _amount, ethReceived);
+    }
+
+    function price() external payable virtual override {
+        uint256 price = ISafEth(safEthAddress).approxPrice(false);
+        return price;
     }
 }

@@ -18,7 +18,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 ethAmount
     );
 
-    function deposit() public payable override {
+    function deposit() public payable override returns (uint256 mintAmount) {
         uint256 priceBefore = price();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
