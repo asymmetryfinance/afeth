@@ -30,14 +30,14 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         emit WithdrawRequest(msg.sender, _amount, block.timestamp);
     }
 
-    function withdraw(uint256) external virtual override {
-        uint256 amount = balanceOf(msg.sender);
-        _burn(msg.sender, amount);
+    function withdraw(uint256 _amount) external virtual override {
+        require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
+        _burn(msg.sender, _amount);
 
         uint256 ethBalanceBefore = address(this).balance;
 
         ISafEth(safEthAddress).unstake(
-            amount,
+            _amount,
             0 // TODO: set minAmount
         );
         uint256 ethBalanceAfter = address(this).balance;
@@ -47,6 +47,6 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         require(sent, "Failed to send Ether");
 
-        emit Withdraw(msg.sender, amount, ethReceived);
+        emit Withdraw(msg.sender, _amount, ethReceived);
     }
 }

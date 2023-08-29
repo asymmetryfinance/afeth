@@ -62,7 +62,9 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     expect(safEthStrategyBalanceBefore).eq(0);
 
     const balanceBefore = await ethers.provider.getBalance(accounts[0].address);
-    const burnTx = await safEthStrategy.withdraw(0);
+    const burnTx = await safEthStrategy.withdraw(
+      safEthStrategyBalanceAfterDeposit
+    );
     await burnTx.wait();
     const balanceAfter = await ethers.provider.getBalance(accounts[0].address);
 
