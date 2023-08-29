@@ -20,7 +20,7 @@ export type UnstakeRequestTime = {
   epochEligible: number;
 };
 
-type UnstakingTimes = Record<UserAddress, UnstakeRequestTime>;
+type UnstakingTimes = Record<UserAddress, UnstakeRequestTime[]>;
 // request time / eligible for withdraw tiem for all users and withdraw requests
 export const unstakingTimes: UnstakingTimes = {};
 
@@ -93,30 +93,52 @@ export const randomStakeUnstakeWithdraw = async (
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
 
-  console.log('rs1')
+  console.log("rs1");
   const withdrawAmount = randomEthAmount(
     0,
     parseFloat(ethers.utils.formatEther(votiumBalance))
   );
-  console.log('rs2???', withdrawAmount)
+  console.log("rs2???", withdrawAmount);
 
   tx = await votiumStrategy
     .connect(userAcount)
     .requestWithdraw(ethers.utils.parseEther(withdrawAmount));
   mined = await tx.wait();
-  console.log('rs2.1')
+  console.log("rs2.1");
   txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-  console.log('rs2.2')
+  console.log("rs2.2");
   userTxFees[userAcount.address].push(txFee);
-  console.log('rs2.4')
+  console.log("rs2.4");
   const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
-  console.log('rs3')
+  console.log("rs3");
 
   const unlockEpoch = event?.args?.unlockEpoch;
 
-  unstakingTimes[userAcount.address] = {
+  if (!unstakingTimes[userAcount.address])
+    unstakingTimes[userAcount.address] = [];
+  unstakingTimes[userAcount.address].push({
     epochRequested: await getCurrentEpoch(),
     epochEligible: unlockEpoch,
-  };
-  console.log('rs4')
+  });
+  console.log("rs4");
+
+  // check if there are any eligible withdraws
+
+  for (let i = 0; i < unstakingTimes[userAcount.address].length; i++) {
+    console.log('looping', i);
+    const unstakeRequestTime = unstakingTimes[userAcount.address][i];
+
+    console.log('unstakeRequestTime', unstakeRequestTime);
+    if (unstakeRequestTime.epochEligible <= (await getCurrentEpoch())) {
+        console.log('about to do tx')
+        process.exit(0)
+      tx = await votiumStrategy
+        .connect(userAcount)
+        .withdraw(unstakeRequestTime.epochEligible);
+        console.log('babam')
+      mined = await tx.wait();
+      txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
+      userTxFees[userAcount.address].push(txFee);
+    }
+  }
 };
