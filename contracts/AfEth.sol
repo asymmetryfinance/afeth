@@ -37,9 +37,20 @@ contract AfEth is Initializable, OwnableUpgradeable, AbstractErc20Strategy {
 
     receive() external payable {}
 
-    function mint() external payable virtual override {}
+    function deposit() external payable virtual override {}
 
     function requestWithdraw(uint256 _amount) external virtual override {}
 
     function withdraw(uint256 epochToWithdraw) external virtual override {}
+
+    // deposit value to safEth side
+    function applySafEthReward() public payable {
+        // TODO mint msg.value of safEth strategy tokens
+    }
+
+    // deposit value to votium side
+    function applyVotiumReward() public payable {
+        // TODO mint msg.value to votium strategy tokens
+    }
+
 }
