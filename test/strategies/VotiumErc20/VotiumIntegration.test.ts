@@ -49,17 +49,30 @@ describe("Votium integration test", async function () {
 
   it.only("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
     const userAccounts = await getUserAccounts();
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < 64; i++) {
+      console.log("epoch", i);
       await randomStakeUnstakeWithdraw(
-        userAccounts[0],
+        userAccounts[i % 4],
         votiumStrategy,
         ethers.utils.parseEther("10")
       );
+      await randomStakeUnstakeWithdraw(
+        userAccounts[(i + 1) % 4],
+        votiumStrategy,
+        ethers.utils.parseEther("10")
+      );
+
+      console.log("increasing epoch time");
       await increaseTime1Epoch(votiumStrategy);
+      console.log("done");
     }
   });
 
   it("Should have tvl (or supply * price) be equal to total staked plus rewards minus unstaked", async function () {
+    // TODO
+  });
+
+  it("Should have tvl be equal to sum of all users tvl (balance * price)", async function () {
     // TODO
   });
 

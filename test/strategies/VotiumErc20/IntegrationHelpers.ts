@@ -15,18 +15,22 @@ export const balancesAtRewardEpochs: BalancesAtRewardEpochs = {};
 
 export type UserAddress = string;
 
+export type Epoch = number
 export type UnstakeRequestTime = {
   epochRequested: number;
   epochEligible: number;
+  withdrawn: boolean;
 };
 
-type UnstakingTimes = Record<UserAddress, UnstakeRequestTime[]>;
+type UnstakingTimes = Record<UserAddress, Record<Epoch, UnstakeRequestTime>>;
 // request time / eligible for withdraw tiem for all users and withdraw requests
 export const unstakingTimes: UnstakingTimes = {};
 
 // all tx fees user spent staking & unstaking
 export const userTxFees: Record<UserAddress, BigNumber[]> = {};
 let randomSeed = 2;
+
+let totalEthRewarded = BigNumber.from(0);
 
 export const randomEthAmount = (min: number, max: number) => {
   return (min + deterministicRandom() * (max - min)).toFixed(18);
@@ -63,11 +67,17 @@ export const increaseTime1Epoch = async (
 
   const currentEpoch = await getCurrentEpoch();
   if (currentEpoch % 2 === 0) {
+    console.log('applying rewards');
     // TODO this is probbly running out of rewards. make sure its all good and see if se need to fund it more
-    await oracleApplyRewards(
+    const rewardEvent = await oracleApplyRewards(
       await getRewarderAccount(),
       votiumStrategy.address
     );
+    console.log('applied rewards', rewardEvent)
+
+    totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
+
+    console.log('rewardEvent', rewardEvent);
   }
 };
 
@@ -76,6 +86,8 @@ export const randomStakeUnstakeWithdraw = async (
   votiumStrategy: VotiumErc20Strategy,
   maxStakeAmount: BigNumber
 ) => {
+  const currentEpoch = await getCurrentEpoch();
+
   const stakeAmount = randomEthAmount(
     0,
     parseFloat(ethers.utils.formatEther(maxStakeAmount))
@@ -108,28 +120,48 @@ export const randomStakeUnstakeWithdraw = async (
   const unlockEpoch = event?.args?.unlockEpoch;
 
   if (!unstakingTimes[userAcount.address])
-    unstakingTimes[userAcount.address] = [];
-  unstakingTimes[userAcount.address].push({
-    epochRequested: await getCurrentEpoch(),
+    unstakingTimes[userAcount.address] = {};
+  unstakingTimes[userAcount.address][unlockEpoch] = {
+    epochRequested: currentEpoch,
     epochEligible: unlockEpoch,
-  });
+    withdrawn: false,
+  };
 
   // check if there are any eligible withdraws
 
-  for (let i = 0; i < unstakingTimes[userAcount.address].length; i++) {
-    console.log('looping', i);
-    const unstakeRequestTime = unstakingTimes[userAcount.address][i];
+  for (
+    let i = 0;
+    i < Object.keys(unstakingTimes[userAcount.address]).length;
+    i++
+  ) {
+    const key = parseInt(Object.keys(unstakingTimes[userAcount.address])[i]);
+    console.log(
+      "looping",
+      i,
+      Object.keys(unstakingTimes[userAcount.address]).length,
+      unstakingTimes[userAcount.address][key].withdrawn
+    );
+    if (unstakingTimes[userAcount.address][key].withdrawn) continue;
+    const unstakeRequestTime = unstakingTimes[userAcount.address][key];
+    if (currentEpoch.lt(unstakeRequestTime.epochEligible)) continue;
+    console.log("unstakeRequestTime", unstakeRequestTime);
 
-    console.log('unstakeRequestTime', unstakeRequestTime);
-    if (unstakeRequestTime.epochEligible <= (await getCurrentEpoch())) {
-        console.log('about to do tx')
-      tx = await votiumStrategy
-        .connect(userAcount)
-        .withdraw(unstakeRequestTime.epochEligible);
-        console.log('babam')
-      mined = await tx.wait();
-      txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-      userTxFees[userAcount.address].push(txFee);
-    }
+    console.log(
+      "about to do withdraw for ",
+      userAcount.address,
+      unstakeRequestTime.epochEligible,
+      currentEpoch
+    );
+    console.log('about to call withdraw for key epoch', key)
+    tx = await votiumStrategy
+      .connect(userAcount)
+      .withdraw(unstakeRequestTime.epochEligible);
+    mined = await tx.wait();
+    txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
+    userTxFees[userAcount.address].push(txFee);
+    console.log("setting withdrawn for userAcount.address", userAcount.address, key);
+    unstakingTimes[userAcount.address][key].withdrawn = true;
+
+    console.log("unstakingTimes is", JSON.stringify(unstakingTimes));
   }
 };
