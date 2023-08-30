@@ -91,13 +91,12 @@ export const randomStakeUnstakeWithdraw = async (
 ) => {
   const currentEpoch = await getCurrentEpoch();
 
-  const stakeAmount = randomEthAmount(
-    0,
-    parseFloat(ethers.utils.formatEther(maxStakeAmount))
+  const stakeAmount = ethers.utils.parseEther(
+    randomEthAmount(0, parseFloat(ethers.utils.formatEther(maxStakeAmount)))
   );
 
-  let tx = await votiumStrategy.connect(userAcount).mint({
-    value: ethers.utils.parseEther(stakeAmount),
+  let tx = await votiumStrategy.connect(userAcount).deposit({
+    value: stakeAmount,
   });
 
   if (!totalEthStaked[userAcount.address])
@@ -124,10 +123,16 @@ export const randomStakeUnstakeWithdraw = async (
   mined = await tx.wait();
   txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
   userTxFees[userAcount.address].add(txFee);
-  const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
+  const event = mined?.events?.find((e: any) => e?.event === "WithdrawRequest");
 
-  const unlockEpoch = event?.args?.unlockEpoch;
+  console.log('event', event)
 
+  const withdrawId = event?.args?.withdrawId;
+  const unlockEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+
+  console.log('unlockEpoch', unlockEpoch);
+
+  console.log('userAcount.address', userAcount.address)
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
   unstakingTimes[userAcount.address][unlockEpoch] = {
@@ -144,12 +149,10 @@ export const randomStakeUnstakeWithdraw = async (
     i++
   ) {
     const key = parseInt(Object.keys(unstakingTimes[userAcount.address])[i]);
-    console.log(
-      "looping",
-      i,
-      Object.keys(unstakingTimes[userAcount.address]).length,
-      unstakingTimes[userAcount.address][key].withdrawn
-    );
+
+    console.log('key is', key)
+    console.log("looping", i, unstakingTimes[userAcount.address]);
+
     if (unstakingTimes[userAcount.address][key].withdrawn) continue;
     const unstakeRequestTime = unstakingTimes[userAcount.address][key];
     if (currentEpoch.lt(unstakeRequestTime.epochEligible)) continue;

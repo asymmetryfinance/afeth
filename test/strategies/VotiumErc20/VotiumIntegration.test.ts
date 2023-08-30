@@ -41,7 +41,7 @@ describe("Votium integration test", async function () {
     await votiumStrategy.deployed();
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await votiumStrategy.connect(await getAdminAccount()).mint({
+    const tx = await votiumStrategy.connect(await getAdminAccount()).deposit({
       value: ethers.utils.parseEther("0.000001"),
     });
     await tx.wait();
@@ -72,7 +72,7 @@ describe("Votium integration test", async function () {
     }
   });
 
-  it.only("Should have tvl (or supply * price) be equal to total staked plus rewards minus unstaked plus tx fees", async function () {
+  it("Should have tvl (or supply * price) be equal to total staked plus rewards minus unstaked plus tx fees", async function () {
     const totalSupply = await votiumStrategy.totalSupply();
     const price = await votiumStrategy.price();
 
