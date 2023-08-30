@@ -95,33 +95,45 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             }();
             amountToMint += (mintAmount * strategy.price()) / 1e18;
         }
-        _mint(msg.sender, amount);
+        _mint(msg.sender, amountToMint);
     }
 
     /**
         @notice - Request to close position
-        @param _amount - Amount of afEth to withdraw
     */
-    function requestWithdraw(uint256 _amount) external virtual {
-        _transfer(msg.sender, address(this), _amount);
+    function requestWithdraw() external virtual {
+        uint256 amount = balanceOf(msg.sender);
+        _transfer(msg.sender, address(this), amount);
         uint256 timestamp = block.timestamp;
         for (uint256 i = 0; i < strategies.length; i++) {
             uint256 strategyTimestamp = AbstractErc20Strategy(
                 strategies[i].strategyAddress
-            ).requestWithdraw(_amount);
+            ).requestWithdraw(amount);
             if (strategyTimestamp > timestamp) {
                 timestamp = strategyTimestamp;
             }
         }
         requestWithdrawPositions[msg.sender].push(
-            RequestWithdrawPosition(_amount, block.timestamp)
+            RequestWithdrawPosition(amount, timestamp)
         );
     }
 
     /**
         @notice - Withdraw from each strategy
     */
-    function withdraw() external virtual {}
+    function withdraw() external virtual {
+        // uint256 ethBalanceBefore = address(this).balance;
+        // for (uint256 i = 0; i < strategies.length; i++) {
+        //     AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
+        //     strategy.burn(_positionId);
+        // }
+        // _burn(_positionId);
+        // uint256 ethBalanceAfter = address(this).balance;
+        // uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
+        // // solhint-disable-next-line
+        // (bool sent, ) = msg.sender.call{value: ethReceived}("");
+        // require(sent, "Failed to send Ether");
+    }
 
     // deposit value to safEth side
     function applySafEthReward() public payable {
