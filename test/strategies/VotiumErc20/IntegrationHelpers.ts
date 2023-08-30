@@ -125,14 +125,14 @@ export const randomStakeUnstakeWithdraw = async (
   userTxFees[userAcount.address].add(txFee);
   const event = mined?.events?.find((e: any) => e?.event === "WithdrawRequest");
 
-  console.log('event', event)
+  console.log("event", event);
 
   const withdrawId = event?.args?.withdrawId;
   const unlockEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
 
-  console.log('unlockEpoch', unlockEpoch);
+  console.log("unlockEpoch", unlockEpoch);
 
-  console.log('userAcount.address', userAcount.address)
+  console.log("userAcount.address", userAcount.address);
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
   unstakingTimes[userAcount.address][unlockEpoch] = {
@@ -150,7 +150,7 @@ export const randomStakeUnstakeWithdraw = async (
   ) {
     const key = parseInt(Object.keys(unstakingTimes[userAcount.address])[i]);
 
-    console.log('key is', key)
+    console.log("key is", key);
     console.log("looping", i, unstakingTimes[userAcount.address]);
 
     if (unstakingTimes[userAcount.address][key].withdrawn) continue;
