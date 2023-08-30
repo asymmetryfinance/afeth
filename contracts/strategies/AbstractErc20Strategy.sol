@@ -16,10 +16,12 @@ abstract contract AbstractErc20Strategy is
     /// not all strategies will need this, but will use this to keep a consistent interface
     function requestWithdraw(
         uint256 _amount
-    ) external virtual returns (uint256);
+    ) external virtual returns (uint256 withdrawId);
 
     /// withdraw out of strategy
-    function withdraw(uint256) external virtual;
+    function withdraw(uint256 withdrawId) external virtual;
+
+    function canWithdraw(uint256 withdrawId) external virtual returns (bool);
 
     function price() external virtual returns (uint256);
 }

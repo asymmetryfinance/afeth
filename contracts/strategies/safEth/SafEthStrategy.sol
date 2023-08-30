@@ -18,6 +18,10 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         uint256 ethAmount
     );
 
+    uint256 latestWithdrawId;
+
+    mapping (uint256 => uint256) public withdrawIdToAmount;
+
     function deposit()
         external
         payable
@@ -33,20 +37,23 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
     function requestWithdraw(
         uint256 _amount
-    ) external virtual override returns (uint256) {
+    ) external virtual override returns (uint256 withdrawId) {
         require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
+        latestWithdrawId++;
         emit WithdrawRequest(msg.sender, _amount, block.timestamp);
-        return block.timestamp;
+        withdrawIdToAmount[latestWithdrawId] = _amount;
+        return latestWithdrawId;
     }
 
-    function withdraw(uint256 _amount) external virtual override {
-        require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
-        _burn(msg.sender, _amount);
+    function withdraw(uint256 _withdrawId) external virtual override {
+        uint256 withdrawAmount = withdrawIdToAmount[_withdrawId];
+        require(balanceOf(msg.sender) >= withdrawAmount, "Insufficient balance");
+        _burn(msg.sender, withdrawAmount);
 
         uint256 ethBalanceBefore = address(this).balance;
 
         ISafEth(safEthAddress).unstake(
-            _amount,
+            withdrawAmount,
             0 // TODO: set minAmount
         );
         uint256 ethBalanceAfter = address(this).balance;
@@ -56,10 +63,14 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         require(sent, "Failed to send Ether");
 
-        emit Withdraw(msg.sender, _amount, ethReceived);
+        emit Withdraw(msg.sender, withdrawAmount, ethReceived);
     }
 
     function price() external virtual override returns (uint256) {
         return ISafEth(safEthAddress).approxPrice(false);
+    }
+
+    function canWithdraw(uint256) external virtual override returns (bool) {
+        return true;
     }
 }

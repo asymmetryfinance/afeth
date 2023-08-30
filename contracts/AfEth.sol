@@ -15,16 +15,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     Strategy[] public strategies; // mapping of strategy address to ratio
     uint256 totalRatio;
 
-    struct RequestWithdrawPosition {
-        uint256 afEthOwed; // how much cvxOwed total is owed for this position
-        uint256 timestamp; // timestamp when available to withdraw from all strategies
-    }
-    mapping(address => RequestWithdrawPosition[])
-        public requestWithdrawPositions;
-
     error StrategyAlreadyAdded();
     error StrategyNotFound();
     error InsufficientBalance();
+
+    uint256 latestWithdrawId;
+
+    mapping (uint256 => uint256[]) public withdrawIdToStrategyWithdrawIds;
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -101,38 +98,48 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Request to close position
     */
-    function requestWithdraw() external virtual {
+    function requestWithdraw() external virtual returns (uint256 withdrawId) {
+        latestWithdrawId++;
         uint256 amount = balanceOf(msg.sender);
+
+        // ratio of afEth being withdrawn to totalSupply
+        uint256 withdrawRatio = (amount * 1e18) / totalRatio; 
+
         _transfer(msg.sender, address(this), amount);
-        uint256 timestamp = block.timestamp;
         for (uint256 i = 0; i < strategies.length; i++) {
-            uint256 strategyTimestamp = AbstractErc20Strategy(
+            uint256 strategyBalance = ERC20Upgradeable(
                 strategies[i].strategyAddress
-            ).requestWithdraw(amount);
-            if (strategyTimestamp > timestamp) {
-                timestamp = strategyTimestamp;
-            }
+            ).balanceOf(address(this));
+            uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) / 1e18;
+            uint256 wid = AbstractErc20Strategy(
+                strategies[i].strategyAddress
+            ).requestWithdraw(strategyWithdrawAmount);
+            withdrawIdToStrategyWithdrawIds[latestWithdrawId].push(wid);
         }
-        requestWithdrawPositions[msg.sender].push(
-            RequestWithdrawPosition(amount, timestamp)
-        );
+        return latestWithdrawId;
     }
 
     /**
         @notice - Withdraw from each strategy
     */
-    function withdraw() external virtual {
-        // uint256 ethBalanceBefore = address(this).balance;
-        // for (uint256 i = 0; i < strategies.length; i++) {
-        //     AbstractNftStrategy strategy = AbstractNftStrategy(strategies[i]);
-        //     strategy.burn(_positionId);
-        // }
-        // _burn(_positionId);
-        // uint256 ethBalanceAfter = address(this).balance;
-        // uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
-        // // solhint-disable-next-line
-        // (bool sent, ) = msg.sender.call{value: ethReceived}("");
-        // require(sent, "Failed to send Ether");
+    function withdraw(uint256 withrawId) external virtual {
+        uint256 ethBalanceBefore = address(this).balance;
+        for(uint256 i=0;i<strategies.length;i++) {
+            uint256[] memory strategyWithdrawIds = withdrawIdToStrategyWithdrawIds[withrawId];
+            for(uint256 j=0;j<strategyWithdrawIds.length;j++) {
+                AbstractErc20Strategy strategy = AbstractErc20Strategy(
+                    strategies[i].strategyAddress
+                );
+                if (strategy.canWithdraw(strategyWithdrawIds[j])) {
+                    strategy.withdraw(strategyWithdrawIds[j]);
+                }
+            }
+        }
+        uint256 ethBalanceAfter = address(this).balance;
+        uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
+        // solhint-disable-next-line
+        (bool sent, ) = msg.sender.call{value: ethReceived}("");
+        require(sent, "Failed to send Ether");
     }
 
     // deposit value to safEth side
