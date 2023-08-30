@@ -60,7 +60,7 @@ contract VotiumErc20StrategyCore is
     uint256 safEthRewardsShare; // 1e17 = 50%
 
     // used to add storage variables in the future
-    uint256[50] private __gap;
+    uint256[20] private __gap;
 
     modifier onlyRewarder() {
         require(msg.sender == rewarder, "not rewarder");
@@ -94,7 +94,9 @@ contract VotiumErc20StrategyCore is
         _transferOwnership(_owner);
     }
 
-    function setSafEthRewardsShare(uint256 _safEthRewardsShare) external onlyOwner {
+    function setSafEthRewardsShare(
+        uint256 _safEthRewardsShare
+    ) external onlyOwner {
         safEthRewardsShare = _safEthRewardsShare;
     }
 
@@ -109,7 +111,7 @@ contract VotiumErc20StrategyCore is
         return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
     }
 
-    function price() public view returns (uint256) {
+    function priceData() internal view returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
@@ -131,11 +133,12 @@ contract VotiumErc20StrategyCore is
     function depositRewards(uint256 _amount) public payable {
         uint256 safEthShare = (_amount * safEthRewardsShare) / 1e18;
         uint256 votiumShare = _amount - safEthShare;
-        if(safEthShare > 0) IAfEth(manager).applySafEthReward{ value: safEthShare }();
+        if (safEthShare > 0)
+            IAfEth(manager).applySafEthReward{value: safEthShare}();
         uint256 cvxAmount = buyCvx(votiumShare);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(price(), votiumShare, cvxAmount);
+        emit DepositReward(priceData(), votiumShare, cvxAmount);
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {

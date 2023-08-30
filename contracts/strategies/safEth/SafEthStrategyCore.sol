@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 /// For private internal functions and anything not exposed via the interface
-contract SafEthStrategyCore is Initializable, OwnableUpgradeable {
+contract SafEthStrategyCore is
+    Initializable,
+    OwnableUpgradeable,
+    ERC20Upgradeable
+{
     address public constant safEthAddress =
         0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
 
@@ -13,6 +19,9 @@ contract SafEthStrategyCore is Initializable, OwnableUpgradeable {
     }
 
     mapping(uint256 => SafEthPosition) public safEthPositions;
+
+    // used to add storage variables in the future
+    uint256[50] private __gap;
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor

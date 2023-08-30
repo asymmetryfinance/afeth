@@ -149,5 +149,5 @@ export const requestWithdrawal = async (
   const tx = await votiumStrategy.requestWithdraw(amount);
   const mined = await tx.wait();
   const event = mined?.events?.find((e: any) => e?.event === "WithdrawRequest");
-  return event?.args?.unlockEpoch;
+  return event?.args?.withdrawId;
 };

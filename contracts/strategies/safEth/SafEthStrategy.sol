@@ -6,15 +6,74 @@ import "../AbstractErc20Strategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 
 contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
-    function mint() external payable virtual override {
-        revert('not implemented');
+    event WithdrawRequest(
+        address indexed account,
+        uint256 amount,
+        uint256 withdrawId
+    );
+
+    event Withdraw(
+        address indexed account,
+        uint256 safEthAmount,
+        uint256 ethAmount
+    );
+
+    uint256 latestWithdrawId;
+
+    mapping(uint256 => uint256) public withdrawIdToAmount;
+
+    function deposit()
+        external
+        payable
+        virtual
+        override
+        returns (uint256 mintAmount)
+    {
+        mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
+            0 // TODO: set minAmount
+        );
+        _mint(msg.sender, mintAmount);
     }
 
-    function requestWithdraw(uint256 _amount) external virtual override {
-        revert('not implemented');
+    function requestWithdraw(
+        uint256 _amount
+    ) external virtual override returns (uint256 withdrawId) {
+        require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
+        latestWithdrawId++;
+        emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
+        withdrawIdToAmount[latestWithdrawId] = _amount;
+        return latestWithdrawId;
     }
 
-    function withdraw(uint256 epochToWithdraw) external virtual override {
-        revert('not implemented');
+    function withdraw(uint256 _withdrawId) external virtual override {
+        uint256 withdrawAmount = withdrawIdToAmount[_withdrawId];
+        require(
+            balanceOf(msg.sender) >= withdrawAmount,
+            "Insufficient balance"
+        );
+        _burn(msg.sender, withdrawAmount);
+
+        uint256 ethBalanceBefore = address(this).balance;
+
+        ISafEth(safEthAddress).unstake(
+            withdrawAmount,
+            0 // TODO: set minAmount
+        );
+        uint256 ethBalanceAfter = address(this).balance;
+        uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
+
+        // solhint-disable-next-line
+        (bool sent, ) = msg.sender.call{value: ethReceived}("");
+        require(sent, "Failed to send Ether");
+
+        emit Withdraw(msg.sender, withdrawAmount, ethReceived);
+    }
+
+    function price() external virtual override returns (uint256) {
+        return ISafEth(safEthAddress).approxPrice(false);
+    }
+
+    function canWithdraw(uint256) external virtual override returns (bool) {
+        return true;
     }
 }
