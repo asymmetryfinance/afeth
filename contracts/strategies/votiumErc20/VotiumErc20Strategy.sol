@@ -18,7 +18,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 ethAmount
     );
 
-
     uint256 latestWithdrawId;
 
     mapping(uint256 => uint256) public withdrawIdToEpoch;
@@ -108,7 +107,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         _burn(address(this), positionToWithdraw.afEthOwed);
 
         unlockQueues[msg.sender][withdrawEpoch].cvxOwed -= cvxWithdrawAmount;
-        unlockQueues[msg.sender][withdrawEpoch].afEthOwed -= afEthwithdrawAmount;
+        unlockQueues[msg.sender][withdrawEpoch]
+            .afEthOwed -= afEthwithdrawAmount;
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
