@@ -9,7 +9,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     event WithdrawRequest(
         address indexed user,
         uint256 amount,
-        uint256 unlockEpoch
+        uint256 withdrawId
     );
     event Withdraw(
         address indexed user,
@@ -82,6 +82,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     }
 
     function withdraw(uint256 withdrawId) external override {
+        console.log('trying to withdraw', withdrawId);
         UnlockQueuePosition memory positionToWithdraw = unlockQueues[
             msg.sender
         ][withdrawId];

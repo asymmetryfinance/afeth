@@ -75,11 +75,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const withdrawId = event?.args?.withdrawId;
 
-    const currentEpoch = await getCurrentEpoch();
-
-    const epochsUntilUnlock = withdrawId.sub(currentEpoch);
-
-    for (let i = 0; i < epochsUntilUnlock; i++) {
+    for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
     }
 
