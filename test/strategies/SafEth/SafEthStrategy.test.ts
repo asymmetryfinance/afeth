@@ -33,7 +33,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     await safEthStrategy.deployed();
   });
 
-  it("Should deposit() and be able to immediately withdraw() the position", async function () {
+  it.only("Should deposit() and be able to immediately withdraw() the position", async function () {
     const safEthContract = await ethers.getContractAt(
       erc20Abi,
       SAFETH_ADDRESS,
@@ -61,11 +61,15 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     expect(safEthBalanceBefore).eq(0);
     expect(safEthStrategyBalanceBefore).eq(0);
 
-    const balanceBefore = await ethers.provider.getBalance(accounts[0].address);
-    const burnTx = await safEthStrategy.withdraw(
+    const requestWithdrawTx = await safEthStrategy.requestWithdraw(
       safEthStrategyBalanceAfterDeposit
     );
-    await burnTx.wait();
+    const requestMined = await requestWithdrawTx.wait();
+
+    const withdrawId = (requestMined as any).events[0].args.withdrawId;
+    const balanceBefore = await ethers.provider.getBalance(accounts[0].address);
+    const withdrawTx = await safEthStrategy.withdraw(withdrawId);
+    await withdrawTx.wait();
     const balanceAfter = await ethers.provider.getBalance(accounts[0].address);
 
     const safEthBalanceAfterWithdraw = await safEthContract.balanceOf(

@@ -9,7 +9,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     event WithdrawRequest(
         address indexed account,
         uint256 amount,
-        uint256 unlockTimestamp
+        uint256 withdrawId
     );
 
     event Withdraw(
@@ -40,7 +40,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     ) external virtual override returns (uint256 withdrawId) {
         require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
         latestWithdrawId++;
-        emit WithdrawRequest(msg.sender, _amount, block.timestamp);
+        emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
         withdrawIdToAmount[latestWithdrawId] = _amount;
         return latestWithdrawId;
     }
