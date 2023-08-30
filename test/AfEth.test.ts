@@ -36,6 +36,5 @@ describe.only("Test AfEth", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
-
   });
 });
