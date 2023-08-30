@@ -18,6 +18,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error StrategyAlreadyAdded();
     error StrategyNotFound();
     error InsufficientBalance();
+    error InvalidStrategy();
 
     uint256 latestWithdrawId;
 
@@ -53,6 +54,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @param _ratio - Ratio for the strategy
     */
     function addStrategy(address _strategy, uint256 _ratio) external onlyOwner {
+        try
+            ERC165(_strategy).supportsInterface(
+                type(AbstractErc20Strategy).interfaceId
+            )
+        returns (bool supported) {
+            // Contract supports ERC-165 but invalid
+            if (!supported) revert InvalidStrategy();
+        } catch {
+            // Contract doesn't support ERC-165
+            revert InvalidStrategy();
+        }
         uint256 total = 0;
         for (uint256 i = 0; i < strategies.length; i++) {
             unchecked {
@@ -63,7 +75,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         }
         Strategy memory strategy = Strategy(_strategy, _ratio);
         strategies.push(strategy);
-        totalRatio = total;
+        totalRatio = total + _ratio;
     }
 
     /**

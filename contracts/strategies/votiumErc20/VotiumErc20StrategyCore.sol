@@ -12,10 +12,13 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 import "../../external_interfaces/IAfEth.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
+import "../AbstractErc20Strategy.sol";
 
 import "hardhat/console.sol";
 
 contract VotiumErc20StrategyCore is
+    ERC165Storage,
     Initializable,
     OwnableUpgradeable,
     ERC20Upgradeable
@@ -92,6 +95,7 @@ contract VotiumErc20StrategyCore is
         rewarder = _rewarder;
         manager = _manager;
         _transferOwnership(_owner);
+        _registerInterface(type(AbstractErc20Strategy).interfaceId);
     }
 
     function setSafEthRewardsShare(

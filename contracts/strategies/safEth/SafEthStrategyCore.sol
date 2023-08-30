@@ -4,9 +4,12 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
+import "../AbstractErc20Strategy.sol";
 
 /// For private internal functions and anything not exposed via the interface
 contract SafEthStrategyCore is
+    ERC165Storage,
     Initializable,
     OwnableUpgradeable,
     ERC20Upgradeable
@@ -36,6 +39,7 @@ contract SafEthStrategyCore is
     */
     function initialize(address _manager) external initializer {
         _transferOwnership(_manager);
+        _registerInterface(type(AbstractErc20Strategy).interfaceId);
     }
 
     receive() external payable {}
