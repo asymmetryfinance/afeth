@@ -18,18 +18,24 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 ethAmount
     );
 
+    function price() public view override returns (uint256) {
+        return priceData();
+    }
+
     function deposit() public payable override returns (uint256 mintAmount) {
         uint256 priceBefore = price();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
 
-        uint256 mintAmount = ((cvxAmount * 1e18) / priceBefore);
+        mintAmount = ((cvxAmount * 1e18) / priceBefore);
 
         _mint(msg.sender, mintAmount);
     }
 
-    function requestWithdraw(uint256 _amount) public override {
+    function requestWithdraw(
+        uint256 _amount
+    ) public override returns (uint256) {
         uint256 _price = price();
         _transfer(msg.sender, address(this), _amount);
 
@@ -70,7 +76,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     priceWhenRequested: _price
                 });
                 emit WithdrawRequest(msg.sender, cvxAmount, withdrawEpoch);
-                break;
+                return lockedBalances[i].unlockTime;
             }
         }
     }

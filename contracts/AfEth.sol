@@ -15,8 +15,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     Strategy[] public strategies; // mapping of strategy address to ratio
     uint256 totalRatio;
 
+    struct RequestWithdrawPosition {
+        uint256 afEthOwed; // how much cvxOwed total is owed for this position
+        uint256 timestamp; // timestamp when available to withdraw from all strategies
+    }
+    mapping(address => RequestWithdrawPosition[])
+        public requestWithdrawPositions;
+
     error StrategyAlreadyAdded();
     error StrategyNotFound();
+    error InsufficientBalance();
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -73,18 +81,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Deposits into each strategy
         @dev - This is the entry into the protocol
-
     */
     function deposit() external payable virtual {
         uint256 amount = msg.value;
         uint256 amountToMint = 0;
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
-                strategies[i]
+                strategies[i].strategyAddress
             );
-            if (strategy.ratio == 0) continue;
+            if (strategies[i].ratio == 0) continue;
             uint256 mintAmount = strategy.deposit{
-                value: (amount * strategy.ratio) / totalRatio
+                value: (amount * strategies[i].ratio) / totalRatio
             }();
             amountToMint += (mintAmount * strategy.price()) / 1e18;
         }
@@ -93,15 +100,28 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Request to close position
-        @param _amount - Position id to request to close
+        @param _amount - Amount of afEth to withdraw
     */
     function requestWithdraw(uint256 _amount) external virtual {
+        _transfer(msg.sender, address(this), _amount);
+        uint256 timestamp = block.timestamp;
         for (uint256 i = 0; i < strategies.length; i++) {
-            AbstractErc20Strategy(strategies[i]).requestClose(_amount);
+            uint256 strategyTimestamp = AbstractErc20Strategy(
+                strategies[i].strategyAddress
+            ).requestWithdraw(_amount);
+            if (strategyTimestamp > timestamp) {
+                timestamp = strategyTimestamp;
+            }
         }
+        requestWithdrawPositions[msg.sender].push(
+            RequestWithdrawPosition(_amount, block.timestamp)
+        );
     }
 
-    function withdraw(uint256 epochToWithdraw) external virtual {}
+    /**
+        @notice - Withdraw from each strategy
+    */
+    function withdraw() external virtual {}
 
     // deposit value to safEth side
     function applySafEthReward() public payable {

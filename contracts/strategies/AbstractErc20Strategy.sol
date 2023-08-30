@@ -10,14 +10,16 @@ abstract contract AbstractErc20Strategy is
     ReentrancyGuardUpgradeable
 {
     /// deposit into strategy
-    function deposit() external payable virtual returns(uint256);
+    function deposit() external payable virtual returns (uint256);
 
     /// request to unlock strategy
     /// not all strategies will need this, but will use this to keep a consistent interface
-    function requestWithdraw(uint256 _amount) external virtual;
+    function requestWithdraw(
+        uint256 _amount
+    ) external virtual returns (uint256);
 
     /// withdraw out of strategy
     function withdraw(uint256) external virtual;
 
-    function price() external virtual
+    function price() external virtual returns (uint256);
 }

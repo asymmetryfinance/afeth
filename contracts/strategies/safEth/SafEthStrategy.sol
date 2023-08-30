@@ -25,15 +25,18 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         override
         returns (uint256 mintAmount)
     {
-        uint256 mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
+        mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
         );
         _mint(msg.sender, mintAmount);
     }
 
-    function requestWithdraw(uint256 _amount) external virtual override {
+    function requestWithdraw(
+        uint256 _amount
+    ) external virtual override returns (uint256) {
         require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
         emit WithdrawRequest(msg.sender, _amount, block.timestamp);
+        return block.timestamp;
     }
 
     function withdraw(uint256 _amount) external virtual override {
@@ -56,8 +59,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         emit Withdraw(msg.sender, _amount, ethReceived);
     }
 
-    function price() external payable virtual override {
-        uint256 price = ISafEth(safEthAddress).approxPrice(false);
-        return price;
+    function price() external virtual override returns (uint256) {
+        return ISafEth(safEthAddress).approxPrice(false);
     }
 }
