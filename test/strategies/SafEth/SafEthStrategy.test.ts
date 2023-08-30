@@ -33,7 +33,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     await safEthStrategy.deployed();
   });
 
-  it.only("Should deposit() and be able to immediately withdraw() the position", async function () {
+  it("Should deposit() and be able to immediately withdraw() the position", async function () {
     const safEthContract = await ethers.getContractAt(
       erc20Abi,
       SAFETH_ADDRESS,
@@ -116,4 +116,6 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
       "Insufficient balance"
     );
   });
+
+  // TODO test invalid withdrawIds and make sure we are handling them correctly
 });
