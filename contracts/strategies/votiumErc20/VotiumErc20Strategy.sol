@@ -82,7 +82,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     }
 
     function withdraw(uint256 withdrawId) external override {
-        console.log('trying to withdraw', withdrawId);
+        console.log("trying to withdraw", withdrawId);
         UnlockQueuePosition memory positionToWithdraw = unlockQueues[
             msg.sender
         ][withdrawId];
@@ -131,7 +131,9 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         emit Withdraw(msg.sender, cvxToWithdraw, withdrawId, ethReceived);
     }
 
-    function canWithdraw(uint256 withdrawId) external virtual override returns (bool) {
+    function canWithdraw(
+        uint256 withdrawId
+    ) external virtual override returns (bool) {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );

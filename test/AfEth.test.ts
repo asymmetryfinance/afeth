@@ -2,7 +2,7 @@ import { AfEth } from "../typechain-types";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe.skip("Test AfEth", async function () {
+describe.only("Test AfEth", async function () {
   let afEth: AfEth;
   let accounts: SignerWithAddress[];
 
@@ -33,6 +33,9 @@ describe.skip("Test AfEth", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
   it("Should mint, requestwithdraw, withdraw the safEth portion now, wait until votium can be withdrawn and withdraw again", async function () {
-    // TODO
+    const depositAmount = ethers.utils.parseEther("1");
+    const mintTx = await afEth.deposit({ value: depositAmount });
+    await mintTx.wait();
+
   });
 });

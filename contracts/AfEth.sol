@@ -21,12 +21,15 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     uint256 latestWithdrawId;
 
-    mapping (uint256 => uint256[]) public withdrawIdToStrategyWithdrawIds;
+    mapping(uint256 => uint256[]) public withdrawIdToStrategyWithdrawIds;
 
-    mapping (uint256 => address) public withdrawIdOwners;
+    mapping(uint256 => address) public withdrawIdOwners;
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
-        require(withdrawIdOwners[withdrawId] == msg.sender, "Not withdrawId owner");
+        require(
+            withdrawIdOwners[withdrawId] == msg.sender,
+            "Not withdrawId owner"
+        );
         _;
     }
 
@@ -110,17 +113,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 amount = balanceOf(msg.sender);
 
         // ratio of afEth being withdrawn to totalSupply
-        uint256 withdrawRatio = (amount * 1e18) / totalRatio; 
+        uint256 withdrawRatio = (amount * 1e18) / totalRatio;
 
         _transfer(msg.sender, address(this), amount);
         for (uint256 i = 0; i < strategies.length; i++) {
             uint256 strategyBalance = ERC20Upgradeable(
                 strategies[i].strategyAddress
             ).balanceOf(address(this));
-            uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) / 1e18;
-            uint256 wid = AbstractErc20Strategy(
-                strategies[i].strategyAddress
-            ).requestWithdraw(strategyWithdrawAmount);
+            uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) /
+                1e18;
+            uint256 wid = AbstractErc20Strategy(strategies[i].strategyAddress)
+                .requestWithdraw(strategyWithdrawAmount);
             withdrawIdToStrategyWithdrawIds[latestWithdrawId].push(wid);
         }
         withdrawIdOwners[latestWithdrawId] = msg.sender;
@@ -130,11 +133,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Withdraw from each strategy
     */
-    function withdraw(uint256 withrawId) onlyWithdrawIdOwner(withrawId) external virtual {
+    function withdraw(
+        uint256 withrawId
+    ) external virtual onlyWithdrawIdOwner(withrawId) {
         uint256 ethBalanceBefore = address(this).balance;
-        for(uint256 i=0;i<strategies.length;i++) {
-            uint256[] memory strategyWithdrawIds = withdrawIdToStrategyWithdrawIds[withrawId];
-            for(uint256 j=0;j<strategyWithdrawIds.length;j++) {
+        for (uint256 i = 0; i < strategies.length; i++) {
+            uint256[]
+                memory strategyWithdrawIds = withdrawIdToStrategyWithdrawIds[
+                    withrawId
+                ];
+            for (uint256 j = 0; j < strategyWithdrawIds.length; j++) {
                 AbstractErc20Strategy strategy = AbstractErc20Strategy(
                     strategies[i].strategyAddress
                 );

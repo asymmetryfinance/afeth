@@ -20,7 +20,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
     uint256 latestWithdrawId;
 
-    mapping (uint256 => uint256) public withdrawIdToAmount;
+    mapping(uint256 => uint256) public withdrawIdToAmount;
 
     function deposit()
         external
@@ -47,7 +47,10 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
     function withdraw(uint256 _withdrawId) external virtual override {
         uint256 withdrawAmount = withdrawIdToAmount[_withdrawId];
-        require(balanceOf(msg.sender) >= withdrawAmount, "Insufficient balance");
+        require(
+            balanceOf(msg.sender) >= withdrawAmount,
+            "Insufficient balance"
+        );
         _burn(msg.sender, withdrawAmount);
 
         uint256 ethBalanceBefore = address(this).balance;
