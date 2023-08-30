@@ -138,9 +138,11 @@ describe("Test VotiumErc20Strategy", async function () {
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
 
+      const withdrawEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+
       const unlock = await votiumStrategy.unlockQueues(
         accounts[i].address,
-        withdrawId
+        withdrawEpoch
       );
       expect(unlock.cvxOwed).gt(0);
     }
@@ -383,10 +385,11 @@ describe("Test VotiumErc20Strategy", async function () {
         stakerVotiumStrategy,
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
+      const withdrawEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
 
       const unlock = await votiumStrategy.unlockQueues(
         accounts[i].address,
-        withdrawId
+        withdrawEpoch
       );
       expect(unlock.cvxOwed).gt(0);
     }
@@ -465,10 +468,10 @@ describe("Test VotiumErc20Strategy", async function () {
         stakerVotiumStrategy,
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
-
+      const withdrawEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
       const unlock = await votiumStrategy.unlockQueues(
         accounts[i].address,
-        withdrawId
+        withdrawEpoch
       );
       expect(unlock.cvxOwed).gt(0);
     }
@@ -698,7 +701,7 @@ describe("Test VotiumErc20Strategy", async function () {
       await votiumStrategy.balanceOf(accounts[0].address)
     );
 
-    // pass enough epochs so the burned position is fully unlocked
+    // pass enough epochs so the burned position is almost fully unlocked
     for (let i = 0; i < 16; i++) {
       await incrementVlcvxEpoch();
     }
