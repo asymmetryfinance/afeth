@@ -23,6 +23,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     mapping (uint256 => uint256[]) public withdrawIdToStrategyWithdrawIds;
 
+    mapping (uint256 => address) public withdrawIdOwners;
+
+    modifier onlyWithdrawIdOwner(uint256 withdrawId) {
+        require(withdrawIdOwners[withdrawId] == msg.sender, "Not withdrawId owner");
+        _;
+    }
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -116,13 +123,14 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             ).requestWithdraw(strategyWithdrawAmount);
             withdrawIdToStrategyWithdrawIds[latestWithdrawId].push(wid);
         }
+        withdrawIdOwners[latestWithdrawId] = msg.sender;
         return latestWithdrawId;
     }
 
     /**
         @notice - Withdraw from each strategy
     */
-    function withdraw(uint256 withrawId) external virtual {
+    function withdraw(uint256 withrawId) onlyWithdrawIdOwner(withrawId) external virtual {
         uint256 ethBalanceBefore = address(this).balance;
         for(uint256 i=0;i<strategies.length;i++) {
             uint256[] memory strategyWithdrawIds = withdrawIdToStrategyWithdrawIds[withrawId];
