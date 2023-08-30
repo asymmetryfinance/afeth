@@ -25,6 +25,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     mapping(uint256 => uint256[]) public withdrawIdToStrategyWithdrawIds;
 
     mapping(uint256 => address) public withdrawIdOwners;
+    mapping(uint256 => uint256) public withdrawIdAmounts;
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         require(
@@ -139,6 +140,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             withdrawIdToStrategyWithdrawIds[latestWithdrawId].push(wid);
         }
         withdrawIdOwners[latestWithdrawId] = msg.sender;
+        withdrawIdAmounts[latestWithdrawId] = amount;
         return latestWithdrawId;
     }
 
@@ -163,6 +165,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 }
             }
         }
+        _burn(address(this), withdrawIdAmounts[withrawId]);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
         // solhint-disable-next-line

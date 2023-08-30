@@ -333,7 +333,12 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     // incremement to unlock epoch minus 1
     for (let i = 0; i < 17; i++) {
       const currentEpoch = await getCurrentEpoch();
-      if (currentEpoch.eq(withdrawId.sub(1))) break;
+
+      const withdrawEpochMinus1 = (
+        await votiumStrategy.withdrawIdToEpoch(withdrawId)
+      ).sub(1);
+
+      if (currentEpoch.eq(withdrawEpochMinus1)) break;
       await incrementVlcvxEpoch();
     }
 
