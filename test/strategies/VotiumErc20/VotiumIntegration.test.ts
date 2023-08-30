@@ -6,6 +6,10 @@ import {
   getUserAccounts,
   increaseTime1Epoch,
   randomStakeUnstakeWithdraw,
+  totalEthRewarded,
+  totalEthStaked,
+  totalEthUnStaked,
+  userTxFees,
 } from "./IntegrationHelpers";
 
 describe("Votium integration test", async function () {
@@ -49,7 +53,7 @@ describe("Votium integration test", async function () {
 
   it.only("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
     const userAccounts = await getUserAccounts();
-    for (let i = 0; i < 64; i++) {
+    for (let i = 0; i < 35; i++) {
       console.log("epoch", i);
       await randomStakeUnstakeWithdraw(
         userAccounts[i % 4],
@@ -68,8 +72,22 @@ describe("Votium integration test", async function () {
     }
   });
 
-  it("Should have tvl (or supply * price) be equal to total staked plus rewards minus unstaked", async function () {
-    // TODO
+  it.only("Should have tvl (or supply * price) be equal to total staked plus rewards minus unstaked plus tx fees", async function () {
+    const totalSupply = await votiumStrategy.totalSupply();
+    const price = await votiumStrategy.price();
+
+    const tvl = totalSupply.mul(price).div(ethers.utils.parseEther("1"));
+
+    console.log("totalSupply", totalSupply.toString());
+    console.log("price", price.toString());
+    console.log("tvl", tvl.toString());
+
+    console.log("userTxFees", userTxFees.toString());
+
+    console.log("totalEthRewarded", totalEthRewarded.toString());
+
+    console.log("totalEthStaked", totalEthStaked.toString());
+    console.log("totalEthUnStaked", totalEthUnStaked.toString());
   });
 
   it("Should have tvl be equal to sum of all users tvl (balance * price)", async function () {

@@ -15,22 +15,25 @@ export const balancesAtRewardEpochs: BalancesAtRewardEpochs = {};
 
 export type UserAddress = string;
 
-export type Epoch = number
+export type Epoch = number;
 export type UnstakeRequestTime = {
   epochRequested: number;
   epochEligible: number;
   withdrawn: boolean;
 };
 
+export const totalEthStaked: Record<UserAddress, BigNumber> = {};
+export const totalEthUnStaked: Record<UserAddress, BigNumber> = {};
+
 type UnstakingTimes = Record<UserAddress, Record<Epoch, UnstakeRequestTime>>;
 // request time / eligible for withdraw tiem for all users and withdraw requests
 export const unstakingTimes: UnstakingTimes = {};
 
 // all tx fees user spent staking & unstaking
-export const userTxFees: Record<UserAddress, BigNumber[]> = {};
+export const userTxFees: Record<UserAddress, BigNumber> = {};
 let randomSeed = 2;
 
-let totalEthRewarded = BigNumber.from(0);
+export let totalEthRewarded = BigNumber.from(0);
 
 export const randomEthAmount = (min: number, max: number) => {
   return (min + deterministicRandom() * (max - min)).toFixed(18);
@@ -67,17 +70,17 @@ export const increaseTime1Epoch = async (
 
   const currentEpoch = await getCurrentEpoch();
   if (currentEpoch % 2 === 0) {
-    console.log('applying rewards');
+    console.log("applying rewards");
     // TODO this is probbly running out of rewards. make sure its all good and see if se need to fund it more
     const rewardEvent = await oracleApplyRewards(
       await getRewarderAccount(),
       votiumStrategy.address
     );
-    console.log('applied rewards', rewardEvent)
+    console.log("applied rewards", rewardEvent);
 
     totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
 
-    console.log('rewardEvent', rewardEvent);
+    console.log("rewardEvent", rewardEvent);
   }
 };
 
@@ -96,11 +99,17 @@ export const randomStakeUnstakeWithdraw = async (
   let tx = await votiumStrategy.connect(userAcount).mint({
     value: ethers.utils.parseEther(stakeAmount),
   });
+
+  if (!totalEthStaked[userAcount.address])
+    totalEthStaked[userAcount.address] = BigNumber.from(0);
+  totalEthStaked[userAcount.address] =
+    totalEthStaked[userAcount.address].add(stakeAmount);
   let mined = await tx.wait();
   let txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
 
-  if (!userTxFees[userAcount.address]) userTxFees[userAcount.address] = [];
-  userTxFees[userAcount.address].push(txFee);
+  if (!userTxFees[userAcount.address])
+    userTxFees[userAcount.address] = BigNumber.from(0);
+  userTxFees[userAcount.address].add(txFee);
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
 
@@ -114,7 +123,7 @@ export const randomStakeUnstakeWithdraw = async (
     .requestWithdraw(ethers.utils.parseEther(withdrawAmount));
   mined = await tx.wait();
   txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-  userTxFees[userAcount.address].push(txFee);
+  userTxFees[userAcount.address].add(txFee);
   const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
 
   const unlockEpoch = event?.args?.unlockEpoch;
@@ -152,14 +161,36 @@ export const randomStakeUnstakeWithdraw = async (
       unstakeRequestTime.epochEligible,
       currentEpoch
     );
-    console.log('about to call withdraw for key epoch', key)
+    console.log("about to call withdraw for key epoch", key);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      userAcount.address
+    );
+
     tx = await votiumStrategy
       .connect(userAcount)
       .withdraw(unstakeRequestTime.epochEligible);
     mined = await tx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      userAcount.address
+    );
+
+    const balanceWithdrawn = ethBalanceAfterWithdraw.sub(
+      ethBalanceBeforeWithdraw
+    );
+    if (!totalEthUnStaked[userAcount.address])
+      totalEthUnStaked[userAcount.address] = BigNumber.from(0);
+    totalEthUnStaked[userAcount.address] =
+      totalEthUnStaked[userAcount.address].add(balanceWithdrawn);
+
     txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-    userTxFees[userAcount.address].push(txFee);
-    console.log("setting withdrawn for userAcount.address", userAcount.address, key);
+    userTxFees[userAcount.address].add(txFee);
+    console.log(
+      "setting withdrawn for userAcount.address",
+      userAcount.address,
+      key
+    );
     unstakingTimes[userAcount.address][key].withdrawn = true;
 
     console.log("unstakingTimes is", JSON.stringify(unstakingTimes));
