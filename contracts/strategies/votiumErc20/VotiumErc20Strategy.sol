@@ -105,7 +105,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             "Can't withdraw from future epoch"
         );
         require(positionToWithdraw.cvxOwed > 0, "Nothing to withdraw");
-
         _burn(address(this), positionToWithdraw.afEthOwed);
 
         unlockQueues[msg.sender][withdrawEpoch].cvxOwed -= cvxWithdrawAmount;
@@ -135,6 +134,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
 
         uint256 balanceBefore = address(this).balance;
+
         sellCvx(cvxWithdrawAmount);
         uint256 balanceAfter = address(this).balance;
         uint256 ethReceived = balanceAfter - balanceBefore;
@@ -149,6 +149,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
-        return withdrawId <= currentEpoch;
+        return withdrawIdToEpoch[withdrawId] <= currentEpoch;
     }
 }
