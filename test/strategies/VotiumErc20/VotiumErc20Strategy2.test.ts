@@ -73,13 +73,9 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const event = mined1?.events?.find((e) => e?.event === "WithdrawRequest");
 
-    const unlockEpoch = event?.args?.unlockEpoch;
+    const withdrawId = event?.args?.withdrawId;
 
-    const currentEpoch = await getCurrentEpoch();
-
-    const epochsUntilUnlock = unlockEpoch.sub(currentEpoch);
-
-    for (let i = 0; i < epochsUntilUnlock; i++) {
+    for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
     }
 
@@ -87,7 +83,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       userAccount.address
     );
 
-    tx = await votiumStrategy.withdraw(unlockEpoch);
+    tx = await votiumStrategy.withdraw(withdrawId);
     const mined2 = await tx.wait();
 
     const totalGasFees2 = mined2.gasUsed.mul(mined2.effectiveGasPrice);
@@ -221,14 +217,14 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
 
-    const unlockEpoch = event?.args?.unlockEpoch;
+    const withdrawId = event?.args?.withdrawId;
 
     // pass enough epochs so the burned position is fully unlocked
     for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
     }
 
-    tx = await votiumStrategy.withdraw(unlockEpoch);
+    tx = await votiumStrategy.withdraw(withdrawId);
     await tx.wait();
 
     const price3 = await votiumStrategy.price();
@@ -249,12 +245,12 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
 
-    const unlockEpoch = event?.args?.unlockEpoch;
+    const withdrawId = event?.args?.withdrawId;
 
     // incremement to unlock epoch
     for (let i = 0; i < 17; i++) {
       const currentEpoch = await getCurrentEpoch();
-      if (currentEpoch.eq(unlockEpoch)) break;
+      if (currentEpoch.eq(withdrawId)) break;
       await incrementVlcvxEpoch();
     }
 
@@ -262,7 +258,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       userAccount.address
     );
 
-    tx = await votiumStrategy.withdraw(unlockEpoch);
+    tx = await votiumStrategy.withdraw(withdrawId);
     await tx.wait();
 
     const ethBalanceAfter0 = await ethers.provider.getBalance(
@@ -292,7 +288,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       userAccount.address
     );
 
-    tx = await votiumStrategy.withdraw(unlockEpoch);
+    tx = await votiumStrategy.withdraw(withdrawId);
     await tx.wait();
 
     const ethBalanceAfter1 = await ethers.provider.getBalance(
@@ -332,16 +328,16 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
 
-    const unlockEpoch = event?.args?.unlockEpoch;
+    const withdrawId = event?.args?.withdrawId;
 
     // incremement to unlock epoch minus 1
     for (let i = 0; i < 17; i++) {
       const currentEpoch = await getCurrentEpoch();
-      if (currentEpoch.eq(unlockEpoch.sub(1))) break;
+      if (currentEpoch.eq(withdrawId.sub(1))) break;
       await incrementVlcvxEpoch();
     }
 
-    await expect(votiumStrategy.withdraw(unlockEpoch)).to.be.revertedWith(
+    await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
       "Can't withdraw from future epoch"
     );
 
@@ -349,7 +345,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const ethBalanceBefore1 = await ethers.provider.getBalance(
       userAccount.address
     );
-    await votiumStrategy.withdraw(unlockEpoch);
+    await votiumStrategy.withdraw(withdrawId);
 
     const ethBalanceAfter1 = await ethers.provider.getBalance(
       userAccount.address
@@ -373,11 +369,11 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
 
-    const unlockEpoch = event?.args?.unlockEpoch;
+    const withdrawId = event?.args?.withdrawId;
 
     for (let i = 0; i < 17; i++) {
       const currentEpoch = await getCurrentEpoch();
-      if (currentEpoch.eq(unlockEpoch)) break;
+      if (currentEpoch.eq(withdrawId)) break;
       await incrementVlcvxEpoch();
     }
 
@@ -385,7 +381,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const ethBalanceBefore1 = await ethers.provider.getBalance(
       userAccount.address
     );
-    tx = await votiumStrategy.withdraw(unlockEpoch);
+    tx = await votiumStrategy.withdraw(withdrawId);
     await tx.wait();
     const ethBalanceAfter1 = await ethers.provider.getBalance(
       userAccount.address
@@ -395,7 +391,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(ethReceived1).gt(0);
 
-    await expect(votiumStrategy.withdraw(unlockEpoch)).to.be.revertedWith(
+    await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
       "Nothing to withdraw"
     );
     await tx.wait();
