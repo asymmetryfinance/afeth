@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { RETH_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 
-describe.only("Test AfEth", async function () {
+describe("Test AfEth", async function () {
   let afEth: AfEth;
   let safEthStrategy: SafEthStrategy;
   let votiumStrategy: VotiumErc20Strategy;
