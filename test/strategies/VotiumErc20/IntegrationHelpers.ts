@@ -20,6 +20,7 @@ export type UnstakeRequestTime = {
   epochRequested: number;
   epochEligible: number;
   withdrawn: boolean;
+  withdrawId: number;
 };
 
 export const totalEthStaked: Record<UserAddress, BigNumber> = {};
@@ -139,6 +140,7 @@ export const randomStakeUnstakeWithdraw = async (
     epochRequested: currentEpoch,
     epochEligible: unlockEpoch,
     withdrawn: false,
+    withdrawId,
   };
 
   // check if there are any eligible withdraws
@@ -172,7 +174,7 @@ export const randomStakeUnstakeWithdraw = async (
 
     tx = await votiumStrategy
       .connect(userAcount)
-      .withdraw(unstakeRequestTime.epochEligible);
+      .withdraw(unstakeRequestTime.withdrawId);
     mined = await tx.wait();
 
     const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
