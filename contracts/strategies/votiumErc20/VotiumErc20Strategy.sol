@@ -9,7 +9,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     event WithdrawRequest(
         address indexed user,
         uint256 amount,
-        uint256 unlockEpoch
+        uint256 withdrawId
     );
     event Withdraw(
         address indexed user,
@@ -35,7 +35,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     function requestWithdraw(
         uint256 _amount
-    ) public override returns (uint256) {
+    ) public override returns (uint256 withdrawId) {
         uint256 _price = price();
         _transfer(msg.sender, address(this), _amount);
 
@@ -76,22 +76,19 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     priceWhenRequested: _price
                 });
                 emit WithdrawRequest(msg.sender, cvxAmount, withdrawEpoch);
-                return lockedBalances[i].unlockTime;
+                return withdrawEpoch;
             }
         }
     }
 
-    function withdraw(uint256 epochToWithdraw) external override {
+    function withdraw(uint256 withdrawId) external override {
+        console.log("trying to withdraw", withdrawId);
         UnlockQueuePosition memory positionToWithdraw = unlockQueues[
             msg.sender
-        ][epochToWithdraw];
-
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-            block.timestamp
-        );
+        ][withdrawId];
 
         require(
-            epochToWithdraw <= currentEpoch,
+            this.canWithdraw(withdrawId),
             "Can't withdraw from future epoch"
         );
         require(positionToWithdraw.cvxOwed > 0, "Nothing to withdraw");
@@ -99,8 +96,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 cvxToWithdraw = positionToWithdraw.cvxOwed;
         _burn(address(this), positionToWithdraw.afEthOwed);
 
-        unlockQueues[msg.sender][epochToWithdraw].cvxOwed = 0;
-        unlockQueues[msg.sender][epochToWithdraw].afEthOwed = 0;
+        unlockQueues[msg.sender][withdrawId].cvxOwed = 0;
+        unlockQueues[msg.sender][withdrawId].afEthOwed = 0;
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
@@ -131,6 +128,15 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 ethReceived = balanceAfter - balanceBefore;
         // TODO: use call to send eth instead
         payable(msg.sender).transfer(ethReceived);
-        emit Withdraw(msg.sender, cvxToWithdraw, epochToWithdraw, ethReceived);
+        emit Withdraw(msg.sender, cvxToWithdraw, withdrawId, ethReceived);
+    }
+
+    function canWithdraw(
+        uint256 withdrawId
+    ) external virtual override returns (bool) {
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
+        return withdrawId <= currentEpoch;
     }
 }
