@@ -2,7 +2,7 @@ import { AfEth } from "../typechain-types";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe.only("Test AfEth", async function () {
+describe("Test AfEth", async function () {
   let afEth: AfEth;
   let accounts: SignerWithAddress[];
 

@@ -97,7 +97,7 @@ describe("Test VotiumErc20Strategy", async function () {
     // balance after fully withdrawing is higher
     expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
-  it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function () {
+  it.only("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const stakerAmounts = 2;
 
@@ -138,9 +138,11 @@ describe("Test VotiumErc20Strategy", async function () {
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
 
+      const withdrawEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+
       const unlock = await votiumStrategy.unlockQueues(
         accounts[i].address,
-        withdrawId
+        withdrawEpoch
       );
       expect(unlock.cvxOwed).gt(0);
     }

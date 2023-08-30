@@ -21,7 +21,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     uint256 latestWithdrawId;
 
-    mapping(uint256 => uint256) public withdrawIdToAmount;
     mapping(uint256 => uint256) public withdrawIdToEpoch;
 
     function price() public view override returns (uint256) {
@@ -84,7 +83,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     priceWhenRequested: _price
                 });
 
-                withdrawIdToAmount[latestWithdrawId] = _amount;
                 withdrawIdToEpoch[latestWithdrawId] = withdrawEpoch;
                 emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
                 return latestWithdrawId;
@@ -94,14 +92,13 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     function withdraw(uint256 withdrawId) external override {
         uint256 withdrawEpoch = withdrawIdToEpoch[withdrawId];
-        uint256 afEthwithdrawAmount = withdrawIdToAmount[withdrawId];
 
-        console.log("trying to withdraw", withdrawId);
         UnlockQueuePosition memory positionToWithdraw = unlockQueues[
             msg.sender
         ][withdrawEpoch];
 
-        uint256 cvxWithdrawAmount = (afEthwithdrawAmount * positionToWithdraw.priceWhenRequested) / 1e18;
+        uint256 afEthwithdrawAmount = positionToWithdraw.afEthOwed;
+        uint256 cvxWithdrawAmount = positionToWithdraw.cvxOwed;
 
         require(
             this.canWithdraw(withdrawId),
@@ -111,8 +108,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
         _burn(address(this), positionToWithdraw.afEthOwed);
 
-        unlockQueues[msg.sender][withdrawId].cvxOwed -= cvxWithdrawAmount;
-        unlockQueues[msg.sender][withdrawId].afEthOwed -= afEthwithdrawAmount;
+        unlockQueues[msg.sender][withdrawEpoch].cvxOwed -= cvxWithdrawAmount;
+        unlockQueues[msg.sender][withdrawEpoch].afEthOwed -= afEthwithdrawAmount;
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
