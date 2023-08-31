@@ -167,13 +167,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 ethBalanceBefore = address(this).balance;
         uint256[] memory strategyWithdrawIds = withdrawIdInfo[withdrawId]
             .strategyWithdrawIds;
+        require(canWithdraw(withdrawId), "Can't withdraw yet");
         for (uint256 i = 0; i < strategyWithdrawIds.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
             );
-            if (canWithdraw(strategyWithdrawIds[i])) {
-                strategy.withdraw(strategyWithdrawIds[i]);
-            }
+            strategy.withdraw(strategyWithdrawIds[i]);
         }
 
         _burn(address(this), withdrawIdInfo[withdrawId].amount);
