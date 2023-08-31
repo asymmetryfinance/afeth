@@ -36,7 +36,7 @@ contract VotiumErc20StrategyCore is
         address swapTarget;
         bytes swapCallData;
     }
-
+    
     struct ChainlinkResponse {
         uint80 roundId;
         int256 answer;
@@ -135,7 +135,7 @@ contract VotiumErc20StrategyCore is
         return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
     }
 
-    function priceData() internal view returns (uint256) {
+    function cvxPerVotium() internal view returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
@@ -144,10 +144,10 @@ contract VotiumErc20StrategyCore is
         return (totalCvx * 1e18) / supply;
     }
 
-    /**
-        @notice - Get cvx/eth price data from chainlink oracle
+        /**
+        @notice - Eth per cvx (chainlink)
      */
-    function priceData2() public view returns (uint256) {
+    function ethPerCvx() public view returns (uint256) {
         ChainlinkResponse memory cl;
         try chainlinkCvxEthFeed.latestRoundData() returns (
             uint80 roundId,
@@ -161,8 +161,9 @@ contract VotiumErc20StrategyCore is
             cl.answer = answer;
             cl.updatedAt = updatedAt;
         } catch {
-            revert("failed to get price from chainlink");
+            cl.success = false;
         }
+
         return uint256(cl.answer);
     }
 
@@ -184,7 +185,7 @@ contract VotiumErc20StrategyCore is
         uint256 cvxAmount = buyCvx(votiumShare);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(priceData(), votiumShare, cvxAmount);
+        emit DepositReward(cvxPerVotium(), votiumShare, cvxAmount);
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {

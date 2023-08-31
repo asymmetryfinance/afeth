@@ -22,17 +22,13 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     mapping(uint256 => uint256) public withdrawIdToEpoch;
 
-    function priceInCvx() public view returns (uint256) {
-        return priceData();
-    }
-
     function price() public view override returns (uint256) {
-        uint256 ethPrice = (priceData2() * priceInCvx()) / 1e18;
+        uint256 ethPrice = (cvxPerVotium() * ethPerCvx()) / 1e18;
         return ethPrice;
     }
 
     function deposit() public payable override returns (uint256 mintAmount) {
-        uint256 priceBefore = priceInCvx();
+        uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
@@ -47,7 +43,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     ) public override returns (uint256 withdrawId) {
         latestWithdrawId++;
 
-        uint256 _priceInCvx = priceInCvx();
+        uint256 _priceInCvx = cvxPerVotium();
         _transfer(msg.sender, address(this), _amount);
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
@@ -84,7 +80,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 unlockQueues[msg.sender][withdrawEpoch] = UnlockQueuePosition({
                     cvxOwed: previousCvxOwed + cvxAmount,
                     afEthOwed: previousAfEthOwed + _amount,
-                    priceWhenRequested: _price
+                    priceWhenRequested: _priceInCvx
                 });
 
                 withdrawIdToEpoch[latestWithdrawId] = withdrawEpoch;
