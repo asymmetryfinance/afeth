@@ -53,6 +53,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Add strategies to the strategies array
+        @dev - These will rarely change, if at all once deployed
         @param _strategy - Address of the strategy contract
         @param _ratio - Ratio for the strategy
     */
@@ -83,6 +84,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Add strategies to the strategies array
+        @dev - To remove a strategy just set ratio to zero
         @param _strategy - Address of the strategy contract
         @param _ratio - Ratio for the strategy
     */
@@ -139,7 +141,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 1e18;
             uint256 wid = AbstractErc20Strategy(strategies[i].strategyAddress)
                 .requestWithdraw(strategyWithdrawAmount);
-            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds.push(wid);
+            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[i] = wid;
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = amount;
