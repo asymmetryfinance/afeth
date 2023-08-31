@@ -148,7 +148,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         return latestWithdrawId;
     }
 
-    function canWithdraw(uint256 withdrawId) external view returns (bool) {
+    function canWithdraw(uint256 withdrawId) public view returns (bool) {
         for (uint256 i = 0; i < strategies.length; i++) {
             if (
                 !AbstractErc20Strategy(strategies[i].strategyAddress)
@@ -171,7 +171,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
             );
-            if (strategy.canWithdraw(strategyWithdrawIds[i])) {
+            if (canWithdraw(strategyWithdrawIds[i])) {
                 strategy.withdraw(strategyWithdrawIds[i]);
             }
         }
