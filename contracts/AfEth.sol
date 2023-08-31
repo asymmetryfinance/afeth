@@ -162,22 +162,21 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - Withdraw from each strategy
     */
     function withdraw(
-        uint256 withrawId
-    ) external virtual onlyWithdrawIdOwner(withrawId) {
+        uint256 withdrawId
+    ) external virtual onlyWithdrawIdOwner(withdrawId) {
         uint256 ethBalanceBefore = address(this).balance;
-        for (uint256 i = 0; i < strategies.length; i++) {
-            uint256[] memory strategyWithdrawIds = withdrawIdInfo[withrawId]
-                .strategyWithdrawIds;
-            for (uint256 j = 0; j < strategyWithdrawIds.length; j++) {
-                AbstractErc20Strategy strategy = AbstractErc20Strategy(
-                    strategies[i].strategyAddress
-                );
-                if (strategy.canWithdraw(strategyWithdrawIds[j])) {
-                    strategy.withdraw(strategyWithdrawIds[j]);
-                }
+        uint256[] memory strategyWithdrawIds = withdrawIdInfo[withdrawId]
+            .strategyWithdrawIds;
+        for (uint256 i = 0; i < strategyWithdrawIds.length; i++) {
+            AbstractErc20Strategy strategy = AbstractErc20Strategy(
+                strategies[i].strategyAddress
+            );
+            if (strategy.canWithdraw(strategyWithdrawIds[i])) {
+                strategy.withdraw(strategyWithdrawIds[i]);
             }
         }
-        _burn(address(this), withdrawIdInfo[withrawId].amount);
+
+        _burn(address(this), withdrawIdInfo[withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
         // solhint-disable-next-line
