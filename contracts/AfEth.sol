@@ -146,7 +146,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     function canWithdraw(uint256 withdrawId) external view returns (bool) {
         for (uint256 i = 0; i < strategies.length; i++) {
-            if(!AbstractErc20Strategy(strategies[i].strategyAddress).canWithdraw(withdrawId)) return false;
+            if (
+                !AbstractErc20Strategy(strategies[i].strategyAddress)
+                    .canWithdraw(withdrawId)
+            ) return false;
         }
         return true;
     }
