@@ -103,6 +103,9 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             this.canWithdraw(withdrawId),
             "Can't withdraw from future epoch"
         );
+        console.log('positionToWithdraw.cvxOwed ', positionToWithdraw.cvxOwed);
+        console.log('positionToWithdraw.priceWhenRequested ', positionToWithdraw.priceWhenRequested);
+
         require(positionToWithdraw.cvxOwed > 0, "Nothing to withdraw");
         _burn(address(this), positionToWithdraw.afEthOwed);
 
@@ -145,7 +148,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     function canWithdraw(
         uint256 withdrawId
-    ) external virtual override returns (bool) {
+    ) external virtual override view returns (bool) {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
