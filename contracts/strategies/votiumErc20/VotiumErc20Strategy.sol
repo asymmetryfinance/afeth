@@ -23,8 +23,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     mapping(uint256 => uint256) public withdrawIdToEpoch;
 
     function price() public view override returns (uint256) {
-        uint256 ethPrice = (cvxPerVotium() * ethPerCvx()) / 1e18;
-        return ethPrice;
+        return (cvxPerVotium() * ethPerCvx()) / 1e18;
     }
 
     function deposit() public payable override returns (uint256 mintAmount) {
