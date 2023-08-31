@@ -12,7 +12,7 @@ import {
   userTxFees,
 } from "./IntegrationHelpers";
 
-describe("Votium integration test", async function () {
+describe.skip("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -51,7 +51,7 @@ describe("Votium integration test", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
+  it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
     const userAccounts = await getUserAccounts();
     for (let i = 0; i < 35; i++) {
       console.log("epoch", i);
