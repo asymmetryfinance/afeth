@@ -306,49 +306,49 @@ describe("Test VotiumErc20Strategy", async function () {
 
     console.log(balance1.toString(), balance2.toString());
     expect(within2Percent(balance1, balance2)).eq(true);
-    // // request withdraw for each account
-    // await stakerVotiumStrategy1.requestWithdraw(balance1);
-    // const withdrawId = await requestWithdrawal(stakerVotiumStrategy2, balance2);
+    // request withdraw for each account
+    await stakerVotiumStrategy1.requestWithdraw(balance1);
+    const withdrawId = await requestWithdrawal(stakerVotiumStrategy2, balance2);
 
-    // // go to next epoch
-    // for (let i = 0; i < 17; i++) {
-    //   await incrementVlcvxEpoch();
-    // }
+    // go to next epoch
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
 
-    // // withdraw from queue
-    // // pass enough epochs so the burned position is fully unlocked
-    // const ethBalanceBefore1 = await ethers.provider.getBalance(
-    //   accounts[1].address
-    // );
+    // withdraw from queue
+    // pass enough epochs so the burned position is fully unlocked
+    const ethBalanceBefore1 = await ethers.provider.getBalance(
+      accounts[1].address
+    );
 
-    // tx = await stakerVotiumStrategy1.withdraw(withdrawId);
-    // await tx.wait();
-    // const ethBalanceAfter1 = await ethers.provider.getBalance(
-    //   accounts[1].address
-    // );
-    // // balance after fully withdrawing is higher
-    // expect(ethBalanceAfter1).gt(ethBalanceBefore1);
-    // const rewardAmount1 = ethBalanceAfter1
-    //   .sub(ethBalanceBefore1)
-    //   .sub(stakeAmount);
+    tx = await stakerVotiumStrategy1.withdraw(withdrawId);
+    await tx.wait();
+    const ethBalanceAfter1 = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    // balance after fully withdrawing is higher
+    expect(ethBalanceAfter1).gt(ethBalanceBefore1);
+    const rewardAmount1 = ethBalanceAfter1
+      .sub(ethBalanceBefore1)
+      .sub(stakeAmount);
 
-    // const ethBalanceBefore2 = await ethers.provider.getBalance(
-    //   accounts[2].address
-    // );
+    const ethBalanceBefore2 = await ethers.provider.getBalance(
+      accounts[2].address
+    );
 
-    // tx = await stakerVotiumStrategy2.withdraw(withdrawId);
-    // await tx.wait();
+    tx = await stakerVotiumStrategy2.withdraw(withdrawId);
+    await tx.wait();
 
-    // const ethBalanceAfter2 = await ethers.provider.getBalance(
-    //   accounts[2].address
-    // );
-    // // balance after fully withdrawing is higher
-    // expect(ethBalanceAfter2).gt(ethBalanceBefore2);
-    // const rewardAmount2 = ethBalanceAfter2
-    //   .sub(ethBalanceBefore2)
-    //   .sub(stakeAmount);
+    const ethBalanceAfter2 = await ethers.provider.getBalance(
+      accounts[2].address
+    );
+    // balance after fully withdrawing is higher
+    expect(ethBalanceAfter2).gt(ethBalanceBefore2);
+    const rewardAmount2 = ethBalanceAfter2
+      .sub(ethBalanceBefore2)
+      .sub(stakeAmount);
 
-    // expect(within2Percent(rewardAmount1, rewardAmount2)).eq(true);
+    expect(within2Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
   it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
