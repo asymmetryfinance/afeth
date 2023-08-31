@@ -22,14 +22,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     uint256 latestWithdrawId;
 
-    mapping(uint256 => uint256[]) public withdrawIdToStrategyWithdrawIds;
-
-    mapping(uint256 => address) public withdrawIdOwners;
-    mapping(uint256 => uint256) public withdrawIdAmounts;
+    struct WithdrawInfo {
+        address owner;
+        uint256 amount;
+        uint256[] strategyWithdrawIds;
+    }
+    mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         require(
-            withdrawIdOwners[withdrawId] == msg.sender,
+            withdrawIdInfo[withdrawId].owner == msg.sender,
             "Not withdrawId owner"
         );
         _;
@@ -137,16 +139,19 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 1e18;
             uint256 wid = AbstractErc20Strategy(strategies[i].strategyAddress)
                 .requestWithdraw(strategyWithdrawAmount);
-            withdrawIdToStrategyWithdrawIds[latestWithdrawId].push(wid);
+            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds.push(wid);
         }
-        withdrawIdOwners[latestWithdrawId] = msg.sender;
-        withdrawIdAmounts[latestWithdrawId] = amount;
+        withdrawIdInfo[latestWithdrawId].owner = msg.sender;
+        withdrawIdInfo[latestWithdrawId].amount = amount;
         return latestWithdrawId;
     }
 
     function canWithdraw(uint256 withdrawId) external view returns (bool) {
         for (uint256 i = 0; i < strategies.length; i++) {
-            if(!AbstractErc20Strategy(strategies[i].strategyAddress).canWithdraw(withdrawId)) return false;
+            if (
+                !AbstractErc20Strategy(strategies[i].strategyAddress)
+                    .canWithdraw(withdrawId)
+            ) return false;
         }
         return true;
     }
@@ -159,10 +164,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     ) external virtual onlyWithdrawIdOwner(withrawId) {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < strategies.length; i++) {
-            uint256[]
-                memory strategyWithdrawIds = withdrawIdToStrategyWithdrawIds[
-                    withrawId
-                ];
+            uint256[] memory strategyWithdrawIds = withdrawIdInfo[withrawId]
+                .strategyWithdrawIds;
             for (uint256 j = 0; j < strategyWithdrawIds.length; j++) {
                 AbstractErc20Strategy strategy = AbstractErc20Strategy(
                     strategies[i].strategyAddress
@@ -172,7 +175,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 }
             }
         }
-        _burn(address(this), withdrawIdAmounts[withrawId]);
+        _burn(address(this), withdrawIdInfo[withrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
         // solhint-disable-next-line
