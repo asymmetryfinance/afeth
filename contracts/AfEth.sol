@@ -22,14 +22,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     uint256 latestWithdrawId;
 
-    mapping(uint256 => uint256[]) public withdrawIdToStrategyWithdrawIds;
-
-    mapping(uint256 => address) public withdrawIdOwners;
-    mapping(uint256 => uint256) public withdrawIdAmounts;
+    struct WithdrawInfo {
+        address owner;
+        uint256 amount;
+        uint256[] strategyWithdrawIds;
+    }
+    mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         require(
-            withdrawIdOwners[withdrawId] == msg.sender,
+            withdrawIdInfo[withdrawId].owner == msg.sender,
             "Not withdrawId owner"
         );
         _;
@@ -51,6 +53,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Add strategies to the strategies array
+        @dev - These will rarely change, if at all once deployed
         @param _strategy - Address of the strategy contract
         @param _ratio - Ratio for the strategy
     */
@@ -81,6 +84,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Add strategies to the strategies array
+        @dev - To remove a strategy just set ratio to zero
         @param _strategy - Address of the strategy contract
         @param _ratio - Ratio for the strategy
     */
@@ -137,16 +141,19 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 1e18;
             uint256 wid = AbstractErc20Strategy(strategies[i].strategyAddress)
                 .requestWithdraw(strategyWithdrawAmount);
-            withdrawIdToStrategyWithdrawIds[latestWithdrawId].push(wid);
+            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[i] = wid;
         }
-        withdrawIdOwners[latestWithdrawId] = msg.sender;
-        withdrawIdAmounts[latestWithdrawId] = amount;
+        withdrawIdInfo[latestWithdrawId].owner = msg.sender;
+        withdrawIdInfo[latestWithdrawId].amount = amount;
         return latestWithdrawId;
     }
 
-    function canWithdraw(uint256 withdrawId) external view returns (bool) {
+    function canWithdraw(uint256 withdrawId) public view returns (bool) {
         for (uint256 i = 0; i < strategies.length; i++) {
-            if(!AbstractErc20Strategy(strategies[i].strategyAddress).canWithdraw(withdrawId)) return false;
+            if (
+                !AbstractErc20Strategy(strategies[i].strategyAddress)
+                    .canWithdraw(withdrawId)
+            ) return false;
         }
         return true;
     }
@@ -155,24 +162,20 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - Withdraw from each strategy
     */
     function withdraw(
-        uint256 withrawId
-    ) external virtual onlyWithdrawIdOwner(withrawId) {
+        uint256 withdrawId
+    ) external virtual onlyWithdrawIdOwner(withdrawId) {
         uint256 ethBalanceBefore = address(this).balance;
-        for (uint256 i = 0; i < strategies.length; i++) {
-            uint256[]
-                memory strategyWithdrawIds = withdrawIdToStrategyWithdrawIds[
-                    withrawId
-                ];
-            for (uint256 j = 0; j < strategyWithdrawIds.length; j++) {
-                AbstractErc20Strategy strategy = AbstractErc20Strategy(
-                    strategies[i].strategyAddress
-                );
-                if (strategy.canWithdraw(strategyWithdrawIds[j])) {
-                    strategy.withdraw(strategyWithdrawIds[j]);
-                }
-            }
+        uint256[] memory strategyWithdrawIds = withdrawIdInfo[withdrawId]
+            .strategyWithdrawIds;
+        require(canWithdraw(withdrawId), "Can't withdraw yet");
+        for (uint256 i = 0; i < strategyWithdrawIds.length; i++) {
+            AbstractErc20Strategy strategy = AbstractErc20Strategy(
+                strategies[i].strategyAddress
+            );
+            strategy.withdraw(strategyWithdrawIds[i]);
         }
-        _burn(address(this), withdrawIdAmounts[withrawId]);
+
+        _burn(address(this), withdrawIdInfo[withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
         // solhint-disable-next-line
