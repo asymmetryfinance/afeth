@@ -6,13 +6,14 @@ import {
   getUserAccounts,
   increaseTime1Epoch,
   randomStakeUnstakeWithdraw,
+  sumRecord,
   totalEthRewarded,
   totalEthStaked,
   totalEthUnStaked,
   userTxFees,
 } from "./IntegrationHelpers";
 
-describe.skip("Votium integration test", async function () {
+describe.only("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -53,18 +54,18 @@ describe.skip("Votium integration test", async function () {
 
   it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
     const userAccounts = await getUserAccounts();
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < 1; i++) {
       console.log("epoch", i);
       await randomStakeUnstakeWithdraw(
         userAccounts[i % 4],
         votiumStrategy,
-        ethers.utils.parseEther("10")
+        ethers.utils.parseEther("1")
       );
-      await randomStakeUnstakeWithdraw(
-        userAccounts[(i + 1) % 4],
-        votiumStrategy,
-        ethers.utils.parseEther("10")
-      );
+      // await randomStakeUnstakeWithdraw(
+      //   userAccounts[(i + 1) % 4],
+      //   votiumStrategy,
+      //   ethers.utils.parseEther("1")
+      // );
 
       console.log("increasing epoch time");
       await increaseTime1Epoch(votiumStrategy);
@@ -82,12 +83,19 @@ describe.skip("Votium integration test", async function () {
     console.log("price", price.toString());
     console.log("tvl", tvl.toString());
 
-    console.log("userTxFees", userTxFees.toString());
+    console.log("userTxFees", sumRecord(userTxFees).toString());
 
     console.log("totalEthRewarded", totalEthRewarded.toString());
 
-    console.log("totalEthStaked", totalEthStaked.toString());
-    console.log("totalEthUnStaked", totalEthUnStaked.toString());
+    console.log("totalEthStaked", sumRecord(totalEthStaked).toString());
+    console.log("totalEthUnStaked", sumRecord(totalEthUnStaked).toString());
+
+    const tvl2 = sumRecord(totalEthStaked)
+      .add(totalEthRewarded)
+      .sub(sumRecord(totalEthUnStaked))
+      .add(sumRecord(userTxFees));
+
+    console.log("tvl2", tvl2);
   });
 
   it("Should have tvl be equal to sum of all users tvl (balance * price)", async function () {

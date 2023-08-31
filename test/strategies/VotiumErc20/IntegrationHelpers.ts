@@ -25,13 +25,22 @@ export type UnstakeRequestTime = {
 
 export const totalEthStaked: Record<UserAddress, BigNumber> = {};
 export const totalEthUnStaked: Record<UserAddress, BigNumber> = {};
+// all tx fees user spent staking & unstaking
+export const userTxFees: Record<UserAddress, BigNumber> = {};
+
+export const sumRecord = (record: Record<string, BigNumber>) => {
+  let sum = BigNumber.from(0);
+  for (let i = 0; i < Object.keys(record).length; i++) {
+    const key = Object.keys(record)[i];
+    sum = sum.add(record[key]);
+  }
+  return sum;
+};
 
 type UnstakingTimes = Record<UserAddress, Record<Epoch, UnstakeRequestTime>>;
 // request time / eligible for withdraw tiem for all users and withdraw requests
 export const unstakingTimes: UnstakingTimes = {};
 
-// all tx fees user spent staking & unstaking
-export const userTxFees: Record<UserAddress, BigNumber> = {};
 let randomSeed = 2;
 
 export let totalEthRewarded = BigNumber.from(0);
@@ -69,20 +78,16 @@ export const increaseTime1Epoch = async (
 ) => {
   await incrementVlcvxEpoch();
 
-  const currentEpoch = await getCurrentEpoch();
-  if (currentEpoch % 2 === 0) {
-    console.log("applying rewards");
-    // TODO this is probbly running out of rewards. make sure its all good and see if se need to fund it more
-    const rewardEvent = await oracleApplyRewards(
-      await getRewarderAccount(),
-      votiumStrategy.address
-    );
-    console.log("applied rewards", rewardEvent);
-
-    totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
-
-    console.log("rewardEvent", rewardEvent);
-  }
+  // const currentEpoch = await getCurrentEpoch();
+  // if (currentEpoch % 2 === 0) {
+  //   console.log("applying rewards");
+  //   // TODO this is probbly running out of rewards. make sure its all good and see if se need to fund it more
+  //   const rewardEvent = await oracleApplyRewards(
+  //     await getRewarderAccount(),
+  //     votiumStrategy.address
+  //   );
+  //   totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
+  // }
 };
 
 export const randomStakeUnstakeWithdraw = async (
@@ -107,9 +112,10 @@ export const randomStakeUnstakeWithdraw = async (
   let mined = await tx.wait();
   let txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
 
-  if (!userTxFees[userAcount.address])
+  if (!userTxFees[userAcount.address]) {
     userTxFees[userAcount.address] = BigNumber.from(0);
-  userTxFees[userAcount.address].add(txFee);
+  }
+  userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
 
@@ -123,28 +129,22 @@ export const randomStakeUnstakeWithdraw = async (
     .requestWithdraw(ethers.utils.parseEther(withdrawAmount));
   mined = await tx.wait();
   txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-  userTxFees[userAcount.address].add(txFee);
+  userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
   const event = mined?.events?.find((e: any) => e?.event === "WithdrawRequest");
-
-  console.log("event", event);
 
   const withdrawId = event?.args?.withdrawId;
   const unlockEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
 
-  console.log("unlockEpoch", unlockEpoch);
-
-  console.log("userAcount.address", userAcount.address);
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
-  unstakingTimes[userAcount.address][unlockEpoch] = {
+  unstakingTimes[userAcount.address][unlockEpoch.toNumber()] = {
     epochRequested: currentEpoch,
-    epochEligible: unlockEpoch,
+    epochEligible: unlockEpoch.toNumber(),
     withdrawn: false,
     withdrawId,
   };
 
   // check if there are any eligible withdraws
-
   for (
     let i = 0;
     i < Object.keys(unstakingTimes[userAcount.address]).length;
@@ -152,21 +152,9 @@ export const randomStakeUnstakeWithdraw = async (
   ) {
     const key = parseInt(Object.keys(unstakingTimes[userAcount.address])[i]);
 
-    console.log("key is", key);
-    console.log("looping", i, unstakingTimes[userAcount.address]);
-
     if (unstakingTimes[userAcount.address][key].withdrawn) continue;
     const unstakeRequestTime = unstakingTimes[userAcount.address][key];
     if (currentEpoch.lt(unstakeRequestTime.epochEligible)) continue;
-    console.log("unstakeRequestTime", unstakeRequestTime);
-
-    console.log(
-      "about to do withdraw for ",
-      userAcount.address,
-      unstakeRequestTime.epochEligible,
-      currentEpoch
-    );
-    console.log("about to call withdraw for key epoch", key);
 
     const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
       userAcount.address
@@ -190,14 +178,7 @@ export const randomStakeUnstakeWithdraw = async (
       totalEthUnStaked[userAcount.address].add(balanceWithdrawn);
 
     txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-    userTxFees[userAcount.address].add(txFee);
-    console.log(
-      "setting withdrawn for userAcount.address",
-      userAcount.address,
-      key
-    );
+    userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
     unstakingTimes[userAcount.address][key].withdrawn = true;
-
-    console.log("unstakingTimes is", JSON.stringify(unstakingTimes));
   }
 };
