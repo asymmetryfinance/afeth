@@ -163,7 +163,7 @@ contract VotiumErc20StrategyCore is
         } catch {
             cl.success = false;
         }
-
+        // TODO verify < 24 hours old and valid
         return uint256(cl.answer);
     }
 
