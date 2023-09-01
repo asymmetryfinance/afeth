@@ -22,7 +22,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     mapping(uint256 => uint256) public withdrawIdToEpoch;
 
-    function price() public view override returns (uint256) {
+    function price() external view override returns (uint256) {
         return (cvxPerVotium() * ethPerCvx()) / 1e18;
     }
 
@@ -103,8 +103,11 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             this.canWithdraw(withdrawId),
             "Can't withdraw from future epoch"
         );
-        console.log('positionToWithdraw.cvxOwed ', positionToWithdraw.cvxOwed);
-        console.log('positionToWithdraw.priceWhenRequested ', positionToWithdraw.priceWhenRequested);
+        console.log("positionToWithdraw.cvxOwed ", positionToWithdraw.cvxOwed);
+        console.log(
+            "positionToWithdraw.priceWhenRequested ",
+            positionToWithdraw.priceWhenRequested
+        );
 
         require(positionToWithdraw.cvxOwed > 0, "Nothing to withdraw");
         _burn(address(this), positionToWithdraw.afEthOwed);
@@ -148,7 +151,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     function canWithdraw(
         uint256 withdrawId
-    ) external virtual override view returns (bool) {
+    ) external view virtual override returns (bool) {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );

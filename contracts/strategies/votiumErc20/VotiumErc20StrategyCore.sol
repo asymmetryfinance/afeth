@@ -36,7 +36,7 @@ contract VotiumErc20StrategyCore is
         address swapTarget;
         bytes swapCallData;
     }
-    
+
     struct ChainlinkResponse {
         uint80 roundId;
         int256 answer;
@@ -78,7 +78,9 @@ contract VotiumErc20StrategyCore is
         @notice - Sets the address for the chainlink feed
         @param _cvxEthFeedAddress - address of the chainlink feed
     */
-    function setChainlinkCvxEthFeed(address _cvxEthFeedAddress) public onlyOwner {
+    function setChainlinkCvxEthFeed(
+        address _cvxEthFeedAddress
+    ) public onlyOwner {
         chainlinkCvxEthFeed = AggregatorV3Interface(_cvxEthFeedAddress);
     }
 
@@ -111,9 +113,10 @@ contract VotiumErc20StrategyCore is
         );
         rewarder = _rewarder;
         manager = _manager;
+        __ERC20_init("Votium AfEth Strategy", "vAfEth");
         _transferOwnership(_owner);
         _registerInterface(type(AbstractErc20Strategy).interfaceId);
-                chainlinkCvxEthFeed = AggregatorV3Interface(
+        chainlinkCvxEthFeed = AggregatorV3Interface(
             0xC9CbF687f43176B302F03f5e58470b77D07c61c6
         );
     }
@@ -135,7 +138,7 @@ contract VotiumErc20StrategyCore is
         return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
     }
 
-    function cvxPerVotium() internal view returns (uint256) {
+    function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
@@ -144,7 +147,7 @@ contract VotiumErc20StrategyCore is
         return (totalCvx * 1e18) / supply;
     }
 
-        /**
+    /**
         @notice - Eth per cvx (chainlink)
      */
     function ethPerCvx() public view returns (uint256) {
