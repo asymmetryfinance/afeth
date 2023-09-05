@@ -86,7 +86,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 return latestWithdrawId;
             }
         }
-        revert('this should never happen');
+        revert("this should never happen");
     }
 
     function withdraw(uint256 withdrawId) external override {
