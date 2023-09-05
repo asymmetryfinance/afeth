@@ -4,6 +4,7 @@ import {
   getCurrentEpoch,
   incrementVlcvxEpoch,
   oracleApplyRewards,
+  readJSONFromFile,
 } from "./VotiumTestHelpers";
 import { VotiumErc20Strategy } from "../../../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -68,7 +69,7 @@ export const getAdminAccount = async () => {
 
 export const getRewarderAccount = async () => {
   const accounts = await ethers.getSigners();
-  return accounts[1];
+  return accounts[11];
 };
 
 // do everything that would happen on mainnet when time passes by 1 epoch
@@ -78,16 +79,20 @@ export const increaseTime1Epoch = async (
 ) => {
   await incrementVlcvxEpoch();
 
-  // const currentEpoch = await getCurrentEpoch();
-  // if (currentEpoch % 2 === 0) {
-  //   console.log("applying rewards");
-  //   // TODO this is probbly running out of rewards. make sure its all good and see if se need to fund it more
-  //   const rewardEvent = await oracleApplyRewards(
-  //     await getRewarderAccount(),
-  //     votiumStrategy.address
-  //   );
-  //   totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
-  // }
+  const currentEpoch = await getCurrentEpoch();
+  if (currentEpoch % 2 === 0) {
+    console.log("applying rewards");
+    const rewardEvent = await oracleApplyRewards(
+      await getRewarderAccount(),
+      votiumStrategy.address,
+      // we use the small one (testDataSlippageSmall.json) because:
+      // 1) we dont want it running out of rewards
+      // 2) the big one (testData.json) will cause large slippage when compounded over many weeks withnout arb to balance it out
+      // 3) its unrealistic to do such massive rewards with only a few users in the system
+      await readJSONFromFile("./scripts/testDataSlippageSmall.json")
+    );
+    totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
+  }
 };
 
 export const randomStakeUnstakeWithdraw = async (
@@ -95,7 +100,6 @@ export const randomStakeUnstakeWithdraw = async (
   votiumStrategy: VotiumErc20Strategy,
   maxStakeAmount: BigNumber
 ) => {
-  console.log("rsus1");
   const currentEpoch = await getCurrentEpoch();
 
   const stakeAmount = ethers.utils.parseEther(
@@ -119,13 +123,11 @@ export const randomStakeUnstakeWithdraw = async (
   userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
-  console.log("rsus2");
 
   const withdrawAmount = randomEthAmount(
     0,
     parseFloat(ethers.utils.formatEther(votiumBalance))
   );
-  console.log("rsus2.1");
 
   tx = await votiumStrategy
     .connect(userAcount)
@@ -140,14 +142,12 @@ export const randomStakeUnstakeWithdraw = async (
 
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
-  console.log("rsus2.4");
   unstakingTimes[userAcount.address][unlockEpoch.toNumber()] = {
     epochRequested: currentEpoch,
     epochEligible: unlockEpoch.toNumber(),
     withdrawn: false,
     withdrawId,
   };
-  console.log("rsus3");
 
   // check if there are any eligible withdraws
   for (
@@ -174,15 +174,16 @@ export const randomStakeUnstakeWithdraw = async (
       userAcount.address
     );
 
-    const balanceWithdrawn = ethBalanceAfterWithdraw.sub(
-      ethBalanceBeforeWithdraw
-    );
+    const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
+
+    const balanceWithdrawn = ethBalanceAfterWithdraw
+      .sub(ethBalanceBeforeWithdraw)
+      .add(txFee);
     if (!totalEthUnStaked[userAcount.address])
       totalEthUnStaked[userAcount.address] = BigNumber.from(0);
     totalEthUnStaked[userAcount.address] =
       totalEthUnStaked[userAcount.address].add(balanceWithdrawn);
 
-    txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
     userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
     unstakingTimes[userAcount.address][key].withdrawn = true;
   }
