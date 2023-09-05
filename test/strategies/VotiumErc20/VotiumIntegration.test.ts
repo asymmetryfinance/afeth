@@ -12,6 +12,8 @@ import {
   totalEthUnStaked,
   userTxFees,
 } from "./IntegrationHelpers";
+import { within1Percent } from "../../helpers/helpers";
+import { expect } from "chai";
 
 describe.only("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
@@ -52,20 +54,22 @@ describe.only("Votium integration test", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
+  it.only("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
     const userAccounts = await getUserAccounts();
-    for (let i = 0; i < 1; i++) {
-      console.log("epoch", i);
+    for (let i = 0; i < 30; i++) {
+      console.log("epoch1", i);
       await randomStakeUnstakeWithdraw(
         userAccounts[i % 4],
         votiumStrategy,
         ethers.utils.parseEther("1")
       );
-      // await randomStakeUnstakeWithdraw(
-      //   userAccounts[(i + 1) % 4],
-      //   votiumStrategy,
-      //   ethers.utils.parseEther("1")
-      // );
+      console.log('epoch2');
+      await randomStakeUnstakeWithdraw(
+        userAccounts[(i + 1) % 4],
+        votiumStrategy,
+        ethers.utils.parseEther("1")
+      );
+      console.log('epoch3');
 
       console.log("increasing epoch time");
       await increaseTime1Epoch(votiumStrategy);
@@ -94,8 +98,8 @@ describe.only("Votium integration test", async function () {
       .add(totalEthRewarded)
       .sub(sumRecord(totalEthUnStaked))
       .add(sumRecord(userTxFees));
-
     console.log("tvl2", tvl2);
+    expect(within1Percent(tvl, tvl2)).equal(true);
   });
 
   it("Should have tvl be equal to sum of all users tvl (balance * price)", async function () {

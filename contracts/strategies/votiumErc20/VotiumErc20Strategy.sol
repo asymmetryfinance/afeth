@@ -40,9 +40,11 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function requestWithdraw(
         uint256 _amount
     ) public override returns (uint256 withdrawId) {
+        console.log("requestWithdraw", _amount);
         latestWithdrawId++;
 
         uint256 _priceInCvx = cvxPerVotium();
+        console.log('rw1');
         _transfer(msg.sender, address(this), _amount);
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
@@ -56,12 +58,17 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         cvxUnlockObligations += cvxAmount;
+        console.log('rw2');
 
-        uint256 totalLockedBalancePlusUnlockable = unlockable;
+        uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        console.log('cvxBalance', cvxBalance);
+        uint256 totalLockedBalancePlusUnlockable = unlockable + cvxBalance;
 
+        console.log('lockedBalances length', lockedBalances.length);
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
+            console.log('totalLockedBalancePlusUnlockable', totalLockedBalancePlusUnlockable, cvxUnlockObligations);
             if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations) {
                 (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS)
                     .epochs(currentEpoch);
@@ -84,9 +91,12 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
                 withdrawIdToEpoch[latestWithdrawId] = withdrawEpoch;
                 emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
+                console.log('returning withdraw id: ', latestWithdrawId);
                 return latestWithdrawId;
             }
         }
+        console.log('this should never happen');
+
     }
 
     function withdraw(uint256 withdrawId) external override {

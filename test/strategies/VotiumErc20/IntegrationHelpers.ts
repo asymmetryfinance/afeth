@@ -95,6 +95,7 @@ export const randomStakeUnstakeWithdraw = async (
   votiumStrategy: VotiumErc20Strategy,
   maxStakeAmount: BigNumber
 ) => {
+  console.log("rsus1");
   const currentEpoch = await getCurrentEpoch();
 
   const stakeAmount = ethers.utils.parseEther(
@@ -118,11 +119,13 @@ export const randomStakeUnstakeWithdraw = async (
   userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
+  console.log("rsus2");
 
   const withdrawAmount = randomEthAmount(
     0,
     parseFloat(ethers.utils.formatEther(votiumBalance))
   );
+  console.log("rsus2.1");
 
   tx = await votiumStrategy
     .connect(userAcount)
@@ -137,12 +140,14 @@ export const randomStakeUnstakeWithdraw = async (
 
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
+  console.log("rsus2.4");
   unstakingTimes[userAcount.address][unlockEpoch.toNumber()] = {
     epochRequested: currentEpoch,
     epochEligible: unlockEpoch.toNumber(),
     withdrawn: false,
     withdrawId,
   };
+  console.log("rsus3");
 
   // check if there are any eligible withdraws
   for (
