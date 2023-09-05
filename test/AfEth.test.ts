@@ -104,17 +104,40 @@ describe.only("Test AfEth", async function () {
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
 
+    const mintedAfEthAmount = "1000075263435139093";
+
+    const afEthBalanceBeforeRequest = await afEth.balanceOf(
+      accounts[0].address
+    );
+    expect(afEthBalanceBeforeRequest).eq(mintedAfEthAmount);
+
     const requestWithdrawTx = await afEth.requestWithdraw();
     await requestWithdrawTx.wait();
+
+    const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
 
     for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
     }
 
     const withdrawId = await afEth.latestWithdrawId();
+    const withdrawInfo = await afEth.withdrawIdInfo(withdrawId);
+    expect(withdrawInfo.amount).eq(mintedAfEthAmount);
+    expect(withdrawInfo.owner).eq(accounts[0].address);
+    expect(afEthBalanceAfterRequest).eq(0);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      accounts[0].address
+    );
 
     const withdrawTx = await afEth.withdraw(withdrawId);
     await withdrawTx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
   });
   it("Two users should be able to deposit, requestWithdraw, withdraw full positions when votium can be withdrawn", async function () {
     // TODO
