@@ -74,7 +74,7 @@ describe.only("Votium integration test", async function () {
     }
   });
 
-  it("Should have tvl (or supply * price) be equal to totalSaked plus rewards minus totalUnstaked", async function () {
+  it("Should have tvl (or supply * price) be equal to totalStaked plus rewards minus totalUnstaked", async function () {
     const totalSupply = await votiumStrategy.totalSupply();
     const price = await votiumStrategy.price();
     const tvl = totalSupply.mul(price).div(ethers.utils.parseEther("1"));
