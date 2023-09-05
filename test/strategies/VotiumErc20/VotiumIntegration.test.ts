@@ -87,8 +87,6 @@ describe.only("Votium integration test", async function () {
     expect(within2Percent(tvl, tvl2)).equal(true);
   });
 
-  // TODO check and understand why its not running out of reward tokens on claim? shul;dnt it be after like 15 (8 rewards) epochs?
-
   it("Should have tvl be equal to sum of all users tvl (balance * price)", async function () {
     // TODO
   });
