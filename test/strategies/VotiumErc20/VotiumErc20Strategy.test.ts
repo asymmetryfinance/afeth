@@ -1,5 +1,8 @@
 import { network, ethers, upgrades } from "hardhat";
-import { VotiumErc20Strategy } from "../../../typechain-types";
+import {
+  VotiumErc20Strategy,
+  VotiumErc20StrategyCore,
+} from "../../../typechain-types";
 import { expect } from "chai";
 import {
   incrementVlcvxEpoch,
@@ -12,7 +15,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 
 describe("Test VotiumErc20Strategy", async function () {
-  let votiumStrategy: VotiumErc20Strategy;
+  let votiumStrategy: VotiumErc20Strategy & VotiumErc20StrategyCore;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
 
@@ -64,11 +67,11 @@ describe("Test VotiumErc20Strategy", async function () {
       BigNumber.from(afEthBalance1).add(startingTotalSupply)
     );
 
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
-    const priceAfterRewards = await votiumStrategy.price();
+    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
 
@@ -115,11 +118,11 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const totalSupply1 = await votiumStrategy.totalSupply();
     expect(totalSupply1).eq(runningBalance);
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
     // claim rewards
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-    const priceAfterRewards = await votiumStrategy.price();
+    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
     expect(
@@ -188,12 +191,13 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
     // Claim rewards
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
-    const priceAfterRewardsBeforeSecondStake = await votiumStrategy.price();
+    const priceAfterRewardsBeforeSecondStake =
+      await votiumStrategy.cvxPerVotium();
 
     // second account mints after rewards are claimed
     tx = await stakerVotiumStrategy2.deposit({
@@ -201,7 +205,8 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
-    const priceAfterRewardsAfterSecondStake = await votiumStrategy.price();
+    const priceAfterRewardsAfterSecondStake =
+      await votiumStrategy.cvxPerVotium();
 
     expect(priceAfterRewardsBeforeSecondStake).eq(
       priceAfterRewardsAfterSecondStake
@@ -211,7 +216,7 @@ describe("Test VotiumErc20Strategy", async function () {
     // Claim rewards again
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
-    const priceAfterAllRewards = await votiumStrategy.price();
+    const priceAfterAllRewards = await votiumStrategy.cvxPerVotium();
     expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
 
     // request withdraw for each account
@@ -272,12 +277,13 @@ describe("Test VotiumErc20Strategy", async function () {
       value: stakeAmount,
     });
     await tx.wait();
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
     // Claim rewards
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
-    const priceAfterRewardsBeforeSecondStake = await votiumStrategy.price();
+    const priceAfterRewardsBeforeSecondStake =
+      await votiumStrategy.cvxPerVotium();
     // the second stake amount is calculated by how many rewards went into the system
     const stakeAmount2 = priceAfterRewardsBeforeSecondStake
       .mul(stakeAmount)
@@ -289,7 +295,8 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
-    const priceAfterRewardsAfterSecondStake = await votiumStrategy.price();
+    const priceAfterRewardsAfterSecondStake =
+      await votiumStrategy.cvxPerVotium();
 
     expect(priceAfterRewardsBeforeSecondStake).eq(
       priceAfterRewardsAfterSecondStake
@@ -299,8 +306,9 @@ describe("Test VotiumErc20Strategy", async function () {
     // Claim rewards again
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
-    const priceAfterAllRewards = await votiumStrategy.price();
+    const priceAfterAllRewards = await votiumStrategy.cvxPerVotium();
     expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
+
     const balance1 = await stakerVotiumStrategy1.balanceOf(accounts[1].address);
     const balance2 = await stakerVotiumStrategy2.balanceOf(accounts[2].address);
 
@@ -369,11 +377,11 @@ describe("Test VotiumErc20Strategy", async function () {
 
     const totalSupply1 = await votiumStrategy.totalSupply();
     expect(totalSupply1).eq(runningBalance);
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
-    const priceAfterRewards = await votiumStrategy.price();
+    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
 
@@ -453,11 +461,11 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(totalSupply1).eq(runningBalance);
 
     // claim rewards
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
-    const priceAfterRewards = await votiumStrategy.price();
+    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
     expect(priceAfterRewards).gt(priceBeforeRewards);
 
     // request withdraw for each account
@@ -524,12 +532,12 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
     const depositedRewards = await oracleApplyRewards(
       rewarderAccount,
       votiumStrategy.address
     );
-    const priceAfterRewards = await votiumStrategy.price();
+    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
 
     const rewardPriceDifference = priceAfterRewards.sub(priceBeforeRewards);
     const rewardAmount = rewardPriceDifference
@@ -548,7 +556,7 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
     const depositedRewards1 = await oracleApplyRewards(
       rewarderAccount,
       votiumStrategy.address
@@ -557,7 +565,7 @@ describe("Test VotiumErc20Strategy", async function () {
       rewarderAccount,
       votiumStrategy.address
     );
-    const priceAfterRewards = await votiumStrategy.price();
+    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
 
     const rewardPriceDifference = priceAfterRewards.sub(priceBeforeRewards);
     const rewardAmount = rewardPriceDifference
@@ -576,10 +584,10 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
-    const priceAfterRewards = await votiumStrategy.price();
+    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
     expect(priceAfterRewards).gt(priceBeforeRewards);
 
     // burn half of balance
@@ -735,14 +743,14 @@ describe("Test VotiumErc20Strategy", async function () {
   });
   it("Should allow anyone apply rewards manually with depositRewards()", async function () {
     const depositAmount = ethers.utils.parseEther("100");
-    const priceBeforeRewards = await votiumStrategy.price();
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
     const tx = await votiumStrategy.depositRewards(depositAmount, {
       value: depositAmount,
     });
     await tx.wait();
 
-    const priceAfterRewards = await votiumStrategy.price();
+    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
   });

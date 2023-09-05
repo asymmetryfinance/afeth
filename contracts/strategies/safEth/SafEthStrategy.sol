@@ -74,7 +74,9 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         return ISafEth(safEthAddress).approxPrice(false);
     }
 
-    function canWithdraw(uint256) external virtual override view returns (bool) {
+    function canWithdraw(
+        uint256
+    ) external view virtual override returns (bool) {
         return true;
     }
 }

@@ -14,7 +14,7 @@ import "../../external_interfaces/IAfEth.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
 import "../AbstractErc20Strategy.sol";
-
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "hardhat/console.sol";
 
 contract VotiumErc20StrategyCore is
@@ -35,6 +35,13 @@ contract VotiumErc20StrategyCore is
         address spender;
         address swapTarget;
         bytes swapCallData;
+    }
+
+    struct ChainlinkResponse {
+        uint80 roundId;
+        int256 answer;
+        uint256 updatedAt;
+        bool success;
     }
 
     struct UnlockQueuePosition {
@@ -65,6 +72,18 @@ contract VotiumErc20StrategyCore is
     // used to add storage variables in the future
     uint256[20] private __gap;
 
+    AggregatorV3Interface public chainlinkCvxEthFeed;
+
+    /**
+        @notice - Sets the address for the chainlink feed
+        @param _cvxEthFeedAddress - address of the chainlink feed
+    */
+    function setChainlinkCvxEthFeed(
+        address _cvxEthFeedAddress
+    ) public onlyOwner {
+        chainlinkCvxEthFeed = AggregatorV3Interface(_cvxEthFeedAddress);
+    }
+
     modifier onlyRewarder() {
         require(msg.sender == rewarder, "not rewarder");
         _;
@@ -94,8 +113,12 @@ contract VotiumErc20StrategyCore is
         );
         rewarder = _rewarder;
         manager = _manager;
+        __ERC20_init("Votium AfEth Strategy", "vAfEth");
         _transferOwnership(_owner);
         _registerInterface(type(AbstractErc20Strategy).interfaceId);
+        chainlinkCvxEthFeed = AggregatorV3Interface(
+            0xC9CbF687f43176B302F03f5e58470b77D07c61c6
+        );
     }
 
     function setSafEthRewardsShare(
@@ -115,13 +138,36 @@ contract VotiumErc20StrategyCore is
         return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
     }
 
-    function priceData() internal view returns (uint256) {
+    function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
         if (totalCvx == 0) return 1e18;
 
         return (totalCvx * 1e18) / supply;
+    }
+
+    /**
+        @notice - Eth per cvx (chainlink)
+     */
+    function ethPerCvx() public view returns (uint256) {
+        ChainlinkResponse memory cl;
+        try chainlinkCvxEthFeed.latestRoundData() returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 /* startedAt */,
+            uint256 updatedAt,
+            uint80 /* answeredInRound */
+        ) {
+            cl.success = true;
+            cl.roundId = roundId;
+            cl.answer = answer;
+            cl.updatedAt = updatedAt;
+        } catch {
+            cl.success = false;
+        }
+        // TODO verify < 24 hours old and valid
+        return uint256(cl.answer);
     }
 
     function claimRewards(
@@ -142,7 +188,7 @@ contract VotiumErc20StrategyCore is
         uint256 cvxAmount = buyCvx(votiumShare);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(priceData(), votiumShare, cvxAmount);
+        emit DepositReward(cvxPerVotium(), votiumShare, cvxAmount);
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {
