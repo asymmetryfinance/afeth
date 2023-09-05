@@ -57,7 +57,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         cvxUnlockObligations += cvxAmount;
 
-        uint256 totalLockedBalancePlusUnlockable = unlockable;
+        uint256 totalLockedBalancePlusUnlockable = unlockable + IERC20(CVX_ADDRESS).balanceOf(address(this));
 
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
