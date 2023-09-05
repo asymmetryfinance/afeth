@@ -31,9 +31,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-
         mintAmount = ((cvxAmount * 1e18) / priceBefore);
-
         _mint(msg.sender, mintAmount);
     }
 
@@ -88,6 +86,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 return latestWithdrawId;
             }
         }
+        revert("Invalid Locked Amount");
     }
 
     function withdraw(uint256 withdrawId) external override {
@@ -103,11 +102,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         require(
             this.canWithdraw(withdrawId),
             "Can't withdraw from future epoch"
-        );
-        console.log("positionToWithdraw.cvxOwed ", positionToWithdraw.cvxOwed);
-        console.log(
-            "positionToWithdraw.priceWhenRequested ",
-            positionToWithdraw.priceWhenRequested
         );
 
         require(positionToWithdraw.cvxOwed > 0, "Nothing to withdraw");

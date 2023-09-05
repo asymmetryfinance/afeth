@@ -6,13 +6,19 @@ import {
   getUserAccounts,
   increaseTime1Epoch,
   randomStakeUnstakeWithdraw,
+  sumRecord,
   totalEthRewarded,
   totalEthStaked,
   totalEthUnStaked,
-  userTxFees,
 } from "./IntegrationHelpers";
+import { within2Percent } from "../../helpers/helpers";
+import { expect } from "chai";
 
-describe.skip("Votium integration test", async function () {
+const userCount = 6;
+const epochCount = 66;
+const userInteractionsPerEpoch = 2;
+
+describe("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -51,43 +57,34 @@ describe.skip("Votium integration test", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 64 epochs (4 lock periods)", async function () {
+  it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 66 epochs (4 lock periods + some epochs)", async function () {
     const userAccounts = await getUserAccounts();
-    for (let i = 0; i < 35; i++) {
-      console.log("epoch", i);
-      await randomStakeUnstakeWithdraw(
-        userAccounts[i % 4],
-        votiumStrategy,
-        ethers.utils.parseEther("10")
-      );
-      await randomStakeUnstakeWithdraw(
-        userAccounts[(i + 1) % 4],
-        votiumStrategy,
-        ethers.utils.parseEther("10")
-      );
+    for (let i = 0; i < epochCount; i++) {
+      // stake unstake & claim random amount for 2 (userInteractionsPerEpoch) users every epoch
+      // cycle through 6 users (userCount)
+      for (let j = 0; j < userInteractionsPerEpoch; j++) {
+        await randomStakeUnstakeWithdraw(
+          userAccounts[(i + j) % userCount],
+          votiumStrategy,
+          ethers.utils.parseEther("1")
+        );
+      }
 
-      console.log("increasing epoch time");
       await increaseTime1Epoch(votiumStrategy);
-      console.log("done");
     }
   });
 
-  it("Should have tvl (or supply * price) be equal to total staked plus rewards minus unstaked plus tx fees", async function () {
+  it("Should have tvl (or supply * price) be equal to totalStaked plus rewards minus totalUnstaked", async function () {
     const totalSupply = await votiumStrategy.totalSupply();
     const price = await votiumStrategy.price();
-
     const tvl = totalSupply.mul(price).div(ethers.utils.parseEther("1"));
-
-    console.log("totalSupply", totalSupply.toString());
-    console.log("price", price.toString());
-    console.log("tvl", tvl.toString());
-
-    console.log("userTxFees", userTxFees.toString());
-
-    console.log("totalEthRewarded", totalEthRewarded.toString());
-
-    console.log("totalEthStaked", totalEthStaked.toString());
-    console.log("totalEthUnStaked", totalEthUnStaked.toString());
+    const tvl2 = sumRecord(totalEthStaked)
+      .add(totalEthRewarded)
+      .sub(sumRecord(totalEthUnStaked));
+    // this varies so much (2% tolerance) because with each passing week something happens to the price of cvx in the LP
+    // likely because its a TWAP so the price is changing a decent amount in these tests as weeks pass
+    // in reality it should be  much lower variance
+    expect(within2Percent(tvl, tvl2)).equal(true);
   });
 
   it("Should have tvl be equal to sum of all users tvl (balance * price)", async function () {
