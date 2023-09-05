@@ -18,7 +18,7 @@ const userCount = 6;
 const epochCount = 66;
 const userInteractionsPerEpoch = 2;
 
-describe.only("Votium integration test", async function () {
+describe("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
