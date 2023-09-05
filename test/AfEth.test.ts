@@ -1,10 +1,12 @@
 import { AfEth, SafEthStrategy, VotiumErc20Strategy } from "../typechain-types";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { RETH_DERIVATIVE } from "./constants";
+import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
+import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
+import { derivativeAbi } from "./abis/derivativeAbi";
 
-describe("Test AfEth", async function () {
+describe.only("Test AfEth", async function () {
   let afEth: AfEth;
   let safEthStrategy: SafEthStrategy;
   let votiumStrategy: VotiumErc20Strategy;
@@ -52,6 +54,40 @@ describe("Test AfEth", async function () {
       ethers.utils.parseEther(".5")
     );
 
+    // mock chainlink feeds so not out of date
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [MULTI_SIG],
+    });
+
+    const chainLinkRethFeedFactory = await ethers.getContractFactory(
+      "ChainLinkRethFeedMock"
+    );
+    const chainLinkWstFeedFactory = await ethers.getContractFactory(
+      "ChainLinkWstFeedMock"
+    );
+
+    const chainLinkRethFeed = await chainLinkRethFeedFactory.deploy();
+    const chainLinkWstFeed = await chainLinkWstFeedFactory.deploy();
+
+    const multiSigSigner = await ethers.getSigner(MULTI_SIG);
+
+    // mock chainlink feed on derivatives
+    const rEthDerivative = new ethers.Contract(
+      RETH_DERIVATIVE,
+      derivativeAbi,
+      accounts[0]
+    );
+    const multiSigReth = rEthDerivative.connect(multiSigSigner);
+    await multiSigReth.setChainlinkFeed(chainLinkRethFeed.address);
+
+    const wstEthDerivative = new ethers.Contract(
+      WST_DERIVATIVE,
+      derivativeAbi,
+      accounts[0]
+    );
+    const multiSigWst = wstEthDerivative.connect(multiSigSigner);
+    await multiSigWst.setChainlinkFeed(chainLinkWstFeed.address);
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await afEth.connect(accounts[11]).deposit({
       value: ethers.utils.parseEther(".1"),
@@ -62,10 +98,23 @@ describe("Test AfEth", async function () {
   beforeEach(
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
+
   it("Should mint, requestwithdraw, withdraw the safEth portion now, wait until votium can be withdrawn and withdraw again", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
+
+    const requestWithdrawTx = await afEth.requestWithdraw();
+    await requestWithdrawTx.wait();
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await afEth.latestWithdrawId();
+
+    const withdrawTx = await afEth.withdraw(withdrawId);
+    await withdrawTx.wait();
   });
   it("Two users should be able to deposit, requestWithdraw, withdraw full positions when votium can be withdrawn", async function () {
     // TODO
@@ -77,6 +126,9 @@ describe("Test AfEth", async function () {
     // TODO
   });
   it("Should be able to set SafEth strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
+    // TODO
+  });
+  it("Should be able to safely withdraw if requestedWithdraw then added a strategy", async function () {
     // TODO
   });
   it("Should fail to set invalid strategy contracts", async function () {

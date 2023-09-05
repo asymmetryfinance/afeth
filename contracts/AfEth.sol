@@ -13,14 +13,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 ratio;
     }
     Strategy[] public strategies; // mapping of strategy address to ratio
-    uint256 totalRatio;
-
-    error StrategyAlreadyAdded();
-    error StrategyNotFound();
-    error InsufficientBalance();
-    error InvalidStrategy();
-
-    uint256 latestWithdrawId;
+    uint256 public totalRatio;
+    uint256 public latestWithdrawId;
 
     struct WithdrawInfo {
         address owner;
@@ -28,6 +22,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256[] strategyWithdrawIds;
     }
     mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
+
+    error StrategyAlreadyAdded();
+    error StrategyNotFound();
+    error InsufficientBalance();
+    error InvalidStrategy();
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         require(
@@ -130,18 +129,24 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 amount = balanceOf(msg.sender);
 
         // ratio of afEth being withdrawn to totalSupply
-        uint256 withdrawRatio = (amount * 1e18) / totalRatio;
+        uint256 withdrawRatio = (amount * 1e18) / totalSupply();
 
         _transfer(msg.sender, address(this), amount);
+        withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
+            strategies.length
+        );
         for (uint256 i = 0; i < strategies.length; i++) {
             uint256 strategyBalance = ERC20Upgradeable(
                 strategies[i].strategyAddress
             ).balanceOf(address(this));
             uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) /
                 1e18;
-            uint256 wid = AbstractErc20Strategy(strategies[i].strategyAddress)
-                .requestWithdraw(strategyWithdrawAmount);
-            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[i] = wid;
+            uint256 strategyWithdrawId = AbstractErc20Strategy(
+                strategies[i].strategyAddress
+            ).requestWithdraw(strategyWithdrawAmount);
+            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[
+                    i
+                ] = strategyWithdrawId;
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = amount;
