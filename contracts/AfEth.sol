@@ -27,12 +27,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error StrategyNotFound();
     error InsufficientBalance();
     error InvalidStrategy();
+    error CanNotWithdraw();
+    error NotOwner();
+    error FailedToSend();
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
-        require(
-            withdrawIdInfo[withdrawId].owner == msg.sender,
-            "Not withdrawId owner"
-        );
+        if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
         _;
     }
 
@@ -172,7 +172,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 ethBalanceBefore = address(this).balance;
         uint256[] memory strategyWithdrawIds = withdrawIdInfo[withdrawId]
             .strategyWithdrawIds;
-        require(canWithdraw(withdrawId), "Can't withdraw yet");
+        if (!canWithdraw(withdrawId)) revert CanNotWithdraw();
         for (uint256 i = 0; i < strategyWithdrawIds.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
@@ -183,9 +183,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _burn(address(this), withdrawIdInfo[withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
+
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
-        require(sent, "Failed to send Ether");
+        if (!sent) revert FailedToSend();
     }
 
     // deposit value to safEth side
