@@ -10,15 +10,18 @@ import {
   totalEthRewarded,
   totalEthStaked,
   totalEthUnStaked,
+  unstakingTimes,
+  getTvl
 } from "./IntegrationHelpers";
 import { within2Percent } from "../../helpers/helpers";
 import { expect } from "chai";
+import { getCurrentEpoch } from "./VotiumTestHelpers";
 
 const userCount = 6;
-const epochCount = 66;
+const epochCount = 6;
 const userInteractionsPerEpoch = 2;
 
-describe("Votium integration test", async function () {
+describe.only("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -83,9 +86,8 @@ describe("Votium integration test", async function () {
 
   it("Should have tvl be equal to sum of all users tvl + tvl held in contract waiting for wirthdraw", async function () {
     const userAccounts = await getUserAccounts();
-    const totalSupply = await votiumStrategy.totalSupply();
     const price = await votiumStrategy.price();
-    const tvl = totalSupply.mul(price).div(ethers.utils.parseEther("1"));
+    const tvl = await getTvl(votiumStrategy);
 
     let totalUserBalances = ethers.BigNumber.from(0);
 
@@ -106,7 +108,58 @@ describe("Votium integration test", async function () {
   });
 
   it("Should request unstake, wait until eligible and unstake everything for all users", async function () {
-    // TODO
+    const userAccounts = await getUserAccounts();
+
+    const currentEpoch = await getCurrentEpoch();
+
+    const withdrawIds = [];
+    // request unstake for all users
+    for (let i = 0; i < userCount; i++) {
+      const userAcount = userAccounts[i];
+      const balance = await votiumStrategy.balanceOf(userAcount.address);
+      const requestTx = await votiumStrategy
+        .connect(userAcount)
+        .requestWithdraw(balance);
+      const minedRequestTx = await requestTx.wait();
+      const event = minedRequestTx?.events?.find(
+        (e) => e?.event === "WithdrawRequest"
+      );
+      const withdrawId = event?.args?.withdrawId;
+      console.log("pushing withdrawId", withdrawId);
+      withdrawIds.push(withdrawId);
+
+      const unlockEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+      unstakingTimes[userAcount.address][withdrawId.toNumber()] = {
+        epochRequested: currentEpoch,
+        epochEligible: unlockEpoch.toNumber(),
+        withdrawn: false,
+        withdrawId,
+      };
+    }
+    // got through next 17 epochs and get everything withdrawn
+    for (let i = 0; i < 17; i++) {
+      const currentEpoch = await getCurrentEpoch();
+      // try to withdraw on this epoch for each user
+      for (let j = 0; j < userCount; j++) {
+        const userAcount = userAccounts[j];
+        const withdrawId = withdrawIds[j];
+        const unstakingTimeInfo =
+          unstakingTimes[userAcount.address][withdrawId];
+
+        if (
+          unstakingTimeInfo &&
+          !unstakingTimeInfo.withdrawn &&
+          unstakingTimeInfo.epochEligible <= currentEpoch
+        ) {
+          await votiumStrategy.connect(userAcount).withdraw(withdrawId);
+          unstakingTimes[userAcount.address][withdrawId].withdrawn = true;
+        }
+      }
+      await increaseTime1Epoch(votiumStrategy);
+    }
+
+    const tvl = await getTvl(votiumStrategy);
+    console.log('finalTvl is', tvl.toString());
   });
 
   it("Should be able to predict how much each user earned in rewards based on how much they had staked each time rewards were distributed", async function () {

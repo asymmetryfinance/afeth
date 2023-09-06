@@ -142,7 +142,7 @@ export const randomStakeUnstakeWithdraw = async (
 
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
-  unstakingTimes[userAcount.address][unlockEpoch.toNumber()] = {
+  unstakingTimes[userAcount.address][withdrawId.toNumber()] = {
     epochRequested: currentEpoch,
     epochEligible: unlockEpoch.toNumber(),
     withdrawn: false,
@@ -187,4 +187,37 @@ export const randomStakeUnstakeWithdraw = async (
     userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
     unstakingTimes[userAcount.address][key].withdrawn = true;
   }
+};
+
+export const getTvl = async (votiumStrategy: VotiumErc20Strategy) => {
+  const totalSupply = await votiumStrategy.totalSupply();
+  const price = await votiumStrategy.price();
+  return totalSupply.mul(price).div(ethers.utils.parseEther("1"));
+};
+
+export const requestWithdrawForUser = async (
+  votiumStrategy: VotiumErc20Strategy,
+  userAcount: SignerWithAddress,
+  withdrawAmount: BigNumber
+) => {
+
+  const currentEpoch = await getCurrentEpoch();
+  const requestTx = await votiumStrategy
+    .connect(userAcount)
+    .requestWithdraw(withdrawAmount);
+  const minedRequestTx = await requestTx.wait();
+  const event = minedRequestTx?.events?.find(
+    (e) => e?.event === "WithdrawRequest"
+  );
+  const withdrawId = event?.args?.withdrawId;
+  console.log("pushing withdrawId", withdrawId);
+
+  const unlockEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+  unstakingTimes[userAcount.address][withdrawId.toNumber()] = {
+    epochRequested: currentEpoch,
+    epochEligible: unlockEpoch.toNumber(),
+    withdrawn: false,
+    withdrawId,
+  };
+  return withdrawId
 };

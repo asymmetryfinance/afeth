@@ -41,7 +41,14 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         latestWithdrawId++;
 
         uint256 _priceInCvx = cvxPerVotium();
+
+        uint256 senderBalance = balanceOf(msg.sender);
+
+        console.log('sender balance is', senderBalance);
+        console.log("About to transfer", msg.sender, address(this), _amount);
         _transfer(msg.sender, address(this), _amount);
+
+        console.log('tansfered');
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
@@ -75,6 +82,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 uint256 previousAfEthOwed = unlockQueues[msg.sender][
                     withdrawEpoch
                 ].afEthOwed;
+                console.log('setting unlock queue for', msg.sender, withdrawEpoch);
                 unlockQueues[msg.sender][withdrawEpoch] = UnlockQueuePosition({
                     cvxOwed: previousCvxOwed + cvxAmount,
                     afEthOwed: previousAfEthOwed + _amount,
@@ -91,6 +99,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     function withdraw(uint256 withdrawId) external override {
         uint256 withdrawEpoch = withdrawIdToEpoch[withdrawId];
+        console.log('withdraw() called from solidity', msg.sender, withdrawId, withdrawEpoch);
 
         UnlockQueuePosition memory positionToWithdraw = unlockQueues[
             msg.sender
@@ -99,6 +108,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 afEthwithdrawAmount = positionToWithdraw.afEthOwed;
         uint256 cvxWithdrawAmount = positionToWithdraw.cvxOwed;
 
+        console.log('withdraw afEthwithdrawAmount', afEthwithdrawAmount);
+        console.log('withdraw cvxWithdrawAmount', cvxWithdrawAmount);
+        console.log('positionToWithdraw.priceWhenRequested', positionToWithdraw.priceWhenRequested);
+        console.log('current epoch', ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp));
         require(
             this.canWithdraw(withdrawId),
             "Can't withdraw from future epoch"
