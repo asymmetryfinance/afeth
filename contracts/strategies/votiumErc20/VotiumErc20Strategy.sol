@@ -26,8 +26,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         address owner;
     }
 
-    uint256 latestWithdrawId;
-
     mapping(uint256 => WithdrawRequestInfo)
         public withdrawIdToWithdrawRequestInfo;
 
@@ -38,10 +36,12 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function deposit() public payable override returns (uint256 mintAmount) {
         uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
+        console.log("CVXAmount buy", cvxAmount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         mintAmount = ((cvxAmount * 1e18) / priceBefore);
         _mint(msg.sender, mintAmount);
+        console.log("MINT", mintAmount);
     }
 
     function requestWithdraw(
@@ -62,6 +62,9 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         cvxUnlockObligations += cvxAmount;
+        console.log("_amount", _amount);
+        console.log("_priceInCvx", _priceInCvx);
+        console.log("cvxAmount", cvxAmount);
 
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             IERC20(CVX_ADDRESS).balanceOf(address(this));

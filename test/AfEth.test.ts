@@ -223,12 +223,15 @@ describe.only("Test AfEth", async function () {
 
     expect(ethBalanceAfterWithdraw1).gt(ethBalanceBeforeWithdraw1);
     expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
+
+    console.log({ ethBalanceBeforeWithdraw1, ethBalanceAfterWithdraw1 });
+    console.log({ ethBalanceBeforeWithdraw2, ethBalanceAfterWithdraw2 });
   });
-  it.only("Two users should be able to deposit at different times and split rewards appropriately", async function () {
+  it("Two users should be able to deposit at different times and split rewards appropriately", async function () {
     // user1 gets both rewards while user2 only gets the second
     // TODO
   });
-  it.only("When a user deposits/withdraws outside depositRewards they don't receive rewards", async function () {
+  it("When a user deposits/withdraws outside depositRewards they don't receive rewards", async function () {
     // TODO
   });
   it("Should be able to set Votium strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
