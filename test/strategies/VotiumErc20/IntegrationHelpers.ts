@@ -64,7 +64,7 @@ export const getUserAccounts = async () => {
 
 export const getAdminAccount = async () => {
   const accounts = await ethers.getSigners();
-  return accounts[0];
+  return accounts[12];
 };
 
 export const getRewarderAccount = async () => {

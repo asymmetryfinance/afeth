@@ -45,12 +45,6 @@ describe("Votium integration test", async function () {
       "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
-
-    // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await votiumStrategy.connect(await getAdminAccount()).deposit({
-      value: ethers.utils.parseEther("0.000001"),
-    });
-    await tx.wait();
   };
 
   before(
@@ -87,8 +81,28 @@ describe("Votium integration test", async function () {
     expect(within2Percent(tvl, tvl2)).equal(true);
   });
 
-  it("Should have tvl be equal to sum of all users tvl (balance * price)", async function () {
-    // TODO
+  it("Should have tvl be equal to sum of all users tvl + tvl held in contract waiting for wirthdraw", async function () {
+    const userAccounts = await getUserAccounts();
+    const totalSupply = await votiumStrategy.totalSupply();
+    const price = await votiumStrategy.price();
+    const tvl = totalSupply.mul(price).div(ethers.utils.parseEther("1"));
+
+    let totalUserBalances = ethers.BigNumber.from(0);
+
+    for (let i = 0; i < userCount; i++) {
+      const balance = await votiumStrategy.balanceOf(userAccounts[i].address);
+      totalUserBalances = totalUserBalances.add(balance);
+    }
+
+    const contractBalance = await votiumStrategy.balanceOf(
+      votiumStrategy.address
+    );
+
+    const totalBalances = totalUserBalances.add(contractBalance);
+
+    const totalTvl = totalBalances.mul(price).div(ethers.utils.parseEther("1"));
+
+    expect(tvl).equal(totalTvl);
   });
 
   it("Should request unstake, wait until eligible and unstake everything for all users", async function () {
