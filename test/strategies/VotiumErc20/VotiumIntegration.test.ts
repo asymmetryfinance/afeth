@@ -116,7 +116,7 @@ describe("Votium integration test", async function () {
     expect(tvl).equal(totalTvl);
   });
 
-  it.only("Should request unstake, wait until eligible and unstake everything for all users", async function () {
+  it("Should request unstake, wait until eligible and unstake everything for all users", async function () {
     const userAccounts = await getUserAccounts();
     // request unstake for all users
     for (let i = 0; i < userCount; i++) {
