@@ -335,8 +335,8 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       const currentEpoch = await getCurrentEpoch();
 
       const withdrawEpochMinus1 = (
-        await votiumStrategy.withdrawIdToEpoch(withdrawId)
-      ).sub(1);
+        await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+      ).epoch.sub(1);
 
       if (currentEpoch.eq(withdrawEpochMinus1)) break;
       await incrementVlcvxEpoch();
@@ -397,7 +397,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(ethReceived1).gt(0);
 
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "Nothing to withdraw"
+      "already withdrawn"
     );
     await tx.wait();
   });

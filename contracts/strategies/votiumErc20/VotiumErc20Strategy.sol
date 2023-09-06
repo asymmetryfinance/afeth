@@ -109,9 +109,11 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         );
 
         require(
-            withdrawIdToWithdrawRequestInfo[withdrawId].cvxOwed > 0,
-            "Nothing to withdraw"
+            !withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn,
+            "already withdrawn"
         );
+
+        withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
         _burn(
             address(this),
             withdrawIdToWithdrawRequestInfo[withdrawId].afEthOwed
