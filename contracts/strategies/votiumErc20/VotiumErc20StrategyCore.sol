@@ -54,25 +54,22 @@ contract VotiumErc20StrategyCore is
         public unlockQueues;
 
     uint256 public cvxUnlockObligations;
-
     address rewarder;
-
     address manager;
+
+    // share of votium rewards to be deposited back into safEth
+    // TODO this should come from manager contract
+    uint256 safEthRewardsShare; // 1e17 = 50%
+    AggregatorV3Interface public chainlinkCvxEthFeed;
+
+    // used to add storage variables in the future
+    uint256[20] private __gap;
 
     event DepositReward(
         uint256 indexed newPrice,
         uint256 indexed ethAmount,
         uint256 indexed cvxAmount
     );
-
-    // share of votium rewards to be deposited back into safEth
-    // TODO this should come from manager contract
-    uint256 safEthRewardsShare; // 1e17 = 50%
-
-    // used to add storage variables in the future
-    uint256[20] private __gap;
-
-    AggregatorV3Interface public chainlinkCvxEthFeed;
 
     /**
         @notice - Sets the address for the chainlink feed

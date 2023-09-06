@@ -53,6 +53,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Add strategies to the strategies array
         @dev - These will rarely change, if at all once deployed
+        @dev - ERC165 protects against contracts that don't implement the correct interface
         @param _strategy - Address of the strategy contract
         @param _ratio - Ratio for the strategy
     */
@@ -183,6 +184,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _burn(address(this), withdrawIdInfo[withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
+        console.log("ETH Received: ", ethReceived);
 
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");

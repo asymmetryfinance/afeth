@@ -77,6 +77,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 uint256 previousAfEthOwed = unlockQueues[msg.sender][
                     withdrawEpoch
                 ].afEthOwed;
+                console.log("CVX AMOUNT", cvxAmount);
+                console.log("withdrawEpoch", withdrawEpoch);
                 unlockQueues[msg.sender][withdrawEpoch] = UnlockQueuePosition({
                     cvxOwed: previousCvxOwed + cvxAmount,
                     afEthOwed: previousAfEthOwed + _amount,
