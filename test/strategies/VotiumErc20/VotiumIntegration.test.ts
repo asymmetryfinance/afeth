@@ -24,7 +24,7 @@ const userInteractionsPerEpoch = 2;
 
 const startingEthBalances: any = [];
 
-describe.only("Votium integration test", async function () {
+describe("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -63,7 +63,7 @@ describe.only("Votium integration test", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 66 epochs (4 lock periods + some epochs)", async function () {
+  it("Should stake a random amount, request unstake random amount & withdraw any eligible amounts for random accounts every epoch for 66 epochs (4 lock periods + some epochs)", async function () {
     const userAccounts = await getUserAccounts();
     for (let i = 0; i < epochCount; i++) {
       // stake unstake & claim random amount for 2 (userInteractionsPerEpoch) users every epoch
