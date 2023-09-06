@@ -44,15 +44,6 @@ contract VotiumErc20StrategyCore is
         bool success;
     }
 
-    struct UnlockQueuePosition {
-        uint256 afEthOwed; // how much afEth total is owed for this position
-        uint256 cvxOwed; // how much cvxOwed total is owed for this position
-        uint256 priceWhenRequested; // afEth price when withdraw requested
-    }
-
-    mapping(address => mapping(uint256 => UnlockQueuePosition))
-        public unlockQueues;
-
     uint256 public cvxUnlockObligations;
     address rewarder;
     address manager;
