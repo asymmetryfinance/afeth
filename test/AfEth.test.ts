@@ -178,13 +178,16 @@ describe.only("Test AfEth", async function () {
     );
 
     // deposit votium rewards
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
-      value: depositAmount,
-    });
-    await tx.wait();
+    // const tx = await votiumStrategy.depositRewards(depositAmount, {
+    //   value: depositAmount,
+    // });
+    // await tx.wait();
 
     const requestWithdrawTx1 = await user1.requestWithdraw();
     await requestWithdrawTx1.wait();
+    for (let i = 0; i < 3; i++) {
+      await incrementVlcvxEpoch();
+    }
     const requestWithdrawTx2 = await user2.requestWithdraw();
     await requestWithdrawTx2.wait();
 

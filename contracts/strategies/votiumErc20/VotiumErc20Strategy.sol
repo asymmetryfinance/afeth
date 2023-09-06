@@ -41,7 +41,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         mintAmount = ((cvxAmount * 1e18) / priceBefore);
         _mint(msg.sender, mintAmount);
-        console.log("MINT", mintAmount);
     }
 
     function requestWithdraw(

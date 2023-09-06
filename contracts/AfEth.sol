@@ -104,8 +104,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Get's the price of afEth
+        @dev - Loops
     */
-    function price() public returns (uint256 totalValue) {
+    function price() public returns (uint256) {
+        if (totalSupply() == 0) return 1e18;
+        uint256 totalValue = 0;
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
@@ -114,6 +117,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 strategy.balanceOf(address(this))) / 1e18;
             totalValue += strategyValueInEth;
         }
+        return (totalValue * 1e18) / totalSupply();
     }
 
     /**
@@ -133,7 +137,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             }();
             totalValue += (mintAmount * strategy.price());
         }
+        console.log("TotalValue: ", totalValue);
+        console.log("Price: ", price());
         uint256 amountToMint = totalValue / price();
+        console.log("AmountToMint: ", amountToMint);
         _mint(msg.sender, amountToMint);
     }
 
@@ -144,7 +151,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         latestWithdrawId++;
         uint256 amount = balanceOf(msg.sender);
         uint256 afEthBalance = balanceOf(address(this));
-
+        console.log("Afethbalance", afEthBalance);
         // ratio of afEth being withdrawn to totalSupply
         uint256 withdrawRatio = (amount * 1e18) /
             (totalSupply() - afEthBalance);
