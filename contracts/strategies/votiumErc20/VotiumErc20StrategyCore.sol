@@ -49,9 +49,6 @@ contract VotiumErc20StrategyCore is
         uint256 cvxOwed; // how much cvxOwed total is owed for this queue position
     }
 
-    mapping(address => mapping(uint256 => UnlockQueuePosition))
-        public unlockQueues;
-
     uint256 public cvxUnlockObligations;
 
     address rewarder;

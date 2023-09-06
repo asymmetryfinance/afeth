@@ -14,7 +14,7 @@ import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 
-describe("Test VotiumErc20Strategy", async function () {
+describe.only("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy & VotiumErc20StrategyCore;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
@@ -141,15 +141,6 @@ describe("Test VotiumErc20Strategy", async function () {
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
 
-      const withdrawEpoch = (
-        await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
-      ).epoch;
-
-      const unlock = await votiumStrategy.unlockQueues(
-        accounts[i].address,
-        withdrawEpoch
-      );
-      expect(unlock.cvxOwed).gt(0);
       withdrawIds.push(withdrawId);
     }
 
@@ -186,7 +177,7 @@ describe("Test VotiumErc20Strategy", async function () {
       expect(within1Percent(balancesBefore[i], balancesAfter[i])).eq(true);
     }
   });
-  it.only("Should show 2 accounts receive different rewards during different epochs", async function () {
+  it("Should show 2 accounts receive different rewards during different epochs", async function () {
     const stakeAmount = ethers.utils.parseEther("10");
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
@@ -225,11 +216,11 @@ describe("Test VotiumErc20Strategy", async function () {
     const priceAfterAllRewards = await votiumStrategy.cvxPerVotium();
     expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
 
-    // request withdraw for each account
-    await stakerVotiumStrategy1.requestWithdraw(
+    const withdrawId1 = await requestWithdrawal(
+      stakerVotiumStrategy1,
       await stakerVotiumStrategy1.balanceOf(accounts[1].address)
     );
-    const withdrawId = await requestWithdrawal(
+    const withdrawId2 = await requestWithdrawal(
       stakerVotiumStrategy2,
       await stakerVotiumStrategy2.balanceOf(accounts[2].address)
     );
@@ -245,7 +236,7 @@ describe("Test VotiumErc20Strategy", async function () {
       accounts[1].address
     );
 
-    tx = await stakerVotiumStrategy1.withdraw(withdrawId);
+    tx = await stakerVotiumStrategy1.withdraw(withdrawId1);
     await tx.wait();
     const ethBalanceAfter1 = await ethers.provider.getBalance(
       accounts[1].address
@@ -260,7 +251,7 @@ describe("Test VotiumErc20Strategy", async function () {
       accounts[2].address
     );
 
-    tx = await stakerVotiumStrategy2.withdraw(withdrawId);
+    tx = await stakerVotiumStrategy2.withdraw(withdrawId2);
     await tx.wait();
 
     const ethBalanceAfter2 = await ethers.provider.getBalance(
@@ -322,8 +313,14 @@ describe("Test VotiumErc20Strategy", async function () {
 
     expect(within2Percent(balance1, balance2)).eq(true);
     // request withdraw for each account
-    await stakerVotiumStrategy1.requestWithdraw(balance1);
-    const withdrawId = await requestWithdrawal(stakerVotiumStrategy2, balance2);
+    const withdrawId1 = await requestWithdrawal(
+      stakerVotiumStrategy1,
+      balance1
+    );
+    const withdrawId2 = await requestWithdrawal(
+      stakerVotiumStrategy2,
+      balance2
+    );
 
     // go to next epoch
     for (let i = 0; i < 17; i++) {
@@ -336,7 +333,7 @@ describe("Test VotiumErc20Strategy", async function () {
       accounts[1].address
     );
 
-    tx = await stakerVotiumStrategy1.withdraw(withdrawId);
+    tx = await stakerVotiumStrategy1.withdraw(withdrawId1);
     await tx.wait();
     const ethBalanceAfter1 = await ethers.provider.getBalance(
       accounts[1].address
@@ -351,7 +348,7 @@ describe("Test VotiumErc20Strategy", async function () {
       accounts[2].address
     );
 
-    tx = await stakerVotiumStrategy2.withdraw(withdrawId);
+    tx = await stakerVotiumStrategy2.withdraw(withdrawId2);
     await tx.wait();
 
     const ethBalanceAfter2 = await ethers.provider.getBalance(
@@ -394,22 +391,15 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(priceAfterRewards).gt(priceBeforeRewards);
 
     // request withdraw for each account
-    let withdrawId;
+    const withdrawIds = [];
     for (let i = 1; i <= stakerAmounts; i++) {
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
-      withdrawId = await requestWithdrawal(
+      const withdrawId = await requestWithdrawal(
         stakerVotiumStrategy,
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
-      const withdrawEpoch = (
-        await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
-      ).epoch;
 
-      const unlock = await votiumStrategy.unlockQueues(
-        accounts[i].address,
-        withdrawEpoch
-      );
-      expect(unlock.cvxOwed).gt(0);
+      withdrawIds.push(withdrawId);
     }
 
     // go to next epoch
@@ -419,7 +409,9 @@ describe("Test VotiumErc20Strategy", async function () {
 
     // withdraw from queue
     const rewardsGained = [];
+    let withdrawIdIndex = 0;
     for (let i = 1; i <= stakerAmounts; i++) {
+      const withdrawId = withdrawIds[withdrawIdIndex];
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
       // pass enough epochs so the burned position is fully unlocked
       const ethBalanceBefore = await ethers.provider.getBalance(
@@ -439,6 +431,7 @@ describe("Test VotiumErc20Strategy", async function () {
       rewardsGained.push(
         ethBalanceAfter.sub(ethBalanceBefore).sub(stakeAmount)
       );
+      withdrawIdIndex++;
     }
 
     // rewards should be proportional to amount staked
@@ -478,22 +471,15 @@ describe("Test VotiumErc20Strategy", async function () {
     const priceAfterRewards = await votiumStrategy.cvxPerVotium();
     expect(priceAfterRewards).gt(priceBeforeRewards);
 
+    const withdrawIds = [];
     // request withdraw for each account
-    let withdrawId;
     for (let i = 1; i <= stakerAmounts; i++) {
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
-      withdrawId = await requestWithdrawal(
+      const withdrawId = await requestWithdrawal(
         stakerVotiumStrategy,
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
-      const withdrawEpoch = (
-        await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
-      ).epoch;
-      const unlock = await votiumStrategy.unlockQueues(
-        accounts[i].address,
-        withdrawEpoch
-      );
-      expect(unlock.cvxOwed).gt(0);
+      withdrawIds.push(withdrawId);
     }
 
     // go to next epoch
@@ -503,7 +489,9 @@ describe("Test VotiumErc20Strategy", async function () {
 
     // withdraw from queue
     const rewardsGained = [];
+    let index = 0;
     for (let i = 1; i <= stakerAmounts; i++) {
+      const withdrawId = withdrawIds[index];
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
       // pass enough epochs so the burned position is fully unlocked
       const ethBalanceBefore = await ethers.provider.getBalance(
@@ -523,6 +511,7 @@ describe("Test VotiumErc20Strategy", async function () {
       rewardsGained.push(
         ethBalanceAfter.sub(ethBalanceBefore).sub(stakeAmount.div(i))
       );
+      index++;
     }
 
     // rewards should be proportional to amount staked
@@ -648,11 +637,11 @@ describe("Test VotiumErc20Strategy", async function () {
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
     // burn half of balance for each address
-    let withdrawId = await requestWithdrawal(
+    const withdrawId1 = await requestWithdrawal(
       stakerVotiumStrategy1,
       (await stakerVotiumStrategy1.balanceOf(accounts[1].address)).div(2)
     );
-    withdrawId = await requestWithdrawal(
+    const withdrawId2 = await requestWithdrawal(
       stakerVotiumStrategy2,
       (await votiumStrategy.balanceOf(accounts[2].address)).div(2)
     );
@@ -668,9 +657,9 @@ describe("Test VotiumErc20Strategy", async function () {
     let ethBalanceBefore2 = await ethers.provider.getBalance(
       accounts[2].address
     );
-    tx = await stakerVotiumStrategy1.withdraw(withdrawId);
+    tx = await stakerVotiumStrategy1.withdraw(withdrawId1);
     await tx.wait();
-    tx = await stakerVotiumStrategy2.withdraw(withdrawId);
+    tx = await stakerVotiumStrategy2.withdraw(withdrawId2);
     await tx.wait();
     let ethBalanceAfter1 = await ethers.provider.getBalance(
       accounts[1].address
@@ -683,11 +672,11 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(ethBalanceAfter2).gt(ethBalanceBefore2);
 
     // burn remaining balance
-    withdrawId = await requestWithdrawal(
+    const withdrawId3 = await requestWithdrawal(
       stakerVotiumStrategy1,
       await stakerVotiumStrategy1.balanceOf(accounts[1].address)
     );
-    withdrawId = await requestWithdrawal(
+    const withdrawId4 = await requestWithdrawal(
       stakerVotiumStrategy2,
       await stakerVotiumStrategy2.balanceOf(accounts[2].address)
     );
@@ -699,9 +688,9 @@ describe("Test VotiumErc20Strategy", async function () {
 
     ethBalanceBefore1 = await ethers.provider.getBalance(accounts[1].address);
     ethBalanceBefore2 = await ethers.provider.getBalance(accounts[2].address);
-    tx = await stakerVotiumStrategy1.withdraw(withdrawId);
+    tx = await stakerVotiumStrategy1.withdraw(withdrawId3);
     await tx.wait();
-    tx = await stakerVotiumStrategy2.withdraw(withdrawId);
+    tx = await stakerVotiumStrategy2.withdraw(withdrawId4);
     await tx.wait();
     ethBalanceAfter1 = await ethers.provider.getBalance(accounts[1].address);
     ethBalanceAfter2 = await ethers.provider.getBalance(accounts[2].address); // balance after fully withdrawing is higher
