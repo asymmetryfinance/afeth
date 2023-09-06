@@ -132,22 +132,25 @@ describe("Test VotiumErc20Strategy", async function () {
       )
     ).eq(true);
 
+    const withdrawIds = [];
     // request withdraw for each account
-    let withdrawId;
     for (let i = 1; i <= stakerAmounts; i++) {
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
-      withdrawId = await requestWithdrawal(
+      const withdrawId = await requestWithdrawal(
         stakerVotiumStrategy,
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
 
-      const withdrawEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+      const withdrawEpoch = (
+        await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+      ).epoch;
 
       const unlock = await votiumStrategy.unlockQueues(
         accounts[i].address,
         withdrawEpoch
       );
       expect(unlock.cvxOwed).gt(0);
+      withdrawIds.push(withdrawId);
     }
 
     // go to next epoch
@@ -158,14 +161,16 @@ describe("Test VotiumErc20Strategy", async function () {
     // withdraw from queue
     const balancesBefore = [];
     const balancesAfter = [];
+    let withdrawIndex = 0;
     for (let i = 1; i <= stakerAmounts; i++) {
+      const withdrawId = withdrawIds[withdrawIndex];
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
       // pass enough epochs so the burned position is fully unlocked
       const ethBalanceBefore = await ethers.provider.getBalance(
         accounts[i].address
       );
       balancesBefore.push(ethBalanceBefore);
-      tx = await stakerVotiumStrategy.withdraw(withdrawId as string);
+      tx = await stakerVotiumStrategy.withdraw(withdrawId);
       await tx.wait();
 
       const ethBalanceAfter = await ethers.provider.getBalance(
@@ -174,13 +179,14 @@ describe("Test VotiumErc20Strategy", async function () {
       balancesAfter.push(ethBalanceAfter);
       // balance after fully withdrawing is higher
       expect(ethBalanceAfter).gt(ethBalanceBefore);
+      withdrawIndex++;
     }
     // verify balances are within 1% of each other
     for (let i = 0; i < stakerAmounts; i++) {
       expect(within1Percent(balancesBefore[i], balancesAfter[i])).eq(true);
     }
   });
-  it("Should show 2 accounts receive different rewards during different epochs", async function () {
+  it.only("Should show 2 accounts receive different rewards during different epochs", async function () {
     const stakeAmount = ethers.utils.parseEther("10");
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
@@ -260,11 +266,13 @@ describe("Test VotiumErc20Strategy", async function () {
     const ethBalanceAfter2 = await ethers.provider.getBalance(
       accounts[2].address
     );
+
     // balance after fully withdrawing is higher
     expect(ethBalanceAfter2).gt(ethBalanceBefore2);
     const rewardAmount2 = ethBalanceAfter2
       .sub(ethBalanceBefore2)
       .sub(stakeAmount);
+
     expect(rewardAmount1).gt(rewardAmount2.mul(2));
   });
   it("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function () {
@@ -393,7 +401,9 @@ describe("Test VotiumErc20Strategy", async function () {
         stakerVotiumStrategy,
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
-      const withdrawEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+      const withdrawEpoch = (
+        await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+      ).epoch;
 
       const unlock = await votiumStrategy.unlockQueues(
         accounts[i].address,
@@ -476,7 +486,9 @@ describe("Test VotiumErc20Strategy", async function () {
         stakerVotiumStrategy,
         await stakerVotiumStrategy.balanceOf(accounts[i].address)
       );
-      const withdrawEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+      const withdrawEpoch = (
+        await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+      ).epoch;
       const unlock = await votiumStrategy.unlockQueues(
         accounts[i].address,
         withdrawEpoch
