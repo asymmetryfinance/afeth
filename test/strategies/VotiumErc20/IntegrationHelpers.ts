@@ -163,8 +163,10 @@ export const requestWithdrawForUser = async (
     (e) => e?.event === "WithdrawRequest"
   );
   const withdrawId = event?.args?.withdrawId;
+  const unlockEpoch = (
+    await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+  ).epoch;
 
-  const unlockEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
   unstakingTimes[userAcount.address][withdrawId.toNumber()] = {
@@ -181,7 +183,6 @@ export const withdrawForUser = async (
   userAcount: SignerWithAddress,
   withdrawId: number
 ) => {
-  console.log('WITHDRAW FOR USER', userAcount.address, withdrawId);
   const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
     userAcount.address
   );
