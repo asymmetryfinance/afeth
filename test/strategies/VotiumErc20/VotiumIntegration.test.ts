@@ -19,7 +19,7 @@ import { expect } from "chai";
 import { getCurrentEpoch } from "./VotiumTestHelpers";
 
 const userCount = 6;
-const epochCount = 6;
+const epochCount = 66;
 const userInteractionsPerEpoch = 2;
 
 const startingEthBalances: any = [];
