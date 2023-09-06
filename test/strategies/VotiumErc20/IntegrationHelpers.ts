@@ -138,7 +138,9 @@ export const randomStakeUnstakeWithdraw = async (
   const event = mined?.events?.find((e: any) => e?.event === "WithdrawRequest");
 
   const withdrawId = event?.args?.withdrawId;
-  const unlockEpoch = await votiumStrategy.withdrawIdToEpoch(withdrawId);
+  const unlockEpoch = (
+    await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+  ).epoch;
 
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
