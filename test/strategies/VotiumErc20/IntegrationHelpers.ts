@@ -83,6 +83,7 @@ export const increaseTime1Epoch = async (
   await incrementVlcvxEpoch();
 
   const currentEpoch = await getCurrentEpoch();
+  console.log("currentEpoch", currentEpoch.toNumber());
   if (currentEpoch % 2 === 0) {
     // console.log("applying rewards");
     const rewardEvent = await oracleApplyRewards(

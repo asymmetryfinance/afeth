@@ -89,8 +89,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 });
 
                 emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
-                console.log('withdraw request returning:');
-                console.log(latestWithdrawId, msg.sender, unlockQueues[msg.sender][withdrawEpoch].cvxOwed, _priceInCvx);
                 return latestWithdrawId;
             }
         }
@@ -105,9 +103,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[withdrawId]
             .cvxOwed;
 
-        console.log('withdrawId', withdrawId);
-        console.log('positionToWithdraw.cvxOwed', positionToWithdraw.cvxOwed);
-        console.log('positionToWithdraw.priceWhenRequested', positionToWithdraw.priceWhenRequested);
         require(
             this.canWithdraw(withdrawId),
             "Can't withdraw from future epoch"

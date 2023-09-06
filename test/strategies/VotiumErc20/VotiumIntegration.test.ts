@@ -18,14 +18,12 @@ import { within2Percent } from "../../helpers/helpers";
 import { expect } from "chai";
 import { getCurrentEpoch } from "./VotiumTestHelpers";
 
-const userCount = 1;
-const epochCount = 2;
-const userInteractionsPerEpoch = 1;
+const userCount = 6;
+const epochCount = 6;
+const userInteractionsPerEpoch = 2;
 
-// nothing to withdraw
-// const userCount = 6;
-// const epochCount = 6;
-// const userInteractionsPerEpoch = 2;
+const startingEthBalances: any = [];
+const startingAfEthBalances: any = [];
 
 describe.only("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
@@ -54,6 +52,16 @@ describe.only("Votium integration test", async function () {
       "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
+
+    const userAccounts = await getUserAccounts();
+    for (let i = 0; i < userCount; i++) {
+      const balance = await votiumStrategy.balanceOf(userAccounts[i].address);
+      startingEthBalances.push(balance);
+      const afEthBalance = await votiumStrategy.balanceOf(
+        userAccounts[i].address
+      );
+      startingAfEthBalances.push(afEthBalance);
+    }
   };
 
   before(
@@ -114,7 +122,6 @@ describe.only("Votium integration test", async function () {
   });
 
   it.only("Should request unstake, wait until eligible and unstake everything for all users", async function () {
-    console.log(' ******************** REAL TEST ******************** ')
     const userAccounts = await getUserAccounts();
     // request unstake for all users
     for (let i = 0; i < userCount; i++) {
@@ -122,9 +129,7 @@ describe.only("Votium integration test", async function () {
       const balance = await votiumStrategy.balanceOf(userAcount.address);
       if (balance.eq(0)) {
         continue;
-      }
-      else {
-        console.log('REAL FUCKING REQUEST')
+      } else {
         await requestWithdrawForUser(votiumStrategy, userAcount, balance);
       }
     }
@@ -158,8 +163,18 @@ describe.only("Votium integration test", async function () {
       await increaseTime1Epoch(votiumStrategy);
     }
 
-    // const tvl = await getTvl(votiumStrategy);
-    // console.log("finalTvl is", tvl.toString());
+    const tvl = await getTvl(votiumStrategy);
+
+    expect(tvl).equal(ethers.BigNumber.from(0));
+
+    for (let i = 0; i < userCount; i++) {
+      const userAcount = userAccounts[i];
+      const ethBalance = await ethers.provider.getBalance(userAcount.address);
+      const afEthBalance = await votiumStrategy.balanceOf(userAcount.address);
+      expect(ethBalance).gt(startingEthBalances[i]);
+      expect(afEthBalance).eq(0);
+      expect(startingAfEthBalances[i]).eq(0);
+    }
   });
 
   it("Should be able to predict how much each user earned in rewards based on how much they had staked each time rewards were distributed", async function () {
