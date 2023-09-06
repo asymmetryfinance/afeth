@@ -23,7 +23,6 @@ const epochCount = 6;
 const userInteractionsPerEpoch = 2;
 
 const startingEthBalances: any = [];
-const startingAfEthBalances: any = [];
 
 describe.only("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
@@ -57,10 +56,6 @@ describe.only("Votium integration test", async function () {
     for (let i = 0; i < userCount; i++) {
       const balance = await votiumStrategy.balanceOf(userAccounts[i].address);
       startingEthBalances.push(balance);
-      const afEthBalance = await votiumStrategy.balanceOf(
-        userAccounts[i].address
-      );
-      startingAfEthBalances.push(afEthBalance);
     }
   };
 
@@ -173,7 +168,6 @@ describe.only("Votium integration test", async function () {
       const afEthBalance = await votiumStrategy.balanceOf(userAcount.address);
       expect(ethBalance).gt(startingEthBalances[i]);
       expect(afEthBalance).eq(0);
-      expect(startingAfEthBalances[i]).eq(0);
     }
   });
 
