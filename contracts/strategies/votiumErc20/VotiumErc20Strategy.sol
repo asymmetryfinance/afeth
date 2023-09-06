@@ -88,7 +88,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     afEthOwed: previousAfEthOwed + _amount
                 });
 
-                // TODO set other stuff on this object
                 withdrawIdToWithdrawRequestInfo[latestWithdrawId] = WithdrawRequestInfo({
                     cvxOwed: cvxAmount,
                     afEthOwed: _amount,
