@@ -14,7 +14,7 @@ import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 
-describe.only("Test VotiumErc20Strategy", async function () {
+describe("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy & VotiumErc20StrategyCore;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
