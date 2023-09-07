@@ -188,7 +188,7 @@ describe("Test AfEth", async function () {
     const withdrawInfo1 = await afEth.withdrawIdInfo(1);
     const withdrawInfo2 = await afEth.withdrawIdInfo(2);
 
-    expect(within1Percent(withdrawInfo1.amount, withdrawInfo2.amount));
+    expect(within1Percent(withdrawInfo1.amount, withdrawInfo2.amount)).eq(true);
     expect(withdrawInfo1.owner).eq(accounts[1].address);
     expect(withdrawInfo2.owner).eq(accounts[2].address);
 
@@ -210,14 +210,18 @@ describe("Test AfEth", async function () {
     const ethBalanceAfterWithdraw2 = await ethers.provider.getBalance(
       accounts[2].address
     );
+    const ethReceived1 = ethBalanceAfterWithdraw1.sub(
+      ethBalanceBeforeWithdraw1
+    );
+    const ethReceived2 = ethBalanceAfterWithdraw2.sub(
+      ethBalanceBeforeWithdraw2
+    );
 
     expect(ethBalanceAfterWithdraw1).gt(ethBalanceBeforeWithdraw1);
     expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
 
-    expect(
-      within1Percent(ethBalanceBeforeWithdraw1, ethBalanceBeforeWithdraw2)
-    );
-    expect(within1Percent(ethBalanceAfterWithdraw1, ethBalanceAfterWithdraw2));
+    expect(within1Percent(ethReceived1, ethReceived2)).eq(true);
+    expect(within1Percent(ethReceived2, depositAmount)).eq(true);
   });
   it("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw and split rewards", async function () {
     const user1 = afEth.connect(accounts[1]);
@@ -241,12 +245,6 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    // deposit votium rewards
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
-      value: depositAmount,
-    });
-    await tx.wait();
-
     const requestWithdrawTx1 = await user1.requestWithdraw();
     await requestWithdrawTx1.wait();
     const requestWithdrawTx2 = await user2.requestWithdraw();
@@ -259,7 +257,7 @@ describe("Test AfEth", async function () {
     const withdrawInfo1 = await afEth.withdrawIdInfo(1);
     const withdrawInfo2 = await afEth.withdrawIdInfo(2);
 
-    expect(within1Percent(withdrawInfo1.amount, withdrawInfo2.amount));
+    expect(within1Percent(withdrawInfo1.amount, withdrawInfo2.amount)).eq(true);
     expect(withdrawInfo1.owner).eq(accounts[1].address);
     expect(withdrawInfo2.owner).eq(accounts[2].address);
 
@@ -281,14 +279,18 @@ describe("Test AfEth", async function () {
     const ethBalanceAfterWithdraw2 = await ethers.provider.getBalance(
       accounts[2].address
     );
+    const ethReceived1 = ethBalanceAfterWithdraw1.sub(
+      ethBalanceBeforeWithdraw1
+    );
+    const ethReceived2 = ethBalanceAfterWithdraw2.sub(
+      ethBalanceBeforeWithdraw2
+    );
 
     expect(ethBalanceAfterWithdraw1).gt(ethBalanceBeforeWithdraw1);
     expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
 
-    expect(
-      within1Percent(ethBalanceBeforeWithdraw1, ethBalanceBeforeWithdraw2)
-    );
-    expect(within1Percent(ethBalanceAfterWithdraw1, ethBalanceAfterWithdraw2));
+    expect(within1Percent(ethReceived1, ethReceived2)).eq(true);
+    expect(within1Percent(ethReceived2, depositAmount)).eq(true);
 
     // TODO: test splitting rewards
   });
