@@ -129,6 +129,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             ? cvxBalance - cvxUnlockObligations
             : 0;
 
+        cvxUnlockObligations -= cvxWithdrawAmount;
+
         // relock everything minus unlock queue obligations
         if (cvxAmountToRelock > 0) {
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
@@ -140,7 +142,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 balanceBefore = address(this).balance;
 
         sellCvx(cvxWithdrawAmount);
-        cvxUnlockObligations -= cvxWithdrawAmount;
+
         uint256 balanceAfter = address(this).balance;
         uint256 ethReceived = balanceAfter - balanceBefore;
 
