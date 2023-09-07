@@ -150,7 +150,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 amount = balanceOf(msg.sender);
 
         // ratio of afEth being withdrawn to totalSupply
-        uint256 withdrawRatio = (amount * 1e18) / totalSupply();
+        // we are transfering the afEth to the contract when we requestWithdraw
+        // we shouldn't include that in the withdrawRatio
+        uint256 afEthBalance = balanceOf(address(this));
+        uint256 withdrawRatio = (amount * 1e18) /
+            (totalSupply() - afEthBalance);
 
         _transfer(msg.sender, address(this), amount);
         withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
@@ -160,6 +164,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             uint256 strategyBalance = ERC20Upgradeable(
                 strategies[i].strategyAddress
             ).balanceOf(address(this));
+
             uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) /
                 1e18;
             uint256 strategyWithdrawId = AbstractErc20Strategy(
@@ -204,7 +209,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _burn(address(this), withdrawIdInfo[withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
-        console.log("ETH Received: ", ethReceived);
 
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");

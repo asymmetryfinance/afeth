@@ -33,14 +33,14 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
         );
-        console.log("MintAmount: ", mintAmount);
         _mint(msg.sender, mintAmount);
     }
 
     function requestWithdraw(
         uint256 _amount
     ) external virtual override returns (uint256 withdrawId) {
-        require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
+        // transferring is needed to lock the erc20 until withdrawn
+        _transfer(msg.sender, address(this), _amount);
         latestWithdrawId++;
         emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
         withdrawIdToAmount[latestWithdrawId] = _amount;
@@ -49,12 +49,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
     function withdraw(uint256 _withdrawId) external virtual override {
         uint256 withdrawAmount = withdrawIdToAmount[_withdrawId];
-        console.log("Withdraw Amount: ", withdrawAmount);
-        require(
-            balanceOf(msg.sender) >= withdrawAmount,
-            "Insufficient balance"
-        );
-        _burn(msg.sender, withdrawAmount);
+        _burn(address(this), withdrawAmount);
 
         uint256 ethBalanceBefore = address(this).balance;
 
@@ -64,7 +59,6 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         );
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
-        console.log("saf eth received", ethReceived);
 
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
