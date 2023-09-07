@@ -20,7 +20,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     struct WithdrawRequestInfo {
         uint256 cvxOwed;
-        uint256 afEthOwed;
         bool withdrawn;
         uint256 epoch;
         address owner;
@@ -79,7 +78,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     latestWithdrawId
                 ] = WithdrawRequestInfo({
                     cvxOwed: cvxAmount,
-                    afEthOwed: _amount,
                     withdrawn: false,
                     epoch: withdrawEpoch,
                     owner: msg.sender
