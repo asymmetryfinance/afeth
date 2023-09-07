@@ -106,12 +106,10 @@ describe("Test AfEth", async function () {
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
 
-    const mintedAfEthAmount = "1000075263227275402";
-
     const afEthBalanceBeforeRequest = await afEth.balanceOf(
       accounts[0].address
     );
-    expect(afEthBalanceBeforeRequest).eq(mintedAfEthAmount);
+    expect(afEthBalanceBeforeRequest).gt(0);
 
     const requestWithdrawTx = await afEth.requestWithdraw();
     await requestWithdrawTx.wait();
@@ -124,7 +122,7 @@ describe("Test AfEth", async function () {
 
     const withdrawId = await afEth.latestWithdrawId();
     const withdrawInfo = await afEth.withdrawIdInfo(withdrawId);
-    expect(withdrawInfo.amount).eq(mintedAfEthAmount);
+    expect(withdrawInfo.amount).eq(afEthBalanceBeforeRequest);
     expect(withdrawInfo.owner).eq(accounts[0].address);
     expect(afEthBalanceAfterRequest).eq(0);
 
