@@ -78,12 +78,13 @@ export const getRewarderAccount = async () => {
 // do everything that would happen on mainnet when time passes by 1 epoch
 // call vlcvx checkpoint(), rewarder account claims rewards every other epoch, etc
 export const increaseTime1Epoch = async (
-  votiumStrategy: VotiumErc20Strategy
+  votiumStrategy: VotiumErc20Strategy,
+  noRewards: boolean = false
 ) => {
   await incrementVlcvxEpoch();
 
   const currentEpoch = await getCurrentEpoch();
-  if (currentEpoch % 2 === 0) {
+  if (!noRewards && currentEpoch % 2 === 0) {
     console.log("applying rewards");
     const rewardEvent = await oracleApplyRewards(
       await getRewarderAccount(),
@@ -199,6 +200,7 @@ export const withdrawForUser = async (
   const balanceWithdrawn = ethBalanceAfterWithdraw
     .sub(ethBalanceBeforeWithdraw)
     .add(txFee);
+
   if (!totalEthUnStaked[userAcount.address])
     totalEthUnStaked[userAcount.address] = BigNumber.from(0);
   totalEthUnStaked[userAcount.address] =
@@ -206,4 +208,15 @@ export const withdrawForUser = async (
 
   userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
   unstakingTimes[userAcount.address][withdrawId].withdrawn = true;
+};
+
+export const totalUserEthBalance = async () => {
+  const userAccounts = await getUserAccounts();
+  let totalBalance = BigNumber.from(0);
+  for (let i = 0; i < userAccounts.length; i++) {
+    const balance = await ethers.provider.getBalance(userAccounts[i].address);
+    console.log('balance', balance.toString());
+    totalBalance = totalBalance.add(balance);
+  }
+  return totalBalance;
 };
