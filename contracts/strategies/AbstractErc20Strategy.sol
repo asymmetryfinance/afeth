@@ -26,5 +26,5 @@ abstract contract AbstractErc20Strategy is
         uint256 withdrawId
     ) external view virtual returns (bool);
 
-    function price() external virtual returns (uint256);
+    function price() external view virtual returns (uint256);
 }

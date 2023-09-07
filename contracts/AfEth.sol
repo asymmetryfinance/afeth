@@ -106,7 +106,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - Get's the price of afEth
         @dev - Loops through each strategy and calculates the total value in ETH divided by supply of afETH tokens
     */
-    function price() public returns (uint256) {
+    function price() public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
         uint256 totalValue = 0;
         for (uint256 i = 0; i < strategies.length; i++) {
