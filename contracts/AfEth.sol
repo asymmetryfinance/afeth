@@ -171,8 +171,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 strategies[i].strategyAddress
             ).requestWithdraw(strategyWithdrawAmount);
             withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[
-                    i
-                ] = strategyWithdrawId;
+                i
+            ] = strategyWithdrawId;
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = amount;
