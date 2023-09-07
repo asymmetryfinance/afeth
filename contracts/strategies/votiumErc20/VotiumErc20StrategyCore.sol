@@ -132,7 +132,7 @@ contract VotiumErc20StrategyCore is
         if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
         if (totalCvx == 0) return 1e18;
-        return ( (totalCvx - cvxUnlockObligations) * 1e18) / supply;
+        return ((totalCvx - cvxUnlockObligations) * 1e18) / supply;
     }
 
     /**
