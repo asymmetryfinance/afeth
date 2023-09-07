@@ -65,11 +65,11 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
       safEthStrategyBalanceAfterDeposit
     );
     const requestMined = await requestWithdrawTx.wait();
-
-    const withdrawId = (requestMined as any).events[0].args.withdrawId;
+    const withdrawId = (requestMined as any).events[1].args.withdrawId;
     const balanceBefore = await ethers.provider.getBalance(accounts[0].address);
     const withdrawTx = await safEthStrategy.withdraw(withdrawId);
     await withdrawTx.wait();
+
     const balanceAfter = await ethers.provider.getBalance(accounts[0].address);
 
     const safEthBalanceAfterWithdraw = await safEthContract.balanceOf(
@@ -78,12 +78,12 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     const safEthStrategyBalanceAfterWithdraw = await safEthStrategy.balanceOf(
       accounts[0].address
     );
+
     expect(safEthBalanceAfterWithdraw).lt(safEthBalanceAfterDeposit);
     expect(safEthBalanceAfterWithdraw).eq(safEthStrategyBalanceAfterWithdraw);
-
     expect(balanceAfter).gt(balanceBefore);
   });
-  it("Should be able to call requestWithdraw() but have no effect because safEth strategy rewards are received upon burning", async function () {
+  it("Should transfer tokens on requestWithdraw", async function () {
     const safEthBalanceBefore = await safEthStrategy.balanceOf(
       accounts[0].address
     );
@@ -106,14 +106,14 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     const safEthBalanceAfterRequestWithdraw = await safEthStrategy.balanceOf(
       accounts[0].address
     );
-    expect(safEthBalanceAfterRequestWithdraw).eq(safEthBalanceAfterDeposit);
+    expect(safEthBalanceAfterRequestWithdraw).eq(0);
   });
   it("Should fail to call withdraw() if balance is less than amount", async function () {
     await expect(safEthStrategy.withdraw(10)).to.be.reverted;
   });
-  it("Should fail to call requestClose() if no balance", async function () {
+  it("Should fail to call requestWithdraw() if no balance", async function () {
     await expect(safEthStrategy.requestWithdraw(10)).to.be.revertedWith(
-      "Insufficient balance"
+      "ERC20: transfer amount exceeds balance"
     );
   });
 
