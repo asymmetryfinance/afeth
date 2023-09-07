@@ -132,7 +132,7 @@ contract VotiumErc20StrategyCore is
         if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
         if (totalCvx == 0) return 1e18;
-        return (totalCvx * 1e18) / supply;
+        return ( (totalCvx - cvxUnlockObligations) * 1e18) / supply;
     }
 
     /**
@@ -223,7 +223,6 @@ contract VotiumErc20StrategyCore is
 
     /// sell any number of erc20's via 0x in a single tx
     function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
-        console.log('apply rewards');
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
@@ -247,7 +246,7 @@ contract VotiumErc20StrategyCore is
                 _swapsData[i].swapCallData
             );
             if (!success) {
-//                console.log("FAILED TO SELL TOKEN", _swapsData[i].sellToken);
+                console.log("FAILED TO SELL TOKEN", _swapsData[i].sellToken);
                 // TODO emit an event or something?
                 // this causes unsold tokens to build up in the contract, see:
                 // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478

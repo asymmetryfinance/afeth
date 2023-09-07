@@ -215,7 +215,6 @@ export const totalUserEthBalance = async () => {
   let totalBalance = BigNumber.from(0);
   for (let i = 0; i < userAccounts.length; i++) {
     const balance = await ethers.provider.getBalance(userAccounts[i].address);
-    console.log('balance', balance.toString());
     totalBalance = totalBalance.add(balance);
   }
   return totalBalance;

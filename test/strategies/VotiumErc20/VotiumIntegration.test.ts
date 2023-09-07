@@ -53,6 +53,10 @@ describe.only("Weird Behavior", async function () {
 
   it("Should show price going up on withdraw. This is wrong", async function () {
     const userAccounts = await getUserAccounts();
+    console.log(
+      "price0",
+      ethers.utils.formatEther(await votiumStrategy.price())
+    );
 
     await randomStakeUnstakeWithdraw(
       userAccounts[0],
@@ -60,7 +64,10 @@ describe.only("Weird Behavior", async function () {
       ethers.utils.parseEther("1")
     );
     await increaseTime1Epoch(votiumStrategy);
-
+    console.log(
+      "price0.1",
+      ethers.utils.formatEther(await votiumStrategy.price())
+    );
     const balance = await votiumStrategy.balanceOf(userAccounts[0].address);
     await requestWithdrawForUser(votiumStrategy, userAccounts[0], balance);
 
@@ -68,14 +75,13 @@ describe.only("Weird Behavior", async function () {
       await increaseTime1Epoch(votiumStrategy, true);
     }
 
-    // THIS SHOULD NOT GO UP!!!!
     console.log(
-      "price before withdraw",
+      "price1",
       ethers.utils.formatEther(await votiumStrategy.price())
     );
     await withdrawForUser(votiumStrategy, userAccounts[0], 1);
     console.log(
-      "price after withdraw",
+      "price2",
       ethers.utils.formatEther(await votiumStrategy.price())
     );
   });
