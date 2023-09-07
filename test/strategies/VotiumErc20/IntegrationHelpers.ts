@@ -16,7 +16,7 @@ export const balancesAtRewardEpochs: BalancesAtRewardEpochs = {};
 
 export type UserAddress = string;
 
-export type Epoch = number;
+export type WithdrawId = number;
 export type UnstakeRequestTime = {
   epochRequested: number;
   epochEligible: number;
@@ -38,7 +38,10 @@ export const sumRecord = (record: Record<string, BigNumber>) => {
   return sum;
 };
 
-type UnstakingTimes = Record<UserAddress, Record<Epoch, UnstakeRequestTime>>;
+type UnstakingTimes = Record<
+  UserAddress,
+  Record<WithdrawId, UnstakeRequestTime>
+>;
 // request time / eligible for withdraw tiem for all users and withdraw requests
 export const unstakingTimes: UnstakingTimes = {};
 
@@ -106,7 +109,7 @@ export const randomStakeUnstakeWithdraw = async (
     randomEthAmount(0, parseFloat(ethers.utils.formatEther(maxStakeAmount)))
   );
 
-  let tx = await votiumStrategy.connect(userAcount).deposit({
+  const tx = await votiumStrategy.connect(userAcount).deposit({
     value: stakeAmount,
   });
 
@@ -114,8 +117,8 @@ export const randomStakeUnstakeWithdraw = async (
     totalEthStaked[userAcount.address] = BigNumber.from(0);
   totalEthStaked[userAcount.address] =
     totalEthStaked[userAcount.address].add(stakeAmount);
-  let mined = await tx.wait();
-  let txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
+  const mined = await tx.wait();
+  const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
 
   if (!userTxFees[userAcount.address]) {
     userTxFees[userAcount.address] = BigNumber.from(0);
@@ -124,19 +127,41 @@ export const randomStakeUnstakeWithdraw = async (
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
 
-  const withdrawAmount = randomEthAmount(
-    0,
-    parseFloat(ethers.utils.formatEther(votiumBalance))
+  const randomVotiumAmount = ethers.utils.parseEther(
+    randomEthAmount(0, parseFloat(ethers.utils.formatEther(votiumBalance)))
   );
+  await requestWithdrawForUser(votiumStrategy, userAcount, randomVotiumAmount);
 
-  tx = await votiumStrategy
+  const withdrawIds = Object.keys(unstakingTimes[userAcount.address]);
+  // check if there are any eligible withdraws
+  for (let i = 0; i < withdrawIds.length; i++) {
+    const withdrawId = parseInt(withdrawIds[i]);
+    if (unstakingTimes[userAcount.address][withdrawId].withdrawn) continue;
+    const unstakeRequestTime = unstakingTimes[userAcount.address][withdrawId];
+    if (currentEpoch.lt(unstakeRequestTime.epochEligible)) continue;
+    await withdrawForUser(votiumStrategy, userAcount, withdrawId);
+  }
+};
+
+export const getTvl = async (votiumStrategy: VotiumErc20Strategy) => {
+  const totalSupply = await votiumStrategy.totalSupply();
+  const price = await votiumStrategy.price();
+  return totalSupply.mul(price).div(ethers.utils.parseEther("1"));
+};
+
+export const requestWithdrawForUser = async (
+  votiumStrategy: VotiumErc20Strategy,
+  userAcount: SignerWithAddress,
+  withdrawAmount: BigNumber
+) => {
+  const currentEpoch = await getCurrentEpoch();
+  const requestTx = await votiumStrategy
     .connect(userAcount)
-    .requestWithdraw(ethers.utils.parseEther(withdrawAmount));
-  mined = await tx.wait();
-  txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-  userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
-  const event = mined?.events?.find((e: any) => e?.event === "WithdrawRequest");
-
+    .requestWithdraw(withdrawAmount);
+  const minedRequestTx = await requestTx.wait();
+  const event = minedRequestTx?.events?.find(
+    (e) => e?.event === "WithdrawRequest"
+  );
   const withdrawId = event?.args?.withdrawId;
   const unlockEpoch = (
     await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
@@ -144,49 +169,41 @@ export const randomStakeUnstakeWithdraw = async (
 
   if (!unstakingTimes[userAcount.address])
     unstakingTimes[userAcount.address] = {};
-  unstakingTimes[userAcount.address][unlockEpoch.toNumber()] = {
+  unstakingTimes[userAcount.address][withdrawId.toNumber()] = {
     epochRequested: currentEpoch,
     epochEligible: unlockEpoch.toNumber(),
     withdrawn: false,
     withdrawId,
   };
+  return withdrawId;
+};
 
-  // check if there are any eligible withdraws
-  for (
-    let i = 0;
-    i < Object.keys(unstakingTimes[userAcount.address]).length;
-    i++
-  ) {
-    const key = parseInt(Object.keys(unstakingTimes[userAcount.address])[i]);
+export const withdrawForUser = async (
+  votiumStrategy: VotiumErc20Strategy,
+  userAcount: SignerWithAddress,
+  withdrawId: number
+) => {
+  const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+    userAcount.address
+  );
 
-    if (unstakingTimes[userAcount.address][key].withdrawn) continue;
-    const unstakeRequestTime = unstakingTimes[userAcount.address][key];
-    if (currentEpoch.lt(unstakeRequestTime.epochEligible)) continue;
+  const tx = await votiumStrategy.connect(userAcount).withdraw(withdrawId);
+  const mined = await tx.wait();
 
-    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
-      userAcount.address
-    );
+  const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+    userAcount.address
+  );
 
-    tx = await votiumStrategy
-      .connect(userAcount)
-      .withdraw(unstakeRequestTime.withdrawId);
-    mined = await tx.wait();
+  const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
 
-    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
-      userAcount.address
-    );
+  const balanceWithdrawn = ethBalanceAfterWithdraw
+    .sub(ethBalanceBeforeWithdraw)
+    .add(txFee);
+  if (!totalEthUnStaked[userAcount.address])
+    totalEthUnStaked[userAcount.address] = BigNumber.from(0);
+  totalEthUnStaked[userAcount.address] =
+    totalEthUnStaked[userAcount.address].add(balanceWithdrawn);
 
-    const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-
-    const balanceWithdrawn = ethBalanceAfterWithdraw
-      .sub(ethBalanceBeforeWithdraw)
-      .add(txFee);
-    if (!totalEthUnStaked[userAcount.address])
-      totalEthUnStaked[userAcount.address] = BigNumber.from(0);
-    totalEthUnStaked[userAcount.address] =
-      totalEthUnStaked[userAcount.address].add(balanceWithdrawn);
-
-    userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
-    unstakingTimes[userAcount.address][key].withdrawn = true;
-  }
+  userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
+  unstakingTimes[userAcount.address][withdrawId].withdrawn = true;
 };
