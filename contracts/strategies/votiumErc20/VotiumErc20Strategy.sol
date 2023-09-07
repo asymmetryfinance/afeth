@@ -36,7 +36,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function deposit() public payable override returns (uint256 mintAmount) {
         uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
-        console.log("CVXAmount buy", cvxAmount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         mintAmount = ((cvxAmount * 1e18) / priceBefore);
@@ -61,8 +60,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         cvxUnlockObligations += cvxAmount;
-        console.log("_amount", _amount);
-        console.log("_priceInCvx", _priceInCvx);
         console.log("cvxAmount", cvxAmount);
 
         uint256 totalLockedBalancePlusUnlockable = unlockable +
@@ -146,6 +143,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         sellCvx(cvxWithdrawAmount);
         uint256 balanceAfter = address(this).balance;
         uint256 ethReceived = balanceAfter - balanceBefore;
+        console.log("Votium eth received", ethReceived);
         // TODO: use call to send eth instead
         payable(msg.sender).transfer(ethReceived);
         emit Withdraw(msg.sender, cvxWithdrawAmount, withdrawId, ethReceived);

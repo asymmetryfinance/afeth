@@ -104,7 +104,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Get's the price of afEth
-        @dev - Loops
+        @dev - Loops through each strategy and calculates the total value in ETH divided by supply of afETH tokens
     */
     function price() public returns (uint256) {
         if (totalSupply() == 0) return 1e18;
@@ -127,6 +127,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function deposit() external payable virtual {
         uint256 amount = msg.value;
         uint256 totalValue = 0;
+        uint256 priceBeforeDeposit = price();
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
@@ -137,10 +138,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             }();
             totalValue += (mintAmount * strategy.price());
         }
-        console.log("TotalValue: ", totalValue);
-        console.log("Price: ", price());
-        uint256 amountToMint = totalValue / price();
-        console.log("AmountToMint: ", amountToMint);
+        uint256 amountToMint = totalValue / priceBeforeDeposit;
         _mint(msg.sender, amountToMint);
     }
 
@@ -150,12 +148,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function requestWithdraw() external virtual returns (uint256 withdrawId) {
         latestWithdrawId++;
         uint256 amount = balanceOf(msg.sender);
-        uint256 afEthBalance = balanceOf(address(this));
-        console.log("Afethbalance", afEthBalance);
+
         // ratio of afEth being withdrawn to totalSupply
-        uint256 withdrawRatio = (amount * 1e18) /
-            (totalSupply() - afEthBalance);
-        console.log("withdrawRatio", withdrawRatio);
+        uint256 withdrawRatio = (amount * 1e18) / totalSupply();
 
         _transfer(msg.sender, address(this), amount);
         withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
@@ -167,11 +162,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             ).balanceOf(address(this));
             uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) /
                 1e18;
-            if (i == 1) {
-                console.log("withdrawRatio", withdrawRatio);
-                console.log("strategyBalance", strategyBalance);
-                console.log("strategyWithdrawAmount", strategyWithdrawAmount);
-            }
             uint256 strategyWithdrawId = AbstractErc20Strategy(
                 strategies[i].strategyAddress
             ).requestWithdraw(strategyWithdrawAmount);
