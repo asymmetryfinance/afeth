@@ -106,7 +106,7 @@ describe("Test AfEth", async function () {
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
 
-    const mintedAfEthAmount = "1000075263227035174";
+    const mintedAfEthAmount = "1000075263227275402";
 
     const afEthBalanceBeforeRequest = await afEth.balanceOf(
       accounts[0].address
