@@ -44,9 +44,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function requestWithdraw(
         uint256 _amount
     ) public override returns (uint256 withdrawId) {
-
         latestWithdrawId++;
         uint256 _priceInCvx = cvxPerVotium();
+
+        _burn(msg.sender, _amount);
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
@@ -82,10 +83,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     epoch: withdrawEpoch,
                     owner: msg.sender
                 });
-                _burn(
-                    msg.sender,
-                    _amount
-                );
 
                 emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
                 return latestWithdrawId;
