@@ -13,14 +13,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 ratio;
     }
     Strategy[] public strategies; // mapping of strategy address to ratio
-    uint256 totalRatio;
-
-    error StrategyAlreadyAdded();
-    error StrategyNotFound();
-    error InsufficientBalance();
-    error InvalidStrategy();
-
-    uint256 latestWithdrawId;
+    uint256 public totalRatio;
+    uint256 public latestWithdrawId;
 
     struct WithdrawInfo {
         address owner;
@@ -29,11 +23,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
     mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
 
+    error StrategyAlreadyAdded();
+    error StrategyNotFound();
+    error InsufficientBalance();
+    error InvalidStrategy();
+    error CanNotWithdraw();
+    error NotOwner();
+    error FailedToSend();
+
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
-        require(
-            withdrawIdInfo[withdrawId].owner == msg.sender,
-            "Not withdrawId owner"
-        );
+        if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
         _;
     }
 
@@ -54,6 +53,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Add strategies to the strategies array
         @dev - These will rarely change, if at all once deployed
+        @dev - ERC165 protects against contracts that don't implement the correct interface
         @param _strategy - Address of the strategy contract
         @param _ratio - Ratio for the strategy
     */
@@ -103,12 +103,31 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
+        @notice - Get's the price of afEth
+        @dev - Loops through each strategy and calculates the total value in ETH divided by supply of afETH tokens
+    */
+    function price() public returns (uint256) {
+        if (totalSupply() == 0) return 1e18;
+        uint256 totalValue = 0;
+        for (uint256 i = 0; i < strategies.length; i++) {
+            AbstractErc20Strategy strategy = AbstractErc20Strategy(
+                strategies[i].strategyAddress
+            );
+            uint256 strategyValueInEth = (strategy.price() *
+                strategy.balanceOf(address(this))) / 1e18;
+            totalValue += strategyValueInEth;
+        }
+        return (totalValue * 1e18) / totalSupply();
+    }
+
+    /**
         @notice - Deposits into each strategy
         @dev - This is the entry into the protocol
     */
     function deposit() external payable virtual {
         uint256 amount = msg.value;
-        uint256 amountToMint = 0;
+        uint256 totalValue = 0;
+        uint256 priceBeforeDeposit = price();
         for (uint256 i = 0; i < strategies.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
@@ -117,8 +136,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             uint256 mintAmount = strategy.deposit{
                 value: (amount * strategies[i].ratio) / totalRatio
             }();
-            amountToMint += (mintAmount * strategy.price()) / 1e18;
+            totalValue += (mintAmount * strategy.price());
         }
+        uint256 amountToMint = totalValue / priceBeforeDeposit;
         _mint(msg.sender, amountToMint);
     }
 
@@ -130,18 +150,29 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 amount = balanceOf(msg.sender);
 
         // ratio of afEth being withdrawn to totalSupply
-        uint256 withdrawRatio = (amount * 1e18) / totalRatio;
+        // we are transfering the afEth to the contract when we requestWithdraw
+        // we shouldn't include that in the withdrawRatio
+        uint256 afEthBalance = balanceOf(address(this));
+        uint256 withdrawRatio = (amount * 1e18) /
+            (totalSupply() - afEthBalance);
 
         _transfer(msg.sender, address(this), amount);
+        withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
+            strategies.length
+        );
         for (uint256 i = 0; i < strategies.length; i++) {
             uint256 strategyBalance = ERC20Upgradeable(
                 strategies[i].strategyAddress
             ).balanceOf(address(this));
+
             uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) /
                 1e18;
-            uint256 wid = AbstractErc20Strategy(strategies[i].strategyAddress)
-                .requestWithdraw(strategyWithdrawAmount);
-            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[i] = wid;
+            uint256 strategyWithdrawId = AbstractErc20Strategy(
+                strategies[i].strategyAddress
+            ).requestWithdraw(strategyWithdrawAmount);
+            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[
+                i
+            ] = strategyWithdrawId;
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = amount;
@@ -167,7 +198,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 ethBalanceBefore = address(this).balance;
         uint256[] memory strategyWithdrawIds = withdrawIdInfo[withdrawId]
             .strategyWithdrawIds;
-        require(canWithdraw(withdrawId), "Can't withdraw yet");
+        if (!canWithdraw(withdrawId)) revert CanNotWithdraw();
         for (uint256 i = 0; i < strategyWithdrawIds.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
@@ -178,9 +209,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _burn(address(this), withdrawIdInfo[withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
+
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
-        require(sent, "Failed to send Ether");
+        if (!sent) revert FailedToSend();
     }
 
     // deposit value to safEth side

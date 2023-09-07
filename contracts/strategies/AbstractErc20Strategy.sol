@@ -7,7 +7,8 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 abstract contract AbstractErc20Strategy is
     Initializable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    ERC20Upgradeable
 {
     /// deposit into strategy
     function deposit() external payable virtual returns (uint256);

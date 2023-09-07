@@ -28,8 +28,6 @@ contract VotiumErc20StrategyCore is
     address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address constant VLCVX_ADDRESS = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
-    error SwapFailed(uint256 index);
-
     struct SwapData {
         address sellToken;
         address spender;
@@ -45,10 +43,17 @@ contract VotiumErc20StrategyCore is
     }
 
     uint256 public cvxUnlockObligations;
-
     address rewarder;
-
     address manager;
+
+    // share of votium rewards to be deposited back into safEth
+    // TODO this should come from manager contract
+    uint256 safEthRewardsShare; // 1e17 = 50%
+    AggregatorV3Interface public chainlinkCvxEthFeed;
+    uint256 latestWithdrawId;
+
+    // used to add storage variables in the future
+    uint256[20] private __gap;
 
     event DepositReward(
         uint256 indexed newPrice,
@@ -56,14 +61,7 @@ contract VotiumErc20StrategyCore is
         uint256 indexed cvxAmount
     );
 
-    // share of votium rewards to be deposited back into safEth
-    // TODO this should come from manager contract
-    uint256 safEthRewardsShare; // 1e17 = 50%
-
-    // used to add storage variables in the future
-    uint256[20] private __gap;
-
-    AggregatorV3Interface public chainlinkCvxEthFeed;
+    error SwapFailed(uint256 index);
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -165,7 +163,7 @@ contract VotiumErc20StrategyCore is
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
     ) public onlyRewarder {
         claimVotiumRewards(_claimProofs);
-        claimvlCvxRewards();
+        claimVlCvxRewards();
     }
 
     /// anyone can deposit eth to make price go up
@@ -267,7 +265,7 @@ contract VotiumErc20StrategyCore is
             .claimMulti(address(this), _claimProofs);
     }
 
-    function claimvlCvxRewards() private {
+    function claimVlCvxRewards() private {
         address[] memory emptyArray;
         IClaimZap(0x3f29cB4111CbdA8081642DA1f75B3c12DECf2516).claimRewards(
             emptyArray,
