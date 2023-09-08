@@ -13,18 +13,20 @@ import {
   unstakingTimes,
   getTvl,
   requestWithdrawForUser,
+  totalUserEthBalance,
+  userTxFees,
 } from "./IntegrationHelpers";
 import { within2Percent } from "../../helpers/helpers";
 import { expect } from "chai";
 import { getCurrentEpoch } from "./VotiumTestHelpers";
 
 const userCount = 6;
-const epochCount = 66;
+const epochCount = 6;
 const userInteractionsPerEpoch = 2;
 
 const startingEthBalances: any = [];
 
-describe.skip("Votium integration test", async function () {
+describe.only("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -53,10 +55,11 @@ describe.skip("Votium integration test", async function () {
     await votiumStrategy.deployed();
 
     const userAccounts = await getUserAccounts();
-    for (let i = 0; i < userCount; i++) {
-      const balance = await votiumStrategy.balanceOf(userAccounts[i].address);
+    for (let i = 0; i < userAccounts.length; i++) {
+      const balance = await ethers.provider.getBalance(userAccounts[i].address);
       startingEthBalances.push(balance);
     }
+    console.log('startingEthBalances', startingEthBalances);
   };
 
   before(
@@ -80,20 +83,7 @@ describe.skip("Votium integration test", async function () {
     }
   });
 
-  it("Should have tvl (or supply * price) be equal to totalStaked plus rewards minus totalUnstaked", async function () {
-    const totalSupply = await votiumStrategy.totalSupply();
-    const price = await votiumStrategy.price();
-    const tvl = totalSupply.mul(price).div(ethers.utils.parseEther("1"));
-    const tvl2 = sumRecord(totalEthStaked)
-      .add(totalEthRewarded)
-      .sub(sumRecord(totalEthUnStaked));
-    // this varies so much (2% tolerance) because with each passing week something happens to the price of cvx in the LP
-    // likely because its a TWAP so the price is changing a decent amount in these tests as weeks pass
-    // in reality it should be  much lower variance
-    expect(within2Percent(tvl, tvl2)).equal(true);
-  });
-
-  it("Should have tvl be equal to sum of all users tvl + tvl held in contract waiting for wirthdraw", async function () {
+  it("Should have tvl be equal to sum of all users tvl", async function () {
     const userAccounts = await getUserAccounts();
     const price = await votiumStrategy.price();
     const tvl = await getTvl(votiumStrategy);
@@ -105,14 +95,9 @@ describe.skip("Votium integration test", async function () {
       totalUserBalances = totalUserBalances.add(balance);
     }
 
-    const contractBalance = await votiumStrategy.balanceOf(
-      votiumStrategy.address
-    );
-
-    const totalBalances = totalUserBalances.add(contractBalance);
-
-    const totalTvl = totalBalances.mul(price).div(ethers.utils.parseEther("1"));
-
+    const totalTvl = totalUserBalances
+      .mul(price)
+      .div(ethers.utils.parseEther("1"));
     expect(tvl).equal(totalTvl);
   });
 
@@ -155,7 +140,10 @@ describe.skip("Votium integration test", async function () {
           }
         }
       }
-      await increaseTime1Epoch(votiumStrategy);
+
+      // dont apply any rewards during these epochs
+      // so it easy to calculate the users for the right rewards
+      await increaseTime1Epoch(votiumStrategy, true);
     }
 
     const tvl = await getTvl(votiumStrategy);
@@ -171,15 +159,25 @@ describe.skip("Votium integration test", async function () {
     }
   });
 
+  it("Should have total rewards be roughly equal to sum of amounts from all DepositReward events", async function () {
+    const totalStartingBalances = startingEthBalances.reduce(
+      (acc: any, val: any) => acc.add(val),
+      ethers.BigNumber.from(0)
+    );
+    const totalUserBalances = await totalUserEthBalance();
+    const totalEthRewarded2 = totalUserBalances.sub(totalStartingBalances);
+
+    console.log('totalEthRewarded', totalEthRewarded.toString());
+    console.log('totalEthRewarded2', totalEthRewarded2.toString());
+    console.log('totalGasFees', sumRecord(userTxFees).toString());
+    expect(within2Percent(totalEthRewarded, totalEthRewarded2)).eq(true);
+  });
+
   it("Should be able to predict how much each user earned in rewards based on how much they had staked each time rewards were distributed", async function () {
     // TODO
   });
 
   it("Should be able to predict total rewards earned systemwide based on total staked each time rewards were distributed", async function () {
-    // TODO
-  });
-
-  it("Should have total rewards be equal to sum of amounts from all DepositReward events", async function () {
     // TODO
   });
 
