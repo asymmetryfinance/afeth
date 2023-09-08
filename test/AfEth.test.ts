@@ -5,12 +5,7 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
-import {
-  within1Percent,
-  within2Percent,
-  within3Percent,
-  within5Percent,
-} from "./helpers/helpers";
+import { within1Percent, within5Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
 
 describe("Test AfEth", async function () {
@@ -549,7 +544,7 @@ describe("Test AfEth", async function () {
         ethers.utils.parseEther("2")
       )
     );
-
+    console.log(afEthBalanceBeforeRequest2.mul(await afEth.price()));
     expect("1512947469045080208").eq(rewardAmount1.toString());
     expect("313507789960225420").eq(rewardAmount2.toString());
   });
