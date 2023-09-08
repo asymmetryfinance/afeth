@@ -167,9 +167,6 @@ describe("Votium integration test", async function () {
     // this varies so much (4% tolerance) because with each passing week something happens to the price of cvx in the LP
     // likely because its a TWAP so the price is changing a decent amount in these tests as weeks pass
     // in reality it should be  much lower variance
-    console.log("totalEthRewarded", totalEthRewarded.toString());
-    console.log("totalEthRewarded2", totalEthRewarded2.toString());
-    console.log("totalGasFees", sumRecord(userTxFees).toString());
     expect(within3Percent(totalEthRewarded, totalEthRewarded2)).eq(true);
   });
 
