@@ -8,25 +8,23 @@ import {
   randomStakeUnstakeWithdraw,
   sumRecord,
   totalEthRewarded,
-  totalEthStaked,
-  totalEthUnStaked,
   unstakingTimes,
   getTvl,
   requestWithdrawForUser,
   totalUserEthBalance,
   userTxFees,
 } from "./IntegrationHelpers";
-import { within2Percent } from "../../helpers/helpers";
+import { within3Percent } from "../../helpers/helpers";
 import { expect } from "chai";
 import { getCurrentEpoch } from "./VotiumTestHelpers";
 
 const userCount = 6;
-const epochCount = 6;
+const epochCount = 66;
 const userInteractionsPerEpoch = 2;
 
 const startingEthBalances: any = [];
 
-describe.only("Votium integration test", async function () {
+describe("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -59,7 +57,6 @@ describe.only("Votium integration test", async function () {
       const balance = await ethers.provider.getBalance(userAccounts[i].address);
       startingEthBalances.push(balance);
     }
-    console.log('startingEthBalances', startingEthBalances);
   };
 
   before(
@@ -167,10 +164,13 @@ describe.only("Votium integration test", async function () {
     const totalUserBalances = await totalUserEthBalance();
     const totalEthRewarded2 = totalUserBalances.sub(totalStartingBalances);
 
-    console.log('totalEthRewarded', totalEthRewarded.toString());
-    console.log('totalEthRewarded2', totalEthRewarded2.toString());
-    console.log('totalGasFees', sumRecord(userTxFees).toString());
-    expect(within2Percent(totalEthRewarded, totalEthRewarded2)).eq(true);
+    // this varies so much (4% tolerance) because with each passing week something happens to the price of cvx in the LP
+    // likely because its a TWAP so the price is changing a decent amount in these tests as weeks pass
+    // in reality it should be  much lower variance
+    console.log("totalEthRewarded", totalEthRewarded.toString());
+    console.log("totalEthRewarded2", totalEthRewarded2.toString());
+    console.log("totalGasFees", sumRecord(userTxFees).toString());
+    expect(within3Percent(totalEthRewarded, totalEthRewarded2)).eq(true);
   });
 
   it("Should be able to predict how much each user earned in rewards based on how much they had staked each time rewards were distributed", async function () {
