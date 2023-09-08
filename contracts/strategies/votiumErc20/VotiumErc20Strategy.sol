@@ -20,7 +20,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
     struct WithdrawRequestInfo {
         uint256 cvxOwed;
-        uint256 afEthOwed;
         bool withdrawn;
         uint256 epoch;
         address owner;
@@ -45,10 +44,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function requestWithdraw(
         uint256 _amount
     ) public override returns (uint256 withdrawId) {
-        // transferring is needed to lock the erc20 until withdrawn
-        _transfer(msg.sender, address(this), _amount);
         latestWithdrawId++;
         uint256 _priceInCvx = cvxPerVotium();
+
+        _burn(msg.sender, _amount);
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
@@ -80,7 +79,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                     latestWithdrawId
                 ] = WithdrawRequestInfo({
                     cvxOwed: cvxAmount,
-                    afEthOwed: _amount,
                     withdrawn: false,
                     epoch: withdrawEpoch,
                     owner: msg.sender
@@ -112,10 +110,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         );
 
         withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
-        _burn(
-            address(this),
-            withdrawIdToWithdrawRequestInfo[withdrawId].afEthOwed
-        );
 
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
@@ -143,6 +137,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 balanceBefore = address(this).balance;
 
         sellCvx(cvxWithdrawAmount);
+
         uint256 balanceAfter = address(this).balance;
         uint256 ethReceived = balanceAfter - balanceBefore;
 
