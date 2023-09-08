@@ -83,7 +83,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     expect(safEthBalanceAfterWithdraw).eq(safEthStrategyBalanceAfterWithdraw);
     expect(balanceAfter).gt(balanceBefore);
   });
-  it("Should transfer tokens on requestWithdraw", async function () {
+  it("Should burn tokens on requestWithdraw", async function () {
     const safEthBalanceBefore = await safEthStrategy.balanceOf(
       accounts[0].address
     );
@@ -113,7 +113,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   });
   it("Should fail to call requestWithdraw() if no balance", async function () {
     await expect(safEthStrategy.requestWithdraw(10)).to.be.revertedWith(
-      "ERC20: transfer amount exceeds balance"
+      "ERC20: burn amount exceeds balance"
     );
   });
 

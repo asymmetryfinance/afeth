@@ -132,7 +132,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
 
     await expect(votiumStrategy.requestWithdraw(tooMuch)).to.be.revertedWith(
-      "ERC20: transfer amount exceeds balance"
+      "ERC20: burn amount exceeds balance"
     );
   });
   it("Should decrease users balance when requestWithdraw is called", async function () {
