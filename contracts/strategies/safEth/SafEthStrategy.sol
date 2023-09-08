@@ -39,8 +39,8 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     function requestWithdraw(
         uint256 _amount
     ) external virtual override returns (uint256 withdrawId) {
-        // transferring is needed to lock the erc20 until withdrawn
-        _transfer(msg.sender, address(this), _amount);
+        _burn(msg.sender, _amount);
+
         latestWithdrawId++;
         emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
         withdrawIdToAmount[latestWithdrawId] = _amount;
@@ -49,7 +49,6 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
     function withdraw(uint256 _withdrawId) external virtual override {
         uint256 withdrawAmount = withdrawIdToAmount[_withdrawId];
-        _burn(address(this), withdrawAmount);
 
         uint256 ethBalanceBefore = address(this).balance;
 
