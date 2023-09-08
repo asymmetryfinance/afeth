@@ -83,7 +83,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     expect(safEthBalanceAfterWithdraw).eq(safEthStrategyBalanceAfterWithdraw);
     expect(balanceAfter).gt(balanceBefore);
   });
-  it("Should transfer tokens on requestWithdraw", async function () {
+  it("Should burn tokens on requestWithdraw", async function () {
     const safEthBalanceBefore = await safEthStrategy.balanceOf(
       accounts[0].address
     );
