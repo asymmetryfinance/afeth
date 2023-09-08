@@ -75,16 +75,12 @@ export const getRewarderAccount = async () => {
   return accounts[11];
 };
 
-let lastCvxPerVotium = BigNumber.from(0);
-
 // do everything that would happen on mainnet when time passes by 1 epoch
 // call vlcvx checkpoint(), rewarder account claims rewards every other epoch, etc
 export const increaseTime1Epoch = async (
   votiumStrategy: VotiumErc20Strategy,
   noRewards: boolean = false
 ) => {
-  if (lastCvxPerVotium.eq(0))
-    lastCvxPerVotium = await votiumStrategy.cvxPerVotium();
   await incrementVlcvxEpoch();
 
   const currentEpoch = await getCurrentEpoch();
