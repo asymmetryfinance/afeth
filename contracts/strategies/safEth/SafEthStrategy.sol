@@ -40,7 +40,6 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         uint256 _amount
     ) external virtual override returns (uint256 withdrawId) {
         _burn(msg.sender, _amount);
-
         latestWithdrawId++;
         emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
         withdrawIdToAmount[latestWithdrawId] = _amount;

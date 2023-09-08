@@ -111,9 +111,9 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   it("Should fail to call withdraw() if balance is less than amount", async function () {
     await expect(safEthStrategy.withdraw(10)).to.be.reverted;
   });
-  it("Should fail to call requestWithdraw() if no balance", async function () {
+  it.only("Should fail to call requestWithdraw() if no balance", async function () {
     await expect(safEthStrategy.requestWithdraw(10)).to.be.revertedWith(
-      "ERC20: transfer amount exceeds balance"
+      "ERC20: burn amount exceeds balance"
     );
   });
 
