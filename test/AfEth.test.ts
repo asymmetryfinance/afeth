@@ -527,24 +527,24 @@ describe("Test AfEth", async function () {
 
     expect(ethBalanceAfterWithdraw1).gt(ethBalanceBeforeWithdraw1);
     expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
-    const initialStakeRewards = (
+    const estimatedInitialStakeRewards = (
       await afEth.balanceOf(accounts[initialStakeAccount].address)
     )
       .mul(await afEth.price())
       .sub(initialStake)
       .div(ethers.utils.parseEther("1"));
-    console.log({ initialStakeRewards });
+
     const rewardAmount1 = ethReceived1.sub(depositAmount);
     const rewardAmount2 = ethReceived2.sub(depositAmount);
 
-    // 2 ETH of rewards have been deposited.  All rewards should total to around that
+    // 2 ETH of rewards have been deposited.  All rewards should total to around that (initial stake rewards are estimated through price)
     expect(
       within1Percent(
-        initialStakeRewards.add(rewardAmount1).add(rewardAmount2),
+        estimatedInitialStakeRewards.add(rewardAmount1).add(rewardAmount2),
         ethers.utils.parseEther("2")
       )
     );
-    console.log(afEthBalanceBeforeRequest2.mul(await afEth.price()));
+
     expect("1512947469045080208").eq(rewardAmount1.toString());
     expect("313507789960225420").eq(rewardAmount2.toString());
   });
