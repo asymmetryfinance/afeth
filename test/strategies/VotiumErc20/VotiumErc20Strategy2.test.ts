@@ -402,7 +402,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     await tx.wait();
   });
 
-  it.only("Should use withdrawTime() to know when is ok to withdraw", async function () {
+  it("Should use withdrawTime() to know when is ok to withdraw", async function () {
     let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
