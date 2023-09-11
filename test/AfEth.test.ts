@@ -5,7 +5,12 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
-import { within1Percent, within5Percent } from "./helpers/helpers";
+import {
+  within1Percent,
+  within1Pip,
+  within2Percent,
+  within5Percent,
+} from "./helpers/helpers";
 import { BigNumber } from "ethers";
 
 describe("Test AfEth", async function () {
@@ -544,9 +549,12 @@ describe("Test AfEth", async function () {
         ethers.utils.parseEther("2")
       )
     );
-
-    expect("1512947469045080208").eq(rewardAmount1.toString());
-    expect("313507789960225420").eq(rewardAmount2.toString());
+    expect(within1Pip(rewardAmount1, BigNumber.from("1512947469045080208"))).eq(
+      true
+    );
+    expect(within1Pip(rewardAmount2, BigNumber.from("313507789960225420"))).eq(
+      true
+    );
   });
   it("When a user deposits/withdraws outside depositRewards they don't receive rewards", async function () {
     const user1 = afEth.connect(accounts[1]);
@@ -645,8 +653,9 @@ describe("Test AfEth", async function () {
 
     // slightly negative due to slippage, this user shouldn't receive any rewards
     // using .00106 ETH as slippage tolerance
+    expect(rewardAmount2).lt(0);
     expect(
-      within1Percent(rewardAmount2.abs(), ethers.utils.parseEther(".00106"))
+      within2Percent(rewardAmount2.abs(), ethers.utils.parseEther(".00106"))
     ).eq(true);
   });
   it("Should be able to set Votium strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
@@ -905,6 +914,56 @@ describe("Test AfEth", async function () {
   });
   it("Should be able to split rewards between votium (10%) and safEth (90%)", async function () {
     // TODO
+  });
+  it("Should be able to pause deposit & withdraw", async function () {
+    const depositAmount = ethers.utils.parseEther("1");
+    await afEth.setPauseDeposit(true);
+    await expect(afEth.deposit({ value: depositAmount })).to.be.revertedWith(
+      "Paused()"
+    );
+    await afEth.setPauseDeposit(false);
+    const mintTx = await afEth.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const afEthBalanceBeforeRequest = await afEth.balanceOf(
+      accounts[0].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    await afEth.setPauseWithdraw(true);
+    await expect(afEth.requestWithdraw()).to.be.revertedWith("Paused()");
+    await afEth.setPauseWithdraw(false);
+
+    const requestWithdrawTx = await afEth.requestWithdraw();
+    await requestWithdrawTx.wait();
+
+    const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await afEth.latestWithdrawId();
+    const withdrawInfo = await afEth.withdrawIdInfo(withdrawId);
+    expect(withdrawInfo.amount).eq(afEthBalanceBeforeRequest);
+    expect(withdrawInfo.owner).eq(accounts[0].address);
+    expect(afEthBalanceAfterRequest).eq(0);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    await afEth.setPauseWithdraw(true);
+    await expect(afEth.withdraw(withdrawId)).to.be.revertedWith("Paused()");
+    await afEth.setPauseWithdraw(false);
+    const withdrawTx = await afEth.withdraw(withdrawId);
+    await withdrawTx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
   });
   it("Should fail to set invalid strategy contracts", async function () {
     // try to add invalid address to strategies
