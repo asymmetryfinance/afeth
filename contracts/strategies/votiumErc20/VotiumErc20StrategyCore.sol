@@ -43,8 +43,8 @@ contract VotiumErc20StrategyCore is
     }
 
     uint256 public cvxUnlockObligations;
-    address rewarder;
-    address manager;
+    address public rewarder;
+    address public manager;
 
     // share of votium rewards to be deposited back into safEth
     // TODO this should come from manager contract
