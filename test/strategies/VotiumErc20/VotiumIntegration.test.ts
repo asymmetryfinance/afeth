@@ -7,16 +7,17 @@ import {
   increaseTime1Epoch,
   randomStakeUnstakeWithdraw,
   sumRecord,
-  totalEthRewarded,
+  totalEventEthRewarded,
   unstakingTimes,
   getTvl,
   requestWithdrawForUser,
   totalUserEthBalance,
-  userTxFees,
+  estimatedRewardInfo,
 } from "./IntegrationHelpers";
-import { within3Percent } from "../../helpers/helpers";
+import { within1Pip, within3Percent } from "../../helpers/helpers";
 import { expect } from "chai";
 import { getCurrentEpoch } from "./VotiumTestHelpers";
+import { BigNumber } from "ethers";
 
 const userCount = 6;
 const epochCount = 66;
@@ -24,7 +25,7 @@ const userInteractionsPerEpoch = 2;
 
 const startingEthBalances: any = [];
 
-describe.only("Votium integration test", async function () {
+describe("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -162,31 +163,58 @@ describe.only("Votium integration test", async function () {
       ethers.BigNumber.from(0)
     );
     const totalUserBalances = await totalUserEthBalance();
-    const totalEthRewarded2 = totalUserBalances.sub(totalStartingBalances);
+    const totalEthRewarded = totalUserBalances.sub(totalStartingBalances);
 
     // this varies so much (4% tolerance) because with each passing week something happens to the price of cvx in the LP
     // likely because its a TWAP so the price is changing a decent amount in these tests as weeks pass
     // in reality it should be  much lower variance
-    expect(within3Percent(totalEthRewarded, totalEthRewarded2)).eq(true);
+    expect(within3Percent(totalEventEthRewarded, totalEthRewarded)).eq(true);
   });
 
-  it("Should be able to predict how much each user earned in rewards based on how much they had staked each time rewards were distributed", async function () {
-    // TODO
+  it("Should be able to predict how much each user (and systemwide rewards) earned in rewards based on how much they had staked each time rewards were distributed", async function () {
+    let totalRewardsEstimate = ethers.BigNumber.from(0);
+    for (let i = 0; i < estimatedRewardInfo.length; i++) {
+      const rewards = sumRecord(estimatedRewardInfo[i]);
+      totalRewardsEstimate = totalRewardsEstimate.add(rewards);
+    }
+    const userAccounts = await getUserAccounts();
+
+    let trueRewardSum = BigNumber.from(0);
+    for (let i = 0; i < userCount; i++) {
+      const userAcount = userAccounts[i];
+      const ethBalance: any = await ethers.provider.getBalance(
+        userAcount.address
+      );
+
+      const trueRewards = ethBalance.sub(startingEthBalances[i]);
+      trueRewardSum = trueRewardSum.add(trueRewards);
+    }
+
+    expect(within1Pip(totalRewardsEstimate, totalEventEthRewarded)).eq(true);
+    expect(within3Percent(totalEventEthRewarded, trueRewardSum)).eq(true);
+    expect(within3Percent(totalRewardsEstimate, trueRewardSum)).eq(true);
   });
 
-  it("Should be able to predict total rewards earned systemwide based on total staked each time rewards were distributed", async function () {
-    // TODO
-  });
+  it("Should have an average unlock time of less than 17 weeks, never more than 17 weeks", async function () {
+    const byUserAddress = Object.values(unstakingTimes);
 
-  it("Should have an average unlock time of less than 16 weeks", async function () {
-    // TODO
-  });
+    let totalLength = 0;
+    let unstakeCount = 0;
+    for (let i = 0; i < byUserAddress.length; i++) {
+      const values = Object.values(byUserAddress[i]);
 
-  it("Should never take more than 16 weeks to unlock", async function () {
-    // TODO
-  });
+      for (let j = 0; j < values.length; j++) {
+        const unstakingLength =
+          values[j].epochEligible - values[j].epochRequested;
+        expect(unstakingLength).lte(17);
+        totalLength += unstakingLength;
+        unstakeCount++;
+      }
+    }
 
-  it("Should have some positions that only took 1 week to unlock", async function () {
-    // TODO
+    const averageUnstakingLength = totalLength / unstakeCount;
+    expect(averageUnstakingLength).lt(17);
+    expect(averageUnstakingLength).gt(0);
+    expect(averageUnstakingLength).eq(14.079710144927537); // this might change with new block numbers. not sure
   });
 });

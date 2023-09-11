@@ -47,7 +47,8 @@ export const unstakingTimes: UnstakingTimes = {};
 
 let randomSeed = 2;
 
-export let totalEthRewarded = BigNumber.from(0);
+// total eth rewarded summed from reward events
+export let totalEventEthRewarded = BigNumber.from(0);
 
 export const randomEthAmount = (min: number, max: number) => {
   return (min + deterministicRandom() * (max - min)).toFixed(18);
@@ -75,12 +76,9 @@ export const getRewarderAccount = async () => {
   return accounts[11];
 };
 
-export type EpochRewardInfo = {
-  expectedUserRewardAmounts: Record<UserAddress, BigNumber>; // how much eth each user is expected to receive from the reward based on their current balance vs totalSupply
-};
-
-// info about all stake balances each time rewards are applied. we we can calculate the rewards for each user
-const epochRewardInfo: EpochRewardInfo[] = [];
+// estimated rewards each user received each time rewards were applied
+// calculated as a percent of total supply at that time and the amount of rewards applied
+export const estimatedRewardInfo: Record<UserAddress, BigNumber>[] = [];
 
 // do everything that would happen on mainnet when time passes by 1 epoch
 // call vlcvx checkpoint(), rewarder account claims rewards every other epoch, etc
@@ -118,14 +116,8 @@ export const increaseTime1Epoch = async (
         .div(await votiumStrategy.totalSupply());
       expectedUserRewardAmounts.push(userRewardAmount);
     }
-    epochRewardInfo.push({
-      expectedUserRewardAmounts,
-    });
-    console.log(
-      "new epochRewardInfo:",
-      JSON.stringify(epochRewardInfo, null, 2)
-    );
-    totalEthRewarded = totalEthRewarded.add(rewardAmount);
+    estimatedRewardInfo.push(expectedUserRewardAmounts);
+    totalEventEthRewarded = totalEventEthRewarded.add(rewardAmount);
   }
 };
 
