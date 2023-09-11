@@ -75,6 +75,13 @@ export const getRewarderAccount = async () => {
   return accounts[11];
 };
 
+export type EpochRewardInfo = {
+  expectedUserRewardAmounts: Record<UserAddress, BigNumber>; // how much eth each user is expected to receive from the reward based on their current balance vs totalSupply
+};
+
+// info about all stake balances each time rewards are applied. we we can calculate the rewards for each user
+const epochRewardInfo: EpochRewardInfo[] = [];
+
 // do everything that would happen on mainnet when time passes by 1 epoch
 // call vlcvx checkpoint(), rewarder account claims rewards every other epoch, etc
 export const increaseTime1Epoch = async (
@@ -95,6 +102,10 @@ export const increaseTime1Epoch = async (
       // 3) its unrealistic to do such massive rewards with only a few users in the system
       await readJSONFromFile("./scripts/testDataSlippageSmall.json")
     );
+
+    epochRewardInfo.push({
+      expectedUserRewardAmounts: {}, // TODO
+    });
     totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
   }
 };
