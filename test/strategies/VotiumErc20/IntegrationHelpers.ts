@@ -47,7 +47,8 @@ export const unstakingTimes: UnstakingTimes = {};
 
 let randomSeed = 2;
 
-export let totalEthRewarded = BigNumber.from(0);
+// total eth rewarded summed from reward events
+export let totalEventEthRewarded = BigNumber.from(0);
 
 export const randomEthAmount = (min: number, max: number) => {
   return (min + deterministicRandom() * (max - min)).toFixed(18);
@@ -75,6 +76,10 @@ export const getRewarderAccount = async () => {
   return accounts[11];
 };
 
+// estimated rewards each user received each time rewards were applied
+// calculated as a percent of total supply at that time and the amount of rewards applied
+export const estimatedRewardInfo: Record<UserAddress, BigNumber>[] = [];
+
 // do everything that would happen on mainnet when time passes by 1 epoch
 // call vlcvx checkpoint(), rewarder account claims rewards every other epoch, etc
 export const increaseTime1Epoch = async (
@@ -95,7 +100,24 @@ export const increaseTime1Epoch = async (
       // 3) its unrealistic to do such massive rewards with only a few users in the system
       await readJSONFromFile("./scripts/testDataSlippageSmall.json")
     );
-    totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
+
+    const rewardAmount = rewardEvent?.args?.ethAmount;
+
+    const userAccounts = await getUserAccounts();
+
+    const expectedUserRewardAmounts: any = [];
+
+    for (let i = 0; i < userAccounts.length; i++) {
+      const userAcount = userAccounts[i];
+      const userBalance = await votiumStrategy.balanceOf(userAcount.address);
+
+      const userRewardAmount = userBalance
+        .mul(rewardAmount)
+        .div(await votiumStrategy.totalSupply());
+      expectedUserRewardAmounts.push(userRewardAmount);
+    }
+    estimatedRewardInfo.push(expectedUserRewardAmounts);
+    totalEventEthRewarded = totalEventEthRewarded.add(rewardAmount);
   }
 };
 
@@ -110,21 +132,7 @@ export const randomStakeUnstakeWithdraw = async (
     randomEthAmount(0, parseFloat(ethers.utils.formatEther(maxStakeAmount)))
   );
 
-  const tx = await votiumStrategy.connect(userAcount).deposit({
-    value: stakeAmount,
-  });
-
-  if (!totalEthStaked[userAcount.address])
-    totalEthStaked[userAcount.address] = BigNumber.from(0);
-  totalEthStaked[userAcount.address] =
-    totalEthStaked[userAcount.address].add(stakeAmount);
-  const mined = await tx.wait();
-  const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-
-  if (!userTxFees[userAcount.address]) {
-    userTxFees[userAcount.address] = BigNumber.from(0);
-  }
-  userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
+  await depositForUser(votiumStrategy, userAcount, stakeAmount);
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
 
@@ -148,6 +156,32 @@ export const getTvl = async (votiumStrategy: VotiumErc20Strategy) => {
   const totalSupply = await votiumStrategy.totalSupply();
   const price = await votiumStrategy.price();
   return totalSupply.mul(price).div(ethers.utils.parseEther("1"));
+};
+
+export const depositForUser = async (
+  votiumStrategy: VotiumErc20Strategy,
+  userAcount: SignerWithAddress,
+  withdrawAmount: BigNumber
+) => {
+  const stakeAmount = ethers.utils.parseEther(
+    randomEthAmount(0, parseFloat(ethers.utils.formatEther(withdrawAmount)))
+  );
+
+  const tx = await votiumStrategy.connect(userAcount).deposit({
+    value: stakeAmount,
+  });
+
+  if (!totalEthStaked[userAcount.address])
+    totalEthStaked[userAcount.address] = BigNumber.from(0);
+  totalEthStaked[userAcount.address] =
+    totalEthStaked[userAcount.address].add(stakeAmount);
+  const mined = await tx.wait();
+  const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
+
+  if (!userTxFees[userAcount.address]) {
+    userTxFees[userAcount.address] = BigNumber.from(0);
+  }
+  userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
 };
 
 export const requestWithdrawForUser = async (
