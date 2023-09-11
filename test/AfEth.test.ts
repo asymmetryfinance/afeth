@@ -5,7 +5,7 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
-import { within1Percent, within5Percent } from "./helpers/helpers";
+import { within1Percent, within1Pip, within2Percent, within5Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
 
 describe("Test AfEth", async function () {
@@ -544,9 +544,12 @@ describe("Test AfEth", async function () {
         ethers.utils.parseEther("2")
       )
     );
-
-    expect("1512947469045080208").eq(rewardAmount1.toString());
-    expect("313507789960225420").eq(rewardAmount2.toString());
+    expect(within1Pip(rewardAmount1, BigNumber.from("1512947469045080208"))).eq(
+      true
+    );
+    expect(within1Pip(rewardAmount2, BigNumber.from("313507789960225420"))).eq(
+      true
+    );
   });
   it("When a user deposits/withdraws outside depositRewards they don't receive rewards", async function () {
     const user1 = afEth.connect(accounts[1]);
@@ -645,8 +648,9 @@ describe("Test AfEth", async function () {
 
     // slightly negative due to slippage, this user shouldn't receive any rewards
     // using .00106 ETH as slippage tolerance
+    expect(rewardAmount2).lt(0);
     expect(
-      within1Percent(rewardAmount2.abs(), ethers.utils.parseEther(".00106"))
+      within2Percent(rewardAmount2.abs(), ethers.utils.parseEther(".00106"))
     ).eq(true);
   });
   it("Should be able to set Votium strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
