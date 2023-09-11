@@ -110,21 +110,7 @@ export const randomStakeUnstakeWithdraw = async (
     randomEthAmount(0, parseFloat(ethers.utils.formatEther(maxStakeAmount)))
   );
 
-  const tx = await votiumStrategy.connect(userAcount).deposit({
-    value: stakeAmount,
-  });
-
-  if (!totalEthStaked[userAcount.address])
-    totalEthStaked[userAcount.address] = BigNumber.from(0);
-  totalEthStaked[userAcount.address] =
-    totalEthStaked[userAcount.address].add(stakeAmount);
-  const mined = await tx.wait();
-  const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
-
-  if (!userTxFees[userAcount.address]) {
-    userTxFees[userAcount.address] = BigNumber.from(0);
-  }
-  userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
+  await depositForUser(votiumStrategy, userAcount, stakeAmount);
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
 
@@ -148,6 +134,32 @@ export const getTvl = async (votiumStrategy: VotiumErc20Strategy) => {
   const totalSupply = await votiumStrategy.totalSupply();
   const price = await votiumStrategy.price();
   return totalSupply.mul(price).div(ethers.utils.parseEther("1"));
+};
+
+export const depositForUser = async (
+  votiumStrategy: VotiumErc20Strategy,
+  userAcount: SignerWithAddress,
+  withdrawAmount: BigNumber
+) => {
+  const stakeAmount = ethers.utils.parseEther(
+    randomEthAmount(0, parseFloat(ethers.utils.formatEther(withdrawAmount)))
+  );
+
+  const tx = await votiumStrategy.connect(userAcount).deposit({
+    value: stakeAmount,
+  });
+
+  if (!totalEthStaked[userAcount.address])
+    totalEthStaked[userAcount.address] = BigNumber.from(0);
+  totalEthStaked[userAcount.address] =
+    totalEthStaked[userAcount.address].add(stakeAmount);
+  const mined = await tx.wait();
+  const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
+
+  if (!userTxFees[userAcount.address]) {
+    userTxFees[userAcount.address] = BigNumber.from(0);
+  }
+  userTxFees[userAcount.address] = userTxFees[userAcount.address].add(txFee);
 };
 
 export const requestWithdrawForUser = async (

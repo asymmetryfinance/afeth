@@ -24,7 +24,7 @@ const userInteractionsPerEpoch = 2;
 
 const startingEthBalances: any = [];
 
-describe("Votium integration test", async function () {
+describe.only("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
