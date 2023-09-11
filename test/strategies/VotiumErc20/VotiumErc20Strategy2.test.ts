@@ -435,7 +435,9 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       await incrementVlcvxEpoch();
     }
 
-    console.log('current block timestamp1 is', (await ethers.provider.getBlock()).timestamp);
+    expect(withdrawTime).gt(
+      (await ethers.provider.getBlock("latest")).timestamp
+    );
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
       "Can't withdraw from future epoch"
     );
@@ -444,7 +446,9 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const ethBalanceBefore1 = await ethers.provider.getBalance(
       userAccount.address
     );
-    console.log('current block timestamp2 is', (await ethers.provider.getBlock()).timestamp);
+    expect(withdrawTime).lt(
+      (await ethers.provider.getBlock("latest")).timestamp
+    );
     await votiumStrategy.withdraw(withdrawId);
 
     const ethBalanceAfter1 = await ethers.provider.getBalance(

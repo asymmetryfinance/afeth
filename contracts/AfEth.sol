@@ -189,6 +189,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         return true;
     }
 
+    // TODO test this function
+    function withdrawTime(uint256 _amount) public view returns (uint256) {
+        uint256 highestTime = 0;
+        for (uint256 i = 0; i < strategies.length; i++) {
+            uint256 time = AbstractErc20Strategy(strategies[i].strategyAddress)
+                    .withdrawTime(_amount);
+            if (time > highestTime) highestTime = time;
+        }
+        return highestTime;
+    }
+
     /**
         @notice - Withdraw from each strategy
     */
