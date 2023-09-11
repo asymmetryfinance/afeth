@@ -906,6 +906,56 @@ describe("Test AfEth", async function () {
   it("Should be able to split rewards between votium (10%) and safEth (90%)", async function () {
     // TODO
   });
+  it("Should be able to pause deposit & withdraw", async function () {
+    const depositAmount = ethers.utils.parseEther("1");
+    await afEth.setPauseDeposit(true);
+    await expect(afEth.deposit({ value: depositAmount })).to.be.revertedWith(
+      "Paused()"
+    );
+    await afEth.setPauseDeposit(false);
+    const mintTx = await afEth.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const afEthBalanceBeforeRequest = await afEth.balanceOf(
+      accounts[0].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    await afEth.setPauseWithdraw(true);
+    await expect(afEth.requestWithdraw()).to.be.revertedWith("Paused()");
+    await afEth.setPauseWithdraw(false);
+
+    const requestWithdrawTx = await afEth.requestWithdraw();
+    await requestWithdrawTx.wait();
+
+    const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await afEth.latestWithdrawId();
+    const withdrawInfo = await afEth.withdrawIdInfo(withdrawId);
+    expect(withdrawInfo.amount).eq(afEthBalanceBeforeRequest);
+    expect(withdrawInfo.owner).eq(accounts[0].address);
+    expect(afEthBalanceAfterRequest).eq(0);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    await afEth.setPauseWithdraw(true);
+    await expect(afEth.withdraw(withdrawId)).to.be.revertedWith("Paused()");
+    await afEth.setPauseWithdraw(false);
+    const withdrawTx = await afEth.withdraw(withdrawId);
+    await withdrawTx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+
+    expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
+  });
   it("Should fail to set invalid strategy contracts", async function () {
     // try to add invalid address to strategies
     await expect(
