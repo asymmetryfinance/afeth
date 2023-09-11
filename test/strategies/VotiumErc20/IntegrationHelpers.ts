@@ -103,10 +103,29 @@ export const increaseTime1Epoch = async (
       await readJSONFromFile("./scripts/testDataSlippageSmall.json")
     );
 
+    const rewardAmount = rewardEvent?.args?.ethAmount;
+
+    const userAccounts = await getUserAccounts();
+
+    const expectedUserRewardAmounts: any = [];
+
+    for (let i = 0; i < userAccounts.length; i++) {
+      const userAcount = userAccounts[i];
+      const userBalance = await votiumStrategy.balanceOf(userAcount.address);
+
+      const userRewardAmount = userBalance
+        .mul(rewardAmount)
+        .div(await votiumStrategy.totalSupply());
+      expectedUserRewardAmounts.push(userRewardAmount);
+    }
     epochRewardInfo.push({
-      expectedUserRewardAmounts: {}, // TODO
+      expectedUserRewardAmounts,
     });
-    totalEthRewarded = totalEthRewarded.add(rewardEvent?.args?.ethAmount);
+    console.log(
+      "new epochRewardInfo:",
+      JSON.stringify(epochRewardInfo, null, 2)
+    );
+    totalEthRewarded = totalEthRewarded.add(rewardAmount);
   }
 };
 
