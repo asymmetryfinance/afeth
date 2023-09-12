@@ -34,6 +34,14 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error FailedToSend();
     error Paused();
 
+    event WithdrawRequest(
+        address indexed user,
+        uint256 amount,
+        uint256 withdrawId
+    );
+    event Withdraw(address indexed user, uint256 withdrawId, uint256 ethAmount);
+    event Deposit(address indexed user, uint256 ethAmount, uint256 afEthAmount);
+
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
         _;
@@ -161,6 +169,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         }
         uint256 amountToMint = totalValue / priceBeforeDeposit;
         _mint(msg.sender, amountToMint);
+        emit Deposit(msg.sender, amount, amountToMint);
     }
 
     /**
@@ -222,6 +231,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = _amount;
+        emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
         return latestWithdrawId;
     }
 
@@ -249,13 +259,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - Withdraw from each strategy
     */
     function withdraw(
-        uint256 withdrawId
-    ) external virtual onlyWithdrawIdOwner(withdrawId) {
+        uint256 _withdrawId
+    ) external virtual onlyWithdrawIdOwner(_withdrawId) {
         if (pauseWithdraw) revert Paused();
         uint256 ethBalanceBefore = address(this).balance;
-        uint256[] memory strategyWithdrawIds = withdrawIdInfo[withdrawId]
+        uint256[] memory strategyWithdrawIds = withdrawIdInfo[_withdrawId]
             .strategyWithdrawIds;
-        if (!canWithdraw(withdrawId)) revert CanNotWithdraw();
+        if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
         for (uint256 i = 0; i < strategyWithdrawIds.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
@@ -263,13 +273,14 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             strategy.withdraw(strategyWithdrawIds[i]);
         }
 
-        _burn(address(this), withdrawIdInfo[withdrawId].amount);
+        _burn(address(this), withdrawIdInfo[_withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         if (!sent) revert FailedToSend();
+        emit Withdraw(msg.sender, _withdrawId, ethReceived);
     }
 
     receive() external payable {}
