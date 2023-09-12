@@ -54,7 +54,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
         ISafEth(safEthAddress).unstake(
             withdrawAmount,
-            0 // TODO: set minAmount
+            0 // this is handled at the afEth level
         );
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;

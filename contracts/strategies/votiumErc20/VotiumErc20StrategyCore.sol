@@ -198,7 +198,7 @@ contract VotiumErc20StrategyCore is
             0,
             1,
             _ethAmountIn,
-            0 // TODO minout to something
+            0 // this is handled at the afEth level
         );
         uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
         cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;
@@ -216,7 +216,7 @@ contract VotiumErc20StrategyCore is
             1,
             0,
             _cvxAmountIn,
-            0 // TODO minout to something
+            0 // this is handled at the afEth level
         );
         ethAmountOut = address(this).balance - ethBalanceBefore;
     }
