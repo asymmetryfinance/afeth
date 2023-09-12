@@ -167,7 +167,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             ILockedCvx.LockedBalance[] memory lockedBalances
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
-
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             IERC20(CVX_ADDRESS).balanceOf(address(this));
 

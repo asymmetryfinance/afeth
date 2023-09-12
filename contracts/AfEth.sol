@@ -145,18 +145,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Request to close position
     */
-    function requestWithdraw() external virtual returns (uint256 withdrawId) {
+    function requestWithdraw(uint256 _amount) external virtual returns (uint256 withdrawId) {
         latestWithdrawId++;
-        uint256 amount = balanceOf(msg.sender);
 
         // ratio of afEth being withdrawn to totalSupply
         // we are transfering the afEth to the contract when we requestWithdraw
         // we shouldn't include that in the withdrawRatio
         uint256 afEthBalance = balanceOf(address(this));
-        uint256 withdrawRatio = (amount * 1e18) /
+        uint256 withdrawRatio = (_amount * 1e18) /
             (totalSupply() - afEthBalance);
 
-        _transfer(msg.sender, address(this), amount);
+        _transfer(msg.sender, address(this), _amount);
         withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
             strategies.length
         );
@@ -175,7 +174,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             ] = strategyWithdrawId;
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
-        withdrawIdInfo[latestWithdrawId].amount = amount;
+        withdrawIdInfo[latestWithdrawId].amount = _amount;
         return latestWithdrawId;
     }
 
