@@ -166,19 +166,20 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Request to close position
     */
-    function requestWithdraw() external virtual returns (uint256 withdrawId) {
+    function requestWithdraw(
+        uint256 _amount
+    ) external virtual returns (uint256 withdrawId) {
         if (pauseWithdraw) revert Paused();
         latestWithdrawId++;
-        uint256 amount = balanceOf(msg.sender);
 
         // ratio of afEth being withdrawn to totalSupply
         // we are transfering the afEth to the contract when we requestWithdraw
         // we shouldn't include that in the withdrawRatio
         uint256 afEthBalance = balanceOf(address(this));
-        uint256 withdrawRatio = (amount * 1e18) /
+        uint256 withdrawRatio = (_amount * 1e18) /
             (totalSupply() - afEthBalance);
 
-        _transfer(msg.sender, address(this), amount);
+        _transfer(msg.sender, address(this), _amount);
         withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
             strategies.length
         );
@@ -197,7 +198,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             ] = strategyWithdrawId;
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
-        withdrawIdInfo[latestWithdrawId].amount = amount;
+        withdrawIdInfo[latestWithdrawId].amount = _amount;
         return latestWithdrawId;
     }
 
@@ -209,6 +210,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             ) return false;
         }
         return true;
+    }
+
+    function withdrawTime(uint256 _amount) public view returns (uint256) {
+        uint256 highestTime = 0;
+        for (uint256 i = 0; i < strategies.length; i++) {
+            uint256 time = AbstractErc20Strategy(strategies[i].strategyAddress)
+                .withdrawTime(_amount);
+            if (time > highestTime) highestTime = time;
+        }
+        return highestTime;
     }
 
     /**
