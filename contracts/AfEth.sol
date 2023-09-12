@@ -143,8 +143,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Deposits into each strategy
         @dev - This is the entry into the protocol
+        @param _minout - Minimum amount of afEth to mint
     */
-    function deposit() external payable virtual {
+    function deposit(uint256 _minout) external payable virtual {
         if (pauseDeposit) revert Paused();
         uint256 amount = msg.value;
         uint256 totalValue = 0;
@@ -160,6 +161,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             totalValue += (mintAmount * strategy.price());
         }
         uint256 amountToMint = totalValue / priceBeforeDeposit;
+        require(amountToMint >= _minout, "Slippage");
         _mint(msg.sender, amountToMint);
     }
 
@@ -224,15 +226,18 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Withdraw from each strategy
+        @param _withdrawId - Id of the withdraw request
+        @param _minout - Minimum amount of ETH to receive
     */
     function withdraw(
-        uint256 withdrawId
-    ) external virtual onlyWithdrawIdOwner(withdrawId) {
+        uint256 _withdrawId,
+        uint256 _minout
+    ) external virtual onlyWithdrawIdOwner(_withdrawId) {
         if (pauseWithdraw) revert Paused();
         uint256 ethBalanceBefore = address(this).balance;
-        uint256[] memory strategyWithdrawIds = withdrawIdInfo[withdrawId]
+        uint256[] memory strategyWithdrawIds = withdrawIdInfo[_withdrawId]
             .strategyWithdrawIds;
-        if (!canWithdraw(withdrawId)) revert CanNotWithdraw();
+        if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
         for (uint256 i = 0; i < strategyWithdrawIds.length; i++) {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
@@ -240,10 +245,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             strategy.withdraw(strategyWithdrawIds[i]);
         }
 
-        _burn(address(this), withdrawIdInfo[withdrawId].amount);
+        _burn(address(this), withdrawIdInfo[_withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
+        require(ethReceived >= _minout, "Slippage");
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         if (!sent) revert FailedToSend();
