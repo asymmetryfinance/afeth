@@ -8,7 +8,7 @@ import { derivativeAbi } from "./abis/derivativeAbi";
 import { within1Percent, within1Pip, within5Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
 
-describe.only("Test AfEth", async function () {
+describe("Test AfEth", async function () {
   let afEth: AfEth;
   let safEthStrategy: SafEthStrategy;
   let votiumStrategy: VotiumErc20Strategy;
