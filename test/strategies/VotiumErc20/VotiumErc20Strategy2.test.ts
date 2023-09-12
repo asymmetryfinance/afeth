@@ -412,8 +412,6 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       await votiumStrategy.balanceOf(accounts[0].address)
     );
 
-    console.log("withdrawTime is", withdrawTime);
-
     tx = await votiumStrategy.requestWithdraw(
       await votiumStrategy.balanceOf(accounts[0].address)
     );

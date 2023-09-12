@@ -145,7 +145,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Request to close position
     */
-    function requestWithdraw(uint256 _amount) external virtual returns (uint256 withdrawId) {
+    function requestWithdraw(
+        uint256 _amount
+    ) external virtual returns (uint256 withdrawId) {
         latestWithdrawId++;
 
         // ratio of afEth being withdrawn to totalSupply
@@ -193,7 +195,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 highestTime = 0;
         for (uint256 i = 0; i < strategies.length; i++) {
             uint256 time = AbstractErc20Strategy(strategies[i].strategyAddress)
-                    .withdrawTime(_amount);
+                .withdrawTime(_amount);
             if (time > highestTime) highestTime = time;
         }
         return highestTime;

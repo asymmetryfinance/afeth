@@ -173,7 +173,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
-            if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations + cvxAmount) {
+            if (
+                totalLockedBalancePlusUnlockable >=
+                cvxUnlockObligations + cvxAmount
+            ) {
                 return lockedBalances[i].unlockTime;
             }
         }

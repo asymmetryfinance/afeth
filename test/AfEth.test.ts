@@ -3,10 +3,7 @@ import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
-import {
-  getCurrentEpoch,
-  incrementVlcvxEpoch,
-} from "./strategies/VotiumErc20/VotiumTestHelpers";
+import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import { within1Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
