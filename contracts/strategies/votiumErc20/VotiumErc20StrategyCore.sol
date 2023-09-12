@@ -198,7 +198,7 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - Allows owner to withdraw any stuck erc20 tokens 
+     * @notice - Allows owner to withdraw any stuck erc20 tokens
      * @notice - lets us handle any that were not successfully sold via cvx
      * @param _token - address of the token to withdraw
      */
