@@ -19,6 +19,9 @@ describe("Test AfEth", async function () {
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: SignerWithAddress[];
 
+  const initialStake = ethers.utils.parseEther(".1");
+  const initialStakeAccount = 11;
+
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
       method: "hardhat_reset",
@@ -97,8 +100,8 @@ describe("Test AfEth", async function () {
     const multiSigWst = wstEthDerivative.connect(multiSigSigner);
     await multiSigWst.setChainlinkFeed(chainLinkWstFeed.address);
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await afEth.connect(accounts[11]).deposit({
-      value: ethers.utils.parseEther(".1"),
+    const tx = await afEth.connect(accounts[initialStakeAccount]).deposit({
+      value: initialStake,
     });
     await tx.wait();
   };
@@ -107,7 +110,7 @@ describe("Test AfEth", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should mint, requestwithdraw, and withdraw afETH", async function () {
+  it("Should mint, requestwithdraw, and withdraw afETH with even ratios", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
@@ -117,9 +120,7 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await afEth.requestWithdraw(
-      afEthBalanceBeforeRequest
-    );
+    const requestWithdrawTx = await afEth.requestWithdraw();
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
@@ -147,14 +148,154 @@ describe("Test AfEth", async function () {
 
     expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
   });
+  it("Should mint, requestwithdraw, and withdraw afETH with 70/30 (votium/safEth) ratios", async function () {
+    await afEth.updateRatio(
+      votiumStrategy.address,
+      ethers.utils.parseEther(".7")
+    );
+    await afEth.updateRatio(
+      safEthStrategy.address,
+      ethers.utils.parseEther(".3")
+    );
+
+    const user1 = afEth.connect(accounts[1]);
+
+    const votiumBalanceBeforeDeposit1 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceBeforeDeposit1 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    let ratio = votiumBalanceBeforeDeposit1.div(safEthBalanceBeforeDeposit1);
+    expect(ratio).eq(598);
+
+    const depositAmount = ethers.utils.parseEther("1");
+    const mintTx = await user1.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceAfterDeposit1 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    ratio = votiumBalanceAfterDeposit1.div(safEthBalanceAfterDeposit1);
+    expect(ratio).eq(1283);
+
+    const afEthBalanceBeforeRequest = await user1.balanceOf(
+      accounts[1].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    const requestWithdrawTx = await user1.requestWithdraw();
+    await requestWithdrawTx.wait();
+
+    const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await user1.latestWithdrawId();
+    const withdrawInfo = await user1.withdrawIdInfo(withdrawId);
+    expect(withdrawInfo.amount).eq(afEthBalanceBeforeRequest);
+    expect(withdrawInfo.owner).eq(accounts[1].address);
+    expect(afEthBalanceAfterRequest).eq(0);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+
+    const withdrawTx = await user1.withdraw(withdrawId);
+    await withdrawTx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    const ethReceived = ethBalanceAfterWithdraw.sub(ethBalanceBeforeWithdraw);
+
+    expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
+    expect(within1Percent(ethReceived, depositAmount)).eq(true);
+  });
+  it("Should mint, requestwithdraw, and withdraw afETH with 70/30 (safEth/votium) ratios", async function () {
+    await afEth.updateRatio(
+      votiumStrategy.address,
+      ethers.utils.parseEther(".3")
+    );
+    await afEth.updateRatio(
+      safEthStrategy.address,
+      ethers.utils.parseEther(".7")
+    );
+
+    const user1 = afEth.connect(accounts[1]);
+
+    const votiumBalanceBeforeDeposit1 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceBeforeDeposit1 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    let ratio = votiumBalanceBeforeDeposit1.div(safEthBalanceBeforeDeposit1);
+    expect(ratio).eq(598);
+
+    const depositAmount = ethers.utils.parseEther("1");
+    const mintTx = await user1.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceAfterDeposit1 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    ratio = votiumBalanceAfterDeposit1.div(safEthBalanceAfterDeposit1);
+    expect(ratio).eq(279);
+
+    const afEthBalanceBeforeRequest = await user1.balanceOf(
+      accounts[1].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    const requestWithdrawTx = await user1.requestWithdraw();
+    await requestWithdrawTx.wait();
+
+    const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await user1.latestWithdrawId();
+    const withdrawInfo = await user1.withdrawIdInfo(withdrawId);
+    expect(withdrawInfo.amount).eq(afEthBalanceBeforeRequest);
+    expect(withdrawInfo.owner).eq(accounts[1].address);
+    expect(afEthBalanceAfterRequest).eq(0);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+
+    const withdrawTx = await user1.withdraw(withdrawId);
+    await withdrawTx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    const ethReceived = ethBalanceAfterWithdraw.sub(ethBalanceBeforeWithdraw);
+
+    expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
+    expect(within1Percent(ethReceived, depositAmount)).eq(true);
+  });
   it("Should fail to withdraw if epoch for votium hasn't been reached", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
 
-    const requestWithdrawTx = await afEth.requestWithdraw(
-      await afEth.balanceOf(accounts[0].address)
-    );
+    const requestWithdrawTx = await afEth.requestWithdraw();
     await requestWithdrawTx.wait();
     const withdrawId = await afEth.latestWithdrawId();
 
@@ -184,13 +325,9 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    const requestWithdrawTx1 = await user1.requestWithdraw(
-      afEthBalanceBeforeRequest1
-    );
+    const requestWithdrawTx1 = await user1.requestWithdraw();
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw(
-      afEthBalanceBeforeRequest2
-    );
+    const requestWithdrawTx2 = await user2.requestWithdraw();
     await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
@@ -257,13 +394,15 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    const requestWithdrawTx1 = await user1.requestWithdraw(
-      afEthBalanceBeforeRequest1
-    );
+    // deposit votium rewards
+    const tx = await votiumStrategy.depositRewards(depositAmount, {
+      value: depositAmount,
+    });
+    await tx.wait();
+
+    const requestWithdrawTx1 = await user1.requestWithdraw();
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw(
-      afEthBalanceBeforeRequest2
-    );
+    const requestWithdrawTx2 = await user2.requestWithdraw();
     await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
@@ -306,16 +445,14 @@ describe("Test AfEth", async function () {
     expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
 
     expect(within1Percent(ethReceived1, ethReceived2)).eq(true);
-    expect(within1Percent(ethReceived2, depositAmount)).eq(true);
 
-    // TODO: test splitting rewards
+    const rewardAmount1 = ethReceived1.sub(depositAmount);
+    const rewardAmount2 = ethReceived2.sub(depositAmount);
+
+    expect(within1Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
   it("Two users should be able to deposit at different times and split rewards appropriately", async function () {
     // user1 gets both rewards while user2 only gets the second
-    // TODO
-  });
-  it("When a user deposits/withdraws outside depositRewards they don't receive rewards", async function () {
-    // TODO
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[2]);
 
@@ -522,13 +659,252 @@ describe("Test AfEth", async function () {
     ).eq(true);
   });
   it("Should be able to set Votium strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
-    // TODO
+    const user1 = afEth.connect(accounts[1]);
+
+    const votiumBalanceBeforeDeposit1 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceBeforeDeposit1 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    const depositAmount = ethers.utils.parseEther("1");
+    let mintTx = await user1.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceAfterDeposit1 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    const afEthBalanceBeforeRequest = await user1.balanceOf(
+      accounts[1].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    // set votium strategy to 0 ratio
+    await afEth.updateRatio(votiumStrategy.address, 0);
+
+    const requestWithdrawTx = await user1.requestWithdraw();
+    await requestWithdrawTx.wait();
+
+    const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await user1.latestWithdrawId();
+    const withdrawInfo = await user1.withdrawIdInfo(withdrawId);
+    expect(withdrawInfo.amount).eq(afEthBalanceBeforeRequest);
+    expect(withdrawInfo.owner).eq(accounts[1].address);
+    expect(afEthBalanceAfterRequest).eq(0);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+
+    const withdrawTx = await user1.withdraw(withdrawId);
+    await withdrawTx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    const ethReceived = ethBalanceAfterWithdraw.sub(ethBalanceBeforeWithdraw);
+
+    expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
+    expect(within1Percent(ethReceived, depositAmount)).eq(true);
+
+    const votiumBalanceAfterWithdraw = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceAfterWithdraw = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    mintTx = await user1.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const votiumBalanceAfterDeposit2 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceAfterDeposit2 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    expect(
+      within1Percent(votiumBalanceBeforeDeposit1, votiumBalanceAfterWithdraw)
+    );
+    expect(
+      within1Percent(safEthBalanceBeforeDeposit1, safEthBalanceAfterWithdraw)
+    );
+    expect(
+      within1Percent(safEthBalanceBeforeDeposit1, safEthBalanceAfterWithdraw)
+    );
+
+    // Votium doesn't get more tokens once set to 0 ratio
+    expect(
+      within1Percent(votiumBalanceBeforeDeposit1, votiumBalanceAfterDeposit2)
+    );
+
+    expect(safEthBalanceAfterDeposit2).gt(safEthBalanceAfterWithdraw);
+    expect(votiumBalanceAfterDeposit1).gt(votiumBalanceBeforeDeposit1);
+    expect(safEthBalanceAfterDeposit1).gt(safEthBalanceBeforeDeposit1);
   });
   it("Should be able to set SafEth strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
-    // TODO
+    const user1 = afEth.connect(accounts[1]);
+
+    const votiumBalanceBeforeDeposit1 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceBeforeDeposit1 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    const depositAmount = ethers.utils.parseEther("1");
+    let mintTx = await user1.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceAfterDeposit1 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    const afEthBalanceBeforeRequest = await user1.balanceOf(
+      accounts[1].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    // set votium strategy to 0 ratio
+    await afEth.updateRatio(safEthStrategy.address, 0);
+
+    const requestWithdrawTx = await user1.requestWithdraw();
+    await requestWithdrawTx.wait();
+
+    const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await user1.latestWithdrawId();
+    const withdrawInfo = await user1.withdrawIdInfo(withdrawId);
+    expect(withdrawInfo.amount).eq(afEthBalanceBeforeRequest);
+    expect(withdrawInfo.owner).eq(accounts[1].address);
+    expect(afEthBalanceAfterRequest).eq(0);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+
+    const withdrawTx = await user1.withdraw(withdrawId);
+    await withdrawTx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    const ethReceived = ethBalanceAfterWithdraw.sub(ethBalanceBeforeWithdraw);
+
+    expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
+    expect(within1Percent(ethReceived, depositAmount)).eq(true);
+
+    const votiumBalanceAfterWithdraw = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceAfterWithdraw = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    mintTx = await user1.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const votiumBalanceAfterDeposit2 = await votiumStrategy.balanceOf(
+      afEth.address
+    );
+    const safEthBalanceAfterDeposit2 = await safEthStrategy.balanceOf(
+      afEth.address
+    );
+
+    expect(
+      within1Percent(votiumBalanceBeforeDeposit1, votiumBalanceAfterWithdraw)
+    );
+    expect(
+      within1Percent(safEthBalanceBeforeDeposit1, safEthBalanceAfterWithdraw)
+    );
+    expect(
+      within1Percent(safEthBalanceBeforeDeposit1, safEthBalanceAfterWithdraw)
+    );
+
+    // safEth doesn't get more tokens once set to 0 ratio
+    expect(
+      within1Percent(safEthBalanceBeforeDeposit1, safEthBalanceAfterDeposit2)
+    );
+
+    expect(votiumBalanceAfterDeposit2).gt(votiumBalanceAfterWithdraw);
+    expect(votiumBalanceAfterDeposit1).gt(votiumBalanceBeforeDeposit1);
+    expect(safEthBalanceAfterDeposit1).gt(safEthBalanceBeforeDeposit1);
   });
   it("Should be able to safely withdraw if requestedWithdraw then added a strategy", async function () {
-    // TODO
+    const user1 = afEth.connect(accounts[1]);
+
+    const depositAmount = ethers.utils.parseEther("1");
+    let mintTx = await user1.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const afEthBalanceBeforeRequest = await user1.balanceOf(
+      accounts[1].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    const requestWithdrawTx = await user1.requestWithdraw();
+    await requestWithdrawTx.wait();
+
+    const votiumFactory = await ethers.getContractFactory(
+      "VotiumErc20Strategy"
+    );
+    const votiumStrategy2 = (await upgrades.deployProxy(votiumFactory, [
+      accounts[0].address,
+      accounts[0].address,
+      afEth.address,
+    ])) as VotiumErc20Strategy;
+    await afEth.addStrategy(
+      votiumStrategy2.address,
+      ethers.utils.parseEther(".5")
+    );
+
+    const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await user1.latestWithdrawId();
+    const withdrawInfo = await user1.withdrawIdInfo(withdrawId);
+    expect(withdrawInfo.amount).eq(afEthBalanceBeforeRequest);
+    expect(withdrawInfo.owner).eq(accounts[1].address);
+    expect(afEthBalanceAfterRequest).eq(0);
+
+    const ethBalanceBeforeWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+
+    const withdrawTx = await user1.withdraw(withdrawId);
+    await withdrawTx.wait();
+
+    const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    const ethReceived = ethBalanceAfterWithdraw.sub(ethBalanceBeforeWithdraw);
+
+    expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
+    expect(within1Percent(ethReceived, depositAmount)).eq(true);
+
+    mintTx = await user1.deposit({ value: depositAmount });
+    await mintTx.wait();
   });
   it("Should be able to split rewards evenly between votium and safEth", async function () {
     // TODO
