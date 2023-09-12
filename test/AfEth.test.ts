@@ -120,7 +120,9 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await afEth.requestWithdraw();
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
@@ -189,7 +191,9 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
@@ -260,7 +264,9 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
@@ -295,7 +301,9 @@ describe("Test AfEth", async function () {
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
 
-    const requestWithdrawTx = await afEth.requestWithdraw();
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
     const withdrawId = await afEth.latestWithdrawId();
 
@@ -325,9 +333,13 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    const requestWithdrawTx1 = await user1.requestWithdraw();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
@@ -400,9 +412,13 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    const requestWithdrawTx1 = await user1.requestWithdraw();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
@@ -487,9 +503,13 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    const requestWithdrawTx1 = await user1.requestWithdraw();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
@@ -588,9 +608,13 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    const requestWithdrawTx1 = await user1.requestWithdraw();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     mined = await requestWithdrawTx2.wait();
     user2GasUsed = user2GasUsed.add(mined.gasUsed.mul(mined.effectiveGasPrice));
 
@@ -687,7 +711,9 @@ describe("Test AfEth", async function () {
     // set votium strategy to 0 ratio
     await afEth.updateRatio(votiumStrategy.address, 0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
@@ -782,7 +808,9 @@ describe("Test AfEth", async function () {
     // set votium strategy to 0 ratio
     await afEth.updateRatio(safEthStrategy.address, 0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
@@ -860,7 +888,9 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const votiumFactory = await ethers.getContractFactory(
@@ -931,10 +961,14 @@ describe("Test AfEth", async function () {
     expect(afEthBalanceBeforeRequest).gt(0);
 
     await afEth.setPauseWithdraw(true);
-    await expect(afEth.requestWithdraw()).to.be.revertedWith("Paused()");
+    await expect(
+      afEth.requestWithdraw(await afEth.balanceOf(accounts[0].address))
+    ).to.be.revertedWith("Paused()");
     await afEth.setPauseWithdraw(false);
 
-    const requestWithdrawTx = await afEth.requestWithdraw();
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
