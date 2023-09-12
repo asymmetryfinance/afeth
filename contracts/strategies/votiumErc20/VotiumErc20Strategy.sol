@@ -96,9 +96,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             withdrawIdToWithdrawRequestInfo[withdrawId].owner == msg.sender,
             "Not withdraw request owner"
         );
-        uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[withdrawId]
-            .cvxOwed;
-
         require(
             this.canWithdraw(withdrawId),
             "Can't withdraw from future epoch"
@@ -109,35 +106,14 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             "already withdrawn"
         );
 
-        withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
+        relock();
 
-        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
-            address(this)
-        );
+        uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[withdrawId]
+            .cvxOwed;
 
-        if (unlockable > 0)
-            ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-
-        uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
-
-        uint256 cvxAmountToRelock = cvxBalance > cvxUnlockObligations
-            ? cvxBalance - cvxUnlockObligations
-            : 0;
-
+        uint256 ethReceived = sellCvx(cvxWithdrawAmount);
         cvxUnlockObligations -= cvxWithdrawAmount;
-
-        // relock everything minus unlock queue obligations
-        if (cvxAmountToRelock > 0) {
-            IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
-            ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
-        }
-
-        uint256 balanceBefore = address(this).balance;
-
-        sellCvx(cvxWithdrawAmount);
-
-        uint256 balanceAfter = address(this).balance;
-        uint256 ethReceived = balanceAfter - balanceBefore;
+        withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
 
         // TODO: use call to send eth instead
         payable(msg.sender).transfer(ethReceived);
