@@ -22,6 +22,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256[] strategyWithdrawIds;
     }
     mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
+    bool public pauseDeposit;
+    bool public pauseWithdraw;
 
     error StrategyAlreadyAdded();
     error StrategyNotFound();
@@ -30,6 +32,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error CanNotWithdraw();
     error NotOwner();
     error FailedToSend();
+    error Paused();
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
@@ -103,6 +106,23 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
+        @notice - Enables/Disables depositing
+        @param _pauseDeposit - Bool to set pauseDeposit
+
+    */
+    function setPauseDeposit(bool _pauseDeposit) external onlyOwner {
+        pauseDeposit = _pauseDeposit;
+    }
+
+    /**
+        @notice - Enables/Disables withdrawing & requesting to withdraw
+        @param _pauseWithdraw - Bool to set pauseWithdraw
+    */
+    function setPauseWithdraw(bool _pauseWithdraw) external onlyOwner {
+        pauseWithdraw = _pauseWithdraw;
+    }
+
+    /**
         @notice - Get's the price of afEth
         @dev - Loops through each strategy and calculates the total value in ETH divided by supply of afETH tokens
     */
@@ -125,6 +145,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @dev - This is the entry into the protocol
     */
     function deposit() external payable virtual {
+        if (pauseDeposit) revert Paused();
         uint256 amount = msg.value;
         uint256 totalValue = 0;
         uint256 priceBeforeDeposit = price();
@@ -148,6 +169,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function requestWithdraw(
         uint256 _amount
     ) external virtual returns (uint256 withdrawId) {
+        if (pauseWithdraw) revert Paused();
         latestWithdrawId++;
 
         // ratio of afEth being withdrawn to totalSupply
@@ -207,6 +229,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function withdraw(
         uint256 withdrawId
     ) external virtual onlyWithdrawIdOwner(withdrawId) {
+        if (pauseWithdraw) revert Paused();
         uint256 ethBalanceBefore = address(this).balance;
         uint256[] memory strategyWithdrawIds = withdrawIdInfo[withdrawId]
             .strategyWithdrawIds;
