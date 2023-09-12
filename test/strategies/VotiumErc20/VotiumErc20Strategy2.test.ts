@@ -378,7 +378,10 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     for (let i = 0; i < 17; i++) {
       const currentEpoch = await getCurrentEpoch();
-      if (currentEpoch.eq(withdrawId)) break;
+      const info = await votiumStrategy.withdrawIdToWithdrawRequestInfo(
+        withdrawId
+      );
+      if (currentEpoch.eq(info.epoch)) break;
       await incrementVlcvxEpoch();
     }
 
@@ -456,5 +459,71 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const ethReceived1 = ethBalanceAfter1.sub(ethBalanceBefore1);
 
     expect(ethReceived1).gt(0);
+  });
+
+  it("Should cost less to withdraw if relock() has been called before someone before withdrawing", async function () {
+    let tx = await votiumStrategy.deposit({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+    let mined = await tx.wait();
+
+    let event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
+
+    let withdrawId = event?.args?.withdrawId;
+
+    for (let i = 0; i < 17; i++) {
+      const currentEpoch = await getCurrentEpoch();
+      const info = await votiumStrategy.withdrawIdToWithdrawRequestInfo(
+        withdrawId
+      );
+      if (currentEpoch.eq(info.epoch)) break;
+      await incrementVlcvxEpoch();
+    }
+
+    await incrementVlcvxEpoch();
+
+    tx = await votiumStrategy.withdraw(withdrawId);
+    mined = await tx.wait();
+
+    const txFeeNoRelock = mined.gasUsed.mul(mined.effectiveGasPrice);
+
+    tx = await votiumStrategy.deposit({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+    mined = await tx.wait();
+
+    event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
+
+    withdrawId = event?.args?.withdrawId;
+
+    for (let i = 0; i < 17; i++) {
+      const currentEpoch = await getCurrentEpoch();
+      const info = await votiumStrategy.withdrawIdToWithdrawRequestInfo(
+        withdrawId
+      );
+      if (currentEpoch.eq(info.epoch)) break;
+      await incrementVlcvxEpoch();
+    }
+
+    await incrementVlcvxEpoch();
+
+    tx = await votiumStrategy.relock();
+    await tx.wait();
+    tx = await votiumStrategy.withdraw(withdrawId);
+    mined = await tx.wait();
+
+    const txFeeRelock = mined.gasUsed.mul(mined.effectiveGasPrice);
+
+    expect(txFeeRelock).lt(txFeeNoRelock);
   });
 });
