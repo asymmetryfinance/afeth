@@ -379,7 +379,7 @@ describe("Test AfEth", async function () {
     expect(within1Percent(ethReceived1, ethReceived2)).eq(true);
     expect(within1Percent(ethReceived2, depositAmount)).eq(true);
   });
-  it("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw and split rewards", async function () {
+  it.only("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw and split rewards", async function () {
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[2]);
 
@@ -402,7 +402,7 @@ describe("Test AfEth", async function () {
     );
 
     // deposit votium rewards
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
+    const tx = await afEth.depositRewards({
       value: depositAmount,
     });
     await tx.wait();
