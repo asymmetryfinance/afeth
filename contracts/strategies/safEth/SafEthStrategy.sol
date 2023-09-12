@@ -75,4 +75,10 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     ) external view virtual override returns (bool) {
         return true;
     }
+
+    function withdrawTime(
+        uint256
+    ) external view virtual override returns (uint256) {
+        return block.timestamp;
+    }
 }

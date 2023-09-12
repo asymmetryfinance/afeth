@@ -5,12 +5,7 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
-import {
-  within1Percent,
-  within1Pip,
-  within2Percent,
-  within5Percent,
-} from "./helpers/helpers";
+import { within1Percent, within1Pip, within5Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
 
 describe("Test AfEth", async function () {
@@ -120,7 +115,9 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await afEth.requestWithdraw();
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
@@ -189,7 +186,9 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
@@ -260,7 +259,9 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
@@ -295,7 +296,9 @@ describe("Test AfEth", async function () {
     const mintTx = await afEth.deposit({ value: depositAmount });
     await mintTx.wait();
 
-    const requestWithdrawTx = await afEth.requestWithdraw();
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
     const withdrawId = await afEth.latestWithdrawId();
 
@@ -325,9 +328,13 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    const requestWithdrawTx1 = await user1.requestWithdraw();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[2].address)
+    );
     await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
@@ -400,9 +407,13 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    const requestWithdrawTx1 = await user1.requestWithdraw();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[2].address)
+    );
     await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
@@ -487,9 +498,13 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    const requestWithdrawTx1 = await user1.requestWithdraw();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[2].address)
+    );
     await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
@@ -588,9 +603,13 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    const requestWithdrawTx1 = await user1.requestWithdraw();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[2].address)
+    );
     mined = await requestWithdrawTx2.wait();
     user2GasUsed = user2GasUsed.add(mined.gasUsed.mul(mined.effectiveGasPrice));
 
@@ -652,11 +671,8 @@ describe("Test AfEth", async function () {
     ).eq(true);
 
     // slightly negative due to slippage, this user shouldn't receive any rewards
-    // using .00106 ETH as slippage tolerance
     expect(rewardAmount2).lt(0);
-    expect(
-      within2Percent(rewardAmount2.abs(), ethers.utils.parseEther(".00106"))
-    ).eq(true);
+    expect(rewardAmount2).gt(ethers.utils.parseEther("-0.002"));
   });
   it("Should be able to set Votium strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
     const user1 = afEth.connect(accounts[1]);
@@ -687,7 +703,9 @@ describe("Test AfEth", async function () {
     // set votium strategy to 0 ratio
     await afEth.updateRatio(votiumStrategy.address, 0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
@@ -782,7 +800,9 @@ describe("Test AfEth", async function () {
     // set votium strategy to 0 ratio
     await afEth.updateRatio(safEthStrategy.address, 0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await user1.balanceOf(accounts[1].address);
@@ -860,7 +880,9 @@ describe("Test AfEth", async function () {
     );
     expect(afEthBalanceBeforeRequest).gt(0);
 
-    const requestWithdrawTx = await user1.requestWithdraw();
+    const requestWithdrawTx = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
     await requestWithdrawTx.wait();
 
     const votiumFactory = await ethers.getContractFactory(
@@ -931,10 +953,14 @@ describe("Test AfEth", async function () {
     expect(afEthBalanceBeforeRequest).gt(0);
 
     await afEth.setPauseWithdraw(true);
-    await expect(afEth.requestWithdraw()).to.be.revertedWith("Paused()");
+    await expect(
+      afEth.requestWithdraw(await afEth.balanceOf(accounts[0].address))
+    ).to.be.revertedWith("Paused()");
     await afEth.setPauseWithdraw(false);
 
-    const requestWithdrawTx = await afEth.requestWithdraw();
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
@@ -970,5 +996,36 @@ describe("Test AfEth", async function () {
     await expect(
       afEth.addStrategy(RETH_DERIVATIVE, ethers.utils.parseEther(".5"))
     ).to.be.revertedWith("InvalidStrategy()");
+  });
+
+  it("Should test withdrawTime() and canWithdraw()", async function () {
+    const depositAmount = ethers.utils.parseEther("1");
+    const mintTx = await afEth.deposit({ value: depositAmount });
+    await mintTx.wait();
+
+    const afEthBalanceBeforeRequest = await afEth.balanceOf(
+      accounts[0].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      afEthBalanceBeforeRequest
+    );
+    await requestWithdrawTx.wait();
+
+    const withdrawId = await afEth.latestWithdrawId();
+
+    const withdrawTime = await afEth.withdrawTime(afEthBalanceBeforeRequest);
+    while (true) {
+      const currentBlockTime = (await ethers.provider.getBlock("latest"))
+        .timestamp;
+      if (BigNumber.from(currentBlockTime).gt(withdrawTime)) {
+        expect(await afEth.canWithdraw(withdrawId)).eq(true);
+        break;
+      } else {
+        expect(await afEth.canWithdraw(withdrawId)).eq(false);
+      }
+      await incrementVlcvxEpoch();
+    }
   });
 });

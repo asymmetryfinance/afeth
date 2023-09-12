@@ -401,4 +401,60 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
     await tx.wait();
   });
+
+  it("Should use withdrawTime() to know when is ok to withdraw", async function () {
+    let tx = await votiumStrategy.deposit({
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    const withdrawTime = await votiumStrategy.withdrawTime(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+
+    tx = await votiumStrategy.requestWithdraw(
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+    const mined = await tx.wait();
+
+    const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
+
+    const withdrawId = event?.args?.withdrawId;
+
+    // incremement to unlock epoch minus 1
+    for (let i = 0; i < 17; i++) {
+      const currentEpoch = await getCurrentEpoch();
+
+      const withdrawEpochMinus1 = (
+        await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+      ).epoch.sub(1);
+
+      if (currentEpoch.eq(withdrawEpochMinus1)) break;
+      await incrementVlcvxEpoch();
+    }
+
+    expect(withdrawTime).gt(
+      (await ethers.provider.getBlock("latest")).timestamp
+    );
+    await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
+      "Can't withdraw from future epoch"
+    );
+
+    await incrementVlcvxEpoch();
+    const ethBalanceBefore1 = await ethers.provider.getBalance(
+      userAccount.address
+    );
+    expect(withdrawTime).lt(
+      (await ethers.provider.getBlock("latest")).timestamp
+    );
+    await votiumStrategy.withdraw(withdrawId);
+
+    const ethBalanceAfter1 = await ethers.provider.getBalance(
+      userAccount.address
+    );
+
+    const ethReceived1 = ethBalanceAfter1.sub(ethBalanceBefore1);
+
+    expect(ethReceived1).gt(0);
+  });
 });
