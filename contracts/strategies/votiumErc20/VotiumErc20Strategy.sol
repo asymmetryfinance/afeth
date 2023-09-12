@@ -132,8 +132,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
         }
 
-        cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
-
         uint256 balanceBefore = address(this).balance;
 
         sellCvx(cvxWithdrawAmount);
@@ -144,6 +142,22 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         // TODO: use call to send eth instead
         payable(msg.sender).transfer(ethReceived);
         emit Withdraw(msg.sender, cvxWithdrawAmount, withdrawId, ethReceived);
+    }
+
+    function relock() public {
+        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+            address(this)
+        );
+        if (unlockable > 0)
+            ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
+        uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        uint256 cvxAmountToRelock = cvxBalance > cvxUnlockObligations
+            ? cvxBalance - cvxUnlockObligations
+            : 0;
+        if (cvxAmountToRelock > 0) {
+            IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
+            ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
+        }
     }
 
     function canWithdraw(
