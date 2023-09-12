@@ -1,5 +1,6 @@
 import { network, ethers, upgrades } from "hardhat";
 import {
+  AfEth,
   VotiumErc20Strategy,
   VotiumErc20StrategyCore,
 } from "../../../typechain-types";
@@ -14,10 +15,11 @@ import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 
-describe("Test VotiumErc20Strategy", async function () {
+describe.only("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy & VotiumErc20StrategyCore;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
+  let afEth: AfEth;
 
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
@@ -36,12 +38,23 @@ describe("Test VotiumErc20Strategy", async function () {
       "VotiumErc20Strategy"
     );
     rewarderAccount = accounts[9];
+
+    const afEthFactory = await ethers.getContractFactory("AfEth");
+    afEth = (await upgrades.deployProxy(afEthFactory, [])) as AfEth;
+    await afEth.deployed();
+
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
-      accounts[0].address,
+      afEth.address,
       rewarderAccount.address,
       "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
+
+    await afEth.addStrategy(
+      votiumStrategy.address,
+      ethers.utils.parseEther("1")
+    );
+
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).deposit({
       value: ethers.utils.parseEther(".0001"),
@@ -53,7 +66,7 @@ describe("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it.only("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),

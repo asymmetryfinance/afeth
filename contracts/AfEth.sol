@@ -156,7 +156,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             if (strategies[i].ratio == 0) continue;
             uint256 mintAmount = strategy.deposit{
                 value: (amount * strategies[i].ratio) / totalRatio
-            }(true);
+            }();
             totalValue += (mintAmount * strategy.price());
         }
         uint256 amountToMint = totalValue / priceBeforeDeposit;
@@ -180,7 +180,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 i == strategies.length - 1 ||
                 (strategyEthValue * 1e18) / totalEthValue < strategyRatio
             ) {
-                strategy.deposit{value: msg.value}(true);
+                strategy.deposit{value: msg.value}();
                 break;
             }
         }
