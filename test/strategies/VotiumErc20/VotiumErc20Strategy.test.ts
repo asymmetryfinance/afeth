@@ -15,7 +15,7 @@ import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 
-describe.only("Test VotiumErc20Strategy", async function () {
+describe("Test VotiumErc20Strategy", async function () {
   let votiumStrategy: VotiumErc20Strategy & VotiumErc20StrategyCore;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
@@ -44,9 +44,9 @@ describe.only("Test VotiumErc20Strategy", async function () {
     await afEth.deployed();
 
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
-      afEth.address,
+      accounts[0].address,
       rewarderAccount.address,
-      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
+      afEth.address,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
@@ -66,18 +66,18 @@ describe.only("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it.only("Should mint votiumEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
 
-    const afEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
+    const vEthBalance1 = await votiumStrategy.balanceOf(accounts[0].address);
     const totalSupply1 = await votiumStrategy.totalSupply();
 
     expect(totalSupply1).eq(
-      BigNumber.from(afEthBalance1).add(startingTotalSupply)
+      BigNumber.from(vEthBalance1).add(startingTotalSupply)
     );
 
     const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
@@ -113,7 +113,7 @@ describe.only("Test VotiumErc20Strategy", async function () {
     // balance after fully withdrawing is higher
     expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
-  it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function () {
+  it("Should mint vEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const stakerAmounts = 2;
 
@@ -125,8 +125,8 @@ describe.only("Test VotiumErc20Strategy", async function () {
         value: ethers.utils.parseEther("1"),
       });
       await tx.wait();
-      const afEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
-      runningBalance = runningBalance.add(afEthBalance);
+      const vEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
+      runningBalance = runningBalance.add(vEthBalance);
     }
 
     const totalSupply1 = await votiumStrategy.totalSupply();
@@ -389,8 +389,8 @@ describe.only("Test VotiumErc20Strategy", async function () {
       });
       await tx.wait();
 
-      const afEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
-      runningBalance = runningBalance.add(afEthBalance);
+      const vEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
+      runningBalance = runningBalance.add(vEthBalance);
     }
 
     const totalSupply1 = await votiumStrategy.totalSupply();
@@ -469,8 +469,8 @@ describe.only("Test VotiumErc20Strategy", async function () {
         value: stakeAmount.div(i),
       });
       await tx.wait();
-      const afEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
-      runningBalance = runningBalance.add(afEthBalance);
+      const vEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
+      runningBalance = runningBalance.add(vEthBalance);
     }
 
     const totalSupply1 = await votiumStrategy.totalSupply();
