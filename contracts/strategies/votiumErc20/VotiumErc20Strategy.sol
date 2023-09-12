@@ -32,13 +32,15 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         return (cvxPerVotium() * ethPerCvx()) / 1e18;
     }
 
-    function deposit() public payable override returns (uint256 mintAmount) {
+    function deposit(
+        bool _shouldMint
+    ) public payable override returns (uint256 mintAmount) {
         uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         mintAmount = ((cvxAmount * 1e18) / priceBefore);
-        _mint(msg.sender, mintAmount);
+        if (_shouldMint) _mint(msg.sender, mintAmount);
     }
 
     function requestWithdraw(

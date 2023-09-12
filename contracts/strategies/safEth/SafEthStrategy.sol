@@ -23,17 +23,13 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
     mapping(uint256 => uint256) public withdrawIdToAmount;
 
-    function deposit()
-        external
-        payable
-        virtual
-        override
-        returns (uint256 mintAmount)
-    {
+    function deposit(
+        bool _shouldMint
+    ) external payable virtual override returns (uint256 mintAmount) {
         mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
             0 // TODO: set minAmount
         );
-        _mint(msg.sender, mintAmount);
+        if (_shouldMint) _mint(msg.sender, mintAmount);
     }
 
     function requestWithdraw(

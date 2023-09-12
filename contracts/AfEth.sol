@@ -145,6 +145,25 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @dev - This is the entry into the protocol
     */
     function deposit() external payable virtual {
+        uint256 amountToMint = depositIntoStrategies(true);
+        _mint(msg.sender, amountToMint);
+    }
+
+    /**
+        @notice - Deposits rewards into each strategy
+    */
+    function depositRewards() external payable virtual {
+        depositIntoStrategies(false);
+    }
+
+    /**
+        @notice - This is used for depositing and adding rewards
+        @dev - This is used to deposit into strategies whether we mint or not
+        @dev - We mint afETH when depositing and don't mint when adding rewards
+    */
+    function depositIntoStrategies(
+        bool _shouldMint
+    ) private returns (uint256 amountToMint) {
         if (pauseDeposit) revert Paused();
         uint256 amount = msg.value;
         uint256 totalValue = 0;
@@ -156,11 +175,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             if (strategies[i].ratio == 0) continue;
             uint256 mintAmount = strategy.deposit{
                 value: (amount * strategies[i].ratio) / totalRatio
-            }();
+            }(_shouldMint);
             totalValue += (mintAmount * strategy.price());
         }
-        uint256 amountToMint = totalValue / priceBeforeDeposit;
-        _mint(msg.sender, amountToMint);
+        amountToMint = totalValue / priceBeforeDeposit;
     }
 
     /**
@@ -194,8 +212,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 strategies[i].strategyAddress
             ).requestWithdraw(strategyWithdrawAmount);
             withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[
-                i
-            ] = strategyWithdrawId;
+                    i
+                ] = strategyWithdrawId;
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = _amount;
@@ -247,16 +265,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         if (!sent) revert FailedToSend();
-    }
-
-    // deposit value to safEth side
-    function applySafEthReward() public payable {
-        // TODO mint msg.value of safEth strategy tokens
-    }
-
-    // deposit value to votium side
-    function applyVotiumReward() public payable {
-        // TODO mint msg.value to votium strategy tokens
     }
 
     receive() external payable {}

@@ -46,9 +46,6 @@ contract VotiumErc20StrategyCore is
     address public rewarder;
     address public manager;
 
-    // share of votium rewards to be deposited back into safEth
-    // TODO this should come from manager contract
-    uint256 safEthRewardsShare; // 1e17 = 50%
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
 
@@ -110,12 +107,6 @@ contract VotiumErc20StrategyCore is
         );
     }
 
-    function setSafEthRewardsShare(
-        uint256 _safEthRewardsShare
-    ) external onlyOwner {
-        safEthRewardsShare = _safEthRewardsShare;
-    }
-
     function setRewarder(address _rewarder) external onlyOwner {
         rewarder = _rewarder;
     }
@@ -163,20 +154,6 @@ contract VotiumErc20StrategyCore is
     ) public onlyRewarder {
         claimVotiumRewards(_claimProofs);
         claimVlCvxRewards();
-    }
-
-    /// anyone can deposit eth to make price go up
-    /// useful if we need to manually sell rewards ourselves
-    // TODO: anyone can lock all eth in the contract, maybe we should make this onlyOwner? Maybe ok?
-    function depositRewards(uint256 _amount) public payable {
-        uint256 safEthShare = (_amount * safEthRewardsShare) / 1e18;
-        uint256 votiumShare = _amount - safEthShare;
-        if (safEthShare > 0)
-            IAfEth(manager).applySafEthReward{value: safEthShare}();
-        uint256 cvxAmount = buyCvx(votiumShare);
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(cvxPerVotium(), votiumShare, cvxAmount);
     }
 
     function withdrawStuckTokens(address _token) public onlyOwner {
@@ -254,7 +231,9 @@ contract VotiumErc20StrategyCore is
         }
         uint256 ethBalanceAfter = address(this).balance;
 
-        depositRewards(ethBalanceAfter - ethBalanceBefore);
+        IAfEth(manager).depositRewards{
+            value: ethBalanceAfter - ethBalanceBefore
+        }();
     }
 
     function claimVotiumRewards(
