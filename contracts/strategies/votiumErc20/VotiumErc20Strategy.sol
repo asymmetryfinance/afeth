@@ -5,6 +5,8 @@ import "../AbstractErc20Strategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./VotiumErc20StrategyCore.sol";
 
+/// @title Votium Strategy Token
+/// @author Asymmetry Finance
 contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     event WithdrawRequest(
         address indexed user,
@@ -28,10 +30,18 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     mapping(uint256 => WithdrawRequestInfo)
         public withdrawIdToWithdrawRequestInfo;
 
+    /**
+     * @notice gets price in eth
+     * @return price in eth
+     */
     function price() external view override returns (uint256) {
         return (cvxPerVotium() * ethPerCvx()) / 1e18;
     }
 
+    /**
+     * @notice deposit eth to mint this token at current price
+     * @return mintAmount amount of tokens minted
+     */
     function deposit() public payable override returns (uint256 mintAmount) {
         uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
@@ -41,6 +51,11 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         _mint(msg.sender, mintAmount);
     }
 
+    /**
+     * @notice request to withdraw from strategy emits event with eligible withdraw epoch
+     * @notice burns afEth tokens and determines equivilent amount of cvx to start unlocking
+     * @param _amount amount to request withdraw
+     */
     function requestWithdraw(
         uint256 _amount
     ) public override returns (uint256 withdrawId) {
@@ -91,6 +106,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         revert("Invalid Locked Amount");
     }
 
+    /**
+     * @notice withdraws from requested withdraw if eligble epoch has passed
+     * @param withdrawId id of withdraw request
+     */
     function withdraw(uint256 withdrawId) external override {
         require(
             withdrawIdToWithdrawRequestInfo[withdrawId].owner == msg.sender,
@@ -120,6 +139,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         emit Withdraw(msg.sender, cvxWithdrawAmount, withdrawId, ethReceived);
     }
 
+    /**
+     * @notice relocks cvx while ensuring there is enough to cover all withdraw requests
+     * @notice this happens automatically on withdraw but will need to be manually called if nowithdraws happen in an epoch where locks are expiring
+     */
     function relock() public {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
@@ -136,6 +159,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         }
     }
 
+    /**
+     * @notice checks if withdraw request is eligible to be withdrawn
+     * @param withdrawId id of withdraw request
+     */
     function canWithdraw(
         uint256 withdrawId
     ) external view virtual override returns (bool) {
@@ -146,6 +173,11 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             withdrawIdToWithdrawRequestInfo[withdrawId].epoch <= currentEpoch;
     }
 
+    /**
+     * @notice checks how long it will take to withdraw a given amount
+     * @param _amount amount of afEth to check how long it will take to withdraw
+     * @return when it would be withdrawable requestWithdraw() is called now
+     */
     function withdrawTime(
         uint256 _amount
     ) external view virtual override returns (uint256) {
