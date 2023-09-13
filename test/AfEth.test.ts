@@ -401,7 +401,7 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    // deposit votium rewards
+    // deposit rewards
     const tx = await afEth.depositRewards({
       value: depositAmount,
     });

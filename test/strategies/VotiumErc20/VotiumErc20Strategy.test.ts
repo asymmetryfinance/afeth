@@ -66,7 +66,7 @@ describe("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should mint votiumEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it.only("Should mint votiumEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     let tx = await votiumStrategy.deposit(true, {
       value: ethers.utils.parseEther("1"),

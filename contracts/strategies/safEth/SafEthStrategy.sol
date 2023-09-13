@@ -19,6 +19,8 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         uint256 ethAmount
     );
 
+    event DepositReward(uint256 indexed newPrice, uint256 indexed ethAmount);
+
     uint256 latestWithdrawId;
 
     mapping(uint256 => uint256) public withdrawIdToAmount;
@@ -30,6 +32,11 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
             0 // TODO: set minAmount
         );
         if (_shouldMint) _mint(msg.sender, mintAmount);
+        else
+            emit DepositReward(
+                ISafEth(safEthAddress).approxPrice(false),
+                msg.value
+            );
     }
 
     function requestWithdraw(
