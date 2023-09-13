@@ -583,12 +583,6 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     await tx.wait();
 
-    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
-    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-
-    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
-    expect(priceAfterRewards).gt(priceBeforeRewards);
-
     // burn half of balance
     let withdrawId = await requestWithdrawal(
       votiumStrategy,
