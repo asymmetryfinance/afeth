@@ -233,7 +233,7 @@ contract VotiumErc20StrategyCore is
 
         IAfEth(manager).depositRewards{
             value: ethBalanceAfter - ethBalanceBefore
-        }();
+        }(address(this));
     }
 
     function claimVotiumRewards(
