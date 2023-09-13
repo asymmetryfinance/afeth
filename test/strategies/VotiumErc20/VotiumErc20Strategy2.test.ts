@@ -60,7 +60,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await votiumStrategy.connect(accounts[11]).deposit(true, {
+    const tx = await votiumStrategy.connect(accounts[11]).deposit({
       value: ethers.utils.parseEther("0.000001"),
     });
     await tx.wait();
@@ -71,7 +71,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   );
 
   it("Should allow user to withdraw ~original deposit if owner reward functions are never called", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -110,7 +110,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
   });
   it("Should only allow the rewarder to applyRewards()", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -133,7 +133,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     }
   });
   it("Should not be able to requestWithdraw for more than a users balance", async function () {
-    const tx = await votiumStrategy.deposit(true, {
+    const tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -147,7 +147,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
   });
   it("Should decrease users balance when requestWithdraw is called", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -163,7 +163,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
   it("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
-    const tx = await votiumStrategy.deposit(true, {
+    const tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -187,32 +187,33 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(within2Percent(ethReceived1, expectedEthReceived1)).eq(true);
   });
 
-  it("Should be able to deposit 100 eth depositRewards() with minimal slippage and price go up", async function () {
-    const depositAmountSmall = ethers.utils.parseEther("0.1");
-    const depositAmountLarge = ethers.utils.parseEther("100");
+  // TODO put this test equivilent into afEth tests (or delete if not applicable)
+  // it("Should be able to deposit 100 eth depositRewards() with minimal slippage and price go up", async function () {
+  //   const depositAmountSmall = ethers.utils.parseEther("0.1");
+  //   const depositAmountLarge = ethers.utils.parseEther("100");
 
-    const tx1 = await votiumStrategy.depositRewards(depositAmountSmall, {
-      value: depositAmountSmall,
-    });
-    const mined1 = await tx1.wait();
-    const e1 = mined1.events?.find((e) => e.event === "DepositReward");
-    const cvxOut1 = e1?.args?.cvxAmount;
+  //   const tx1 = await votiumStrategy.depositRewards(depositAmountSmall, {
+  //     value: depositAmountSmall,
+  //   });
+  //   const mined1 = await tx1.wait();
+  //   const e1 = mined1.events?.find((e) => e.event === "DepositReward");
+  //   const cvxOut1 = e1?.args?.cvxAmount;
 
-    const tx2 = await votiumStrategy.depositRewards(depositAmountLarge, {
-      value: depositAmountLarge,
-    });
-    const mined2 = await tx2.wait();
-    const e2 = mined2.events?.find((e) => e.event === "DepositReward");
-    const cvxOut2 = e2?.args?.cvxAmount;
+  //   const tx2 = await votiumStrategy.depositRewards(depositAmountLarge, {
+  //     value: depositAmountLarge,
+  //   });
+  //   const mined2 = await tx2.wait();
+  //   const e2 = mined2.events?.find((e) => e.event === "DepositReward");
+  //   const cvxOut2 = e2?.args?.cvxAmount;
 
-    const expectedCvxOut2 = cvxOut1.mul(1000);
+  //   const expectedCvxOut2 = cvxOut1.mul(1000);
 
-    expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
-  });
+  //   expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
+  // });
   it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
     const price0 = await votiumStrategy.price();
 
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -244,7 +245,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   });
 
   it("Should receive same cvx amount if withdrawing on the unlock epoch or after the unlock epoch", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -280,7 +281,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"));
 
-    tx = await votiumStrategy.deposit(true, {
+    tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -327,7 +328,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   });
 
   it("Should fail to withdraw 1 epoch before the withdraw epoch and succeed on or after the withdraw epoch", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -373,7 +374,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   });
 
   it("Should fail to withdraw from the same epoch twice", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -417,7 +418,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   });
 
   it("Should use withdrawTime() to know when is ok to withdraw", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -473,7 +474,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
   });
 
   it("Should cost less to withdraw if relock() has been called before someone before withdrawing", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -503,7 +504,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     const txFeeNoRelock = mined.gasUsed.mul(mined.effectiveGasPrice);
 
-    tx = await votiumStrategy.deposit(true, {
+    tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();

@@ -138,6 +138,7 @@ export const oracleApplyRewards = async (
     [],
     testData.swapsData
   );
+
   return sellEvent;
 };
 

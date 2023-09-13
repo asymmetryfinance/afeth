@@ -753,4 +753,19 @@ describe("Test VotiumErc20Strategy", async function () {
     stuckTokenBalance = await StuckTokenContract.balanceOf(accounts[0].address);
     expect(stuckTokenBalance).gt(0);
   });
+
+  // TODO put this test equivilent into afEth tests (or delete if not applicable)
+  // it("Should allow anyone apply rewards manually with depositRewards()", async function () {
+  //   const depositAmount = ethers.utils.parseEther("100");
+  //   const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
+
+  //   const tx = await votiumStrategy.depositRewards(depositAmount, {
+  //     value: depositAmount,
+  //   });
+  //   await tx.wait();
+
+  //   const priceAfterRewards = await votiumStrategy.cvxPerVotium();
+
+  //   expect(priceAfterRewards).gt(priceBeforeRewards);
+  // });
 });
