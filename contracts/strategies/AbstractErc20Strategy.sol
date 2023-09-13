@@ -10,7 +10,7 @@ abstract contract AbstractErc20Strategy is
     ReentrancyGuardUpgradeable,
     ERC20Upgradeable
 {
-    /// deposit into strategy
+    /// mint tokens with eth
     function deposit() external payable virtual returns (uint256);
 
     /// request to unlock strategy
@@ -22,14 +22,17 @@ abstract contract AbstractErc20Strategy is
     /// withdraw out of strategy
     function withdraw(uint256 withdrawId) external virtual;
 
-    // checks if a withdraw request can be withdrawn
+
+    /// check if possible to withdraw right now
     function canWithdraw(
         uint256 withdrawId
     ) external view virtual returns (bool);
 
-    // gets price of strategy in eth
+
+    /// price in eth
     function price() external view virtual returns (uint256);
 
+    /// how long would it take to withdraw _amount if requesting withdraw now
     function withdrawTime(
         uint256 _amount
     ) external view virtual returns (uint256);
