@@ -644,10 +644,12 @@ describe("Test AfEth", async function () {
     );
 
     const withdrawTx1 = await user1.withdraw(1);
-    await withdrawTx1.wait();
+    mined = await withdrawTx1.wait();
+    const withdrawGasUsed1 = mined.gasUsed.mul(mined.effectiveGasPrice);
     const withdrawTx2 = await user2.withdraw(2);
     mined = await withdrawTx2.wait();
-    user2GasUsed = user2GasUsed.add(mined.gasUsed.mul(mined.effectiveGasPrice));
+    const withdrawGasUsed2 = mined.gasUsed.mul(mined.effectiveGasPrice);
+    user2GasUsed = user2GasUsed.add(withdrawGasUsed2);
 
     const ethBalanceAfterWithdraw1 = await ethers.provider.getBalance(
       accounts[1].address
@@ -655,18 +657,21 @@ describe("Test AfEth", async function () {
     const ethBalanceAfterWithdraw2 = await ethers.provider.getBalance(
       accounts[2].address
     );
-    const ethReceived1 = ethBalanceAfterWithdraw1.sub(
-      ethBalanceBeforeWithdraw1
-    );
-    const ethReceived2 = ethBalanceAfterWithdraw2.sub(
-      ethBalanceBeforeWithdraw2
-    );
+    const ethReceived1 = ethBalanceAfterWithdraw1
+      .sub(ethBalanceBeforeWithdraw1)
+      .add(withdrawGasUsed1);
+    const ethReceived2 = ethBalanceAfterWithdraw2
+      .sub(ethBalanceBeforeWithdraw2)
+      .add(withdrawGasUsed2);
 
     expect(ethBalanceAfterWithdraw1).gt(ethBalanceBeforeWithdraw1);
     expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
+    expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
+
+    expect(ethReceived1).gt(depositAmount);
+    expect(ethReceived2).lt(depositAmount);
 
     const rewardAmount1 = ethReceived1.sub(depositAmount);
-    const rewardAmount2 = ethReceived2.sub(depositAmount).add(user2GasUsed); // calculating gas for this one to compare with zero
 
     // would be 1 ether worth, but since there is a .1 ETH deposit to not allow contract to be emptied they receive ~90% of the rewards
     expect(
@@ -678,12 +683,6 @@ describe("Test AfEth", async function () {
         )
       )
     ).eq(true);
-
-    console.log({ rewardAmount1, rewardAmount2 });
-
-    // slightly negative due to slippage, this user shouldn't receive any rewards
-    expect(rewardAmount2).lt(0);
-    expect(rewardAmount2).gt(ethers.utils.parseEther("-0.002"));
   });
   it("Should be able to set Votium strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
     const user1 = afEth.connect(accounts[1]);

@@ -218,18 +218,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function requestWithdraw(
         uint256 _amount
     ) external virtual returns (uint256 withdrawId) {
+        uint256 withdrawRatio = (_amount * 1e18) / totalSupply();
         if (pauseWithdraw) revert Paused();
-        _burn(address(this), _amount);
-
+        _burn(msg.sender, _amount);
         latestWithdrawId++;
-
-        // ratio of afEth being withdrawn to totalSupply
-        // we are transfering the afEth to the contract when we requestWithdraw
-        // we shouldn't include that in the withdrawRatio
-        uint256 afEthBalance = balanceOf(address(this));
-        uint256 withdrawRatio = (_amount * 1e18) /
-            (totalSupply() - afEthBalance);
-
         withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
             strategies.length
         );
@@ -237,7 +229,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             uint256 strategyBalance = ERC20Upgradeable(
                 strategies[i].strategyAddress
             ).balanceOf(address(this));
-
             uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) /
                 1e18;
             uint256 strategyWithdrawId = AbstractErc20Strategy(

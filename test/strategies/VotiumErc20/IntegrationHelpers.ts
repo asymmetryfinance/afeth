@@ -167,7 +167,7 @@ export const depositForUser = async (
     randomEthAmount(0, parseFloat(ethers.utils.formatEther(withdrawAmount)))
   );
 
-  const tx = await votiumStrategy.connect(userAcount).deposit(true, {
+  const tx = await votiumStrategy.connect(userAcount).deposit({
     value: stakeAmount,
   });
 
