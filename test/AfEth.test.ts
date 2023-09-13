@@ -463,8 +463,6 @@ describe("Test AfEth", async function () {
     const rewardAmount1 = ethReceived1.sub(depositAmount);
     const rewardAmount2 = ethReceived2.sub(depositAmount);
 
-    console.log({ rewardAmount1, rewardAmount2 });
-
     expect(within1Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
   it("Two users should be able to deposit at different times and split rewards appropriately", async function () {
@@ -667,7 +665,6 @@ describe("Test AfEth", async function () {
     expect(ethReceived2).lt(depositAmount);
 
     const rewardAmount1 = ethReceived1.sub(depositAmount);
-
     // would be 1 ether worth, but since there is a .1 ETH deposit to not allow contract to be emptied they receive ~90% of the rewards
     expect(
       within1Percent(

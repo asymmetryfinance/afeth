@@ -110,7 +110,6 @@ export async function votiumSellRewards(
   proofs: any,
   swapsDataOverride?: any
 ) {
-  console.log('votiumSellRewards1')
   const VotiumInterface = (
     await ethers.getContractFactory("VotiumErc20Strategy")
   ).interface as any;
@@ -122,8 +121,7 @@ export async function votiumSellRewards(
   if (swapsDataOverride) {
     const tx = await votiumStrategy.applyRewards(swapsDataOverride);
     const mined1 = await tx.wait();
-    console.log('mined1', mined1);
-    return mined1?.events?.find((e) => e?.event === "DepositReward");
+    return mined1?.events?.find((e) => e?.event === "Deposit");
   }
 
   const tokenAddresses = proofs.map((p: any) => p[0]);
@@ -131,8 +129,7 @@ export async function votiumSellRewards(
   const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
   const tx = await votiumStrategy.applyRewards(swapsData);
   const mined2 = await tx.wait();
-  console.log('mined2',mined2)
-  return mined2?.events?.find((e) => e?.event === "DepositReward");
+  return mined2?.events?.find((e) => e?.event === "Deposit");
 }
 
 const generateMockMerkleData = async (

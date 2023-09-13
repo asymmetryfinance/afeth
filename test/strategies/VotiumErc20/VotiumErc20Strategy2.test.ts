@@ -309,7 +309,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(within1Pip(ethReceived0, ethReceived1)).eq(true);
   });
 
-  it.only("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
+  it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
     const cvxTotalBefore = await votiumStrategy.cvxInSystem();
     const sellEventSmall = await oracleApplyRewards(
       rewarderAccount,
@@ -318,11 +318,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
     const cvxTotalAfter = await votiumStrategy.cvxInSystem();
     const totalCvxGain = cvxTotalAfter.sub(cvxTotalBefore);
-    console.log('sellEventSmall', sellEventSmall)
     const eventCvx = sellEventSmall?.args?.cvxAmount;
-
-    console.log('totalCvxGain', totalCvxGain.toString());
-    console.log('eventCvx', eventCvx.toString());
 
     expect(totalCvxGain).eq(eventCvx);
     expect(totalCvxGain).gt(0);

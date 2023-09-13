@@ -6,6 +6,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./VotiumErc20StrategyCore.sol";
 
 contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
+    event Deposit(address indexed user, uint256 cvxAmount, uint256 ethAmount);
     event WithdrawRequest(
         address indexed user,
         uint256 amount,
@@ -38,6 +39,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         mintAmount = ((cvxAmount * 1e18) / priceBefore);
+        emit Deposit(msg.sender, cvxAmount, msg.value);
         _mint(msg.sender, mintAmount);
     }
 
@@ -46,7 +48,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     ) public override returns (uint256 withdrawId) {
         latestWithdrawId++;
         uint256 _priceInCvx = cvxPerVotium();
-        console.log("this must be here");
         _burn(msg.sender, _amount);
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
