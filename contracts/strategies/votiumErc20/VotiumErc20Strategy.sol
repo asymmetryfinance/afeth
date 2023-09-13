@@ -46,7 +46,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     ) public override returns (uint256 withdrawId) {
         latestWithdrawId++;
         uint256 _priceInCvx = cvxPerVotium();
-
+        console.log('this must be here');
         _burn(msg.sender, _amount);
 
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
