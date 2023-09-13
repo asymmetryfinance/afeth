@@ -160,7 +160,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             }();
             totalValue += (mintAmount * strategy.price());
         }
-        uint256 amountToMint = totalValue / priceBeforeDeposit;
+        uint256 amountToMint = (totalValue / priceBeforeDeposit);
         require(amountToMint >= _minout, "Slippage");
         _mint(msg.sender, amountToMint);
     }
@@ -177,11 +177,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         // ratio of afEth being withdrawn to totalSupply
         // we are transfering the afEth to the contract when we requestWithdraw
         // we shouldn't include that in the withdrawRatio
-        uint256 afEthBalance = balanceOf(address(this));
         uint256 withdrawRatio = (_amount * 1e18) /
-            (totalSupply() - afEthBalance);
+            (totalSupply());
 
-        _transfer(msg.sender, address(this), _amount);
+        _burn(msg.sender, _amount);
+
         withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
             strategies.length
         );
@@ -242,10 +242,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
             );
+            console.log('withdrawing from strategy ', strategyWithdrawIds[i]);
             strategy.withdraw(strategyWithdrawIds[i]);
         }
 
-        _burn(address(this), withdrawIdInfo[_withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
@@ -255,14 +255,26 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (!sent) revert FailedToSend();
     }
 
-    // deposit value to safEth side
-    function applySafEthReward() public payable {
-        // TODO mint msg.value of safEth strategy tokens
-    }
-
-    // deposit value to votium side
-    function applyVotiumReward() public payable {
-        // TODO mint msg.value to votium strategy tokens
+    function depositRewards() external payable virtual {
+        uint256 totalEthValue = (totalSupply() * price()) / 1e18;
+        for (uint256 i; i < strategies.length; i++) {
+            if (strategies[i].ratio == 0) continue;
+            AbstractErc20Strategy strategy = AbstractErc20Strategy(
+                strategies[i].strategyAddress
+            );
+            uint256 strategyEthValue = (strategy.price() *
+                strategy.balanceOf(address(this))) / 1e18;
+            uint256 strategyRatio = (strategies[i].ratio * 1e18) / totalRatio;
+            // check if strategy is underweight or deposit if final iteration
+            if (
+                i == strategies.length - 1 ||
+                (strategyEthValue * 1e18) / totalEthValue < strategyRatio
+            ) {
+                // apply reward here
+                strategy.deposit{value: msg.value}();
+                break;
+            }
+        }
     }
 
     receive() external payable {}

@@ -28,18 +28,20 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         payable
         virtual
         override
-        returns (uint256 mintAmount)
+        returns (uint256)
     {
-        mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
+        uint256 priceBefore = this.price();
+        uint256 mintAmount = ISafEth(safEthAddress).stake{value: (msg.value)}(
             0 // TODO: set minAmount
         );
-        _mint(msg.sender, mintAmount);
+        uint256 mintAmountConverted = (mintAmount * 1e18) / priceBefore;
+        _mint(msg.sender, mintAmountConverted);
+        return mintAmountConverted;
     }
 
     function requestWithdraw(
         uint256 _amount
     ) external virtual override returns (uint256 withdrawId) {
-        console.log("requestWithdraw()", msg.sender, _amount);
         _burn(msg.sender, _amount);
         latestWithdrawId++;
         emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
@@ -49,16 +51,13 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
     function withdraw(uint256 _withdrawId) external virtual override {
         uint256 withdrawAmount = withdrawIdToAmount[_withdrawId];
-
         uint256 ethBalanceBefore = address(this).balance;
-
         ISafEth(safEthAddress).unstake(
             withdrawAmount,
             0 // this is handled at the afEth level
         );
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
-
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         require(sent, "Failed to send Ether");
@@ -67,7 +66,21 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     }
 
     function price() external view virtual override returns (uint256) {
-        return ISafEth(safEthAddress).approxPrice(false);
+        uint256 safEthStrategyBalance = IERC20(safEthAddress).balanceOf(address(this));
+        uint256 safEthTokenPrice = ISafEth(safEthAddress).approxPrice(false);
+        uint256 underlyingValue = (safEthStrategyBalance * safEthTokenPrice);
+        uint256 totalSupply = totalSupply();
+        if(totalSupply == 0 || underlyingValue == 0) {
+            return safEthTokenPrice;
+        }
+        console.log('*****');
+        console.log('safEthAddress', safEthAddress);
+        console.log('safEthTokenPrice', safEthTokenPrice);
+        console.log('safEth underlyingValue is', underlyingValue);
+        console.log('safEth totalSupply is', totalSupply);
+        uint256 p = (underlyingValue) / totalSupply;
+        console.log('safEth p is', p);
+        return p;
     }
 
     function canWithdraw(
@@ -80,5 +93,9 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         uint256
     ) external view virtual override returns (uint256) {
         return block.timestamp;
+    }
+
+    function depositRewards(uint256 _amount) public payable override {
+        // todo price go up
     }
 }

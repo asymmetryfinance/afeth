@@ -34,4 +34,6 @@ abstract contract AbstractErc20Strategy is
     function withdrawTime(
         uint256 _amount
     ) external view virtual returns (uint256);
+
+    function depositRewards(uint256 _amount) public payable virtual;
 }
