@@ -45,7 +45,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     const safEthStrategyBalanceBefore = await safEthStrategy.balanceOf(
       accounts[0].address
     );
-    const mintTx = await safEthStrategy.deposit({
+    const mintTx = await safEthStrategy.deposit(true, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();
@@ -87,7 +87,7 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     const safEthBalanceBefore = await safEthStrategy.balanceOf(
       accounts[0].address
     );
-    const mintTx = await safEthStrategy.deposit({
+    const mintTx = await safEthStrategy.deposit(true, {
       value: ethers.utils.parseEther("1"),
     });
     await mintTx.wait();

@@ -7,7 +7,6 @@ import {
 const votiumStrategyAddress = "0xbbba116ef0525cd5ea9f4a9c1f628c3bfc343261";
 
 (async function main() {
-  console.log("Why")
   const accounts = await ethers.getSigners();
   const proofs = await votiumClaimRewards(accounts[0], votiumStrategyAddress);
   await votiumSellRewards(accounts[0], votiumStrategyAddress, proofs);

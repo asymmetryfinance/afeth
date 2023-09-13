@@ -41,6 +41,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     );
     event Withdraw(address indexed user, uint256 withdrawId, uint256 ethAmount);
     event Deposit(address indexed user, uint256 ethAmount, uint256 afEthAmount);
+    event DepositReward(
+        uint256 indexed ethAmount,
+        address indexed strategyAddress
+    );
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
@@ -164,7 +168,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             if (strategies[i].ratio == 0) continue;
             uint256 mintAmount = strategy.deposit{
                 value: (amount * strategies[i].ratio) / totalRatio
-            }();
+            }(true);
             totalValue += (mintAmount * strategy.price());
         }
         uint256 amountToMint = totalValue / priceBeforeDeposit;
@@ -178,6 +182,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function depositRewards() external payable virtual {
         uint256 totalEthValue = (totalSupply() * price()) / 1e18;
         for (uint256 i; i < strategies.length; i++) {
+            if (strategies[i].ratio == 0) continue;
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
             );
@@ -189,7 +194,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 i == strategies.length - 1 ||
                 (strategyEthValue * 1e18) / totalEthValue < strategyRatio
             ) {
-                strategy.deposit{value: msg.value}();
+                strategy.deposit{value: msg.value}(false);
+                emit DepositReward(msg.value, strategies[i].strategyAddress);
                 break;
             }
         }
