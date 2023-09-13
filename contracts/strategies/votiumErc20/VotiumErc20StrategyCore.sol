@@ -256,7 +256,7 @@ contract VotiumErc20StrategyCore is
 
     /**
      * @notice - function for rewarder to sell all claimed token rewards and buy & lock more cvx
-     * @notice - causes price to go up
+     * @dev - causes price to go up
      * @param _swapsData - array of SwapData for 0x swaps
      */
     function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
