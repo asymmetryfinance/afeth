@@ -66,7 +66,7 @@ describe("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should mint votiumEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it("Should mint votiumEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     let tx = await votiumStrategy.deposit(true, {
       value: ethers.utils.parseEther("1"),
@@ -753,7 +753,7 @@ describe("Test VotiumErc20Strategy", async function () {
     stuckTokenBalance = await StuckTokenContract.balanceOf(accounts[0].address);
     expect(stuckTokenBalance).gt(0);
   });
-  it.only("Should allow anyone apply rewards manually with depositRewards()", async function () {
+  it("Should allow anyone apply rewards manually with depositRewards()", async function () {
     const depositAmount = ethers.utils.parseEther("100");
     const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 

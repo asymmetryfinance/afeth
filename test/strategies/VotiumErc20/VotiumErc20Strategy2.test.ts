@@ -187,7 +187,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(within2Percent(ethReceived1, expectedEthReceived1)).eq(true);
   });
 
-  it.only("Should be able to deposit 100 eth depositRewards() with minimal slippage and price go up", async function () {
+  it("Should be able to deposit 100 eth depositRewards() with minimal slippage and price go up", async function () {
     const depositAmountSmall = ethers.utils.parseEther("0.1");
     const depositAmountLarge = ethers.utils.parseEther("100");
 

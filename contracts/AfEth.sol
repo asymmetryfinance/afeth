@@ -194,6 +194,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 i == strategies.length - 1 ||
                 (strategyEthValue * 1e18) / totalEthValue < strategyRatio
             ) {
+                // ELMUTT - change this false to true to see rewards being added
+                // this boolean is used to mint the underlying strategy token
                 strategy.deposit{value: msg.value}(false);
                 emit DepositReward(msg.value, strategies[i].strategyAddress);
                 break;
