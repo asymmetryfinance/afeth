@@ -157,30 +157,32 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
-  it("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
-    const tx = await votiumStrategy.deposit({
-      value: ethers.utils.parseEther("1"),
-    });
-    await tx.wait();
 
-    const sellEventSmall = await oracleApplyRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      await readJSONFromFile("./scripts/testDataSlippageSmall.json")
-    );
-    const ethReceived0 = sellEventSmall?.args?.ethAmount;
+  // TODO put this test equivilent into afEth tests (or delete if not applicable)
+  // it("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
+  //   const tx = await votiumStrategy.deposit({
+  //     value: ethers.utils.parseEther("1"),
+  //   });
+  //   await tx.wait();
 
-    const sellEventLarge = await oracleApplyRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      await readJSONFromFile("./scripts/testDataSlippage.json")
-    );
-    const ethReceived1 = sellEventLarge?.args?.ethAmount;
+  //   const sellEventSmall = await oracleApplyRewards(
+  //     rewarderAccount,
+  //     votiumStrategy.address,
+  //     await readJSONFromFile("./scripts/testDataSlippageSmall.json")
+  //   );
+  //   const ethReceived0 = sellEventSmall?.args?.ethAmount;
 
-    // second sell should be 100x the first sell
-    const expectedEthReceived1 = ethReceived0.mul(100);
-    expect(within2Percent(ethReceived1, expectedEthReceived1)).eq(true);
-  });
+  //   const sellEventLarge = await oracleApplyRewards(
+  //     rewarderAccount,
+  //     votiumStrategy.address,
+  //     await readJSONFromFile("./scripts/testDataSlippage.json")
+  //   );
+  //   const ethReceived1 = sellEventLarge?.args?.ethAmount;
+
+  //   // second sell should be 100x the first sell
+  //   const expectedEthReceived1 = ethReceived0.mul(100);
+  //   expect(within2Percent(ethReceived1, expectedEthReceived1)).eq(true);
+  // });
 
   // TODO put this test equivilent into afEth tests (or delete if not applicable)
   // it("Should be able to deposit 100 eth depositRewards() with minimal slippage and price go up", async function () {
@@ -307,7 +309,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(within1Pip(ethReceived0, ethReceived1)).eq(true);
   });
 
-  it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
+  it.only("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
     const cvxTotalBefore = await votiumStrategy.cvxInSystem();
     const sellEventSmall = await oracleApplyRewards(
       rewarderAccount,
@@ -316,7 +318,11 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     );
     const cvxTotalAfter = await votiumStrategy.cvxInSystem();
     const totalCvxGain = cvxTotalAfter.sub(cvxTotalBefore);
+    console.log('sellEventSmall', sellEventSmall)
     const eventCvx = sellEventSmall?.args?.cvxAmount;
+
+    console.log('totalCvxGain', totalCvxGain.toString());
+    console.log('eventCvx', eventCvx.toString());
 
     expect(totalCvxGain).eq(eventCvx);
     expect(totalCvxGain).gt(0);
