@@ -11,7 +11,7 @@ abstract contract AbstractErc20Strategy is
     ERC20Upgradeable
 {
     /// deposit into strategy
-    function deposit(bool _shouldMint) external payable virtual returns (uint256);
+    function deposit() external payable virtual returns (uint256);
 
     /// request to unlock strategy
     /// not all strategies will need this, but will use this to keep a consistent interface

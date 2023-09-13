@@ -402,9 +402,12 @@ describe("Test AfEth", async function () {
     );
 
     // deposit rewards
-    const tx = await afEth.depositRewards({
-      value: depositAmount,
-    });
+    const tx = await afEth.depositRewards(
+      "0x0000000000000000000000000000000000000000",
+      {
+        value: depositAmount,
+      }
+    );
     await tx.wait();
 
     const requestWithdrawTx1 = await user1.requestWithdraw(
@@ -475,9 +478,12 @@ describe("Test AfEth", async function () {
     await mintTx1.wait();
 
     // deposit votium rewards
-    let tx = await afEth.depositRewards({
-      value: depositAmount,
-    });
+    let tx = await afEth.depositRewards(
+      "0x0000000000000000000000000000000000000000",
+      {
+        value: depositAmount,
+      }
+    );
     await tx.wait();
 
     const mintTx2 = await user2.deposit({
@@ -497,9 +503,12 @@ describe("Test AfEth", async function () {
     );
 
     // deposit votium rewards
-    tx = await afEth.depositRewards({
-      value: depositAmount,
-    });
+    tx = await afEth.depositRewards(
+      "0x0000000000000000000000000000000000000000",
+      {
+        value: depositAmount,
+      }
+    );
     await tx.wait();
 
     const requestWithdrawTx1 = await user1.requestWithdraw(
@@ -584,9 +593,12 @@ describe("Test AfEth", async function () {
     await mintTx1.wait();
 
     // deposit votium rewards
-    const tx = await afEth.depositRewards({
-      value: depositAmount,
-    });
+    const tx = await afEth.depositRewards(
+      "0x0000000000000000000000000000000000000000",
+      {
+        value: depositAmount,
+      }
+    );
     await tx.wait();
 
     const mintTx2 = await user2.deposit({ value: depositAmount });

@@ -56,7 +56,7 @@ describe("Test VotiumErc20Strategy", async function () {
     );
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await votiumStrategy.connect(accounts[11]).deposit(true, {
+    const tx = await votiumStrategy.connect(accounts[11]).deposit({
       value: ethers.utils.parseEther(".0001"),
     });
     await tx.wait();
@@ -68,7 +68,7 @@ describe("Test VotiumErc20Strategy", async function () {
 
   it("Should mint votiumEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -120,7 +120,7 @@ describe("Test VotiumErc20Strategy", async function () {
     let runningBalance = BigNumber.from(startingTotalSupply);
     for (let i = 1; i <= stakerAmounts; i++) {
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
-      tx = await stakerVotiumStrategy.deposit(true, {
+      tx = await stakerVotiumStrategy.deposit({
         value: ethers.utils.parseEther("1"),
       });
       await tx.wait();
@@ -195,7 +195,7 @@ describe("Test VotiumErc20Strategy", async function () {
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
 
     // first account mints before rewards are claimed
-    let tx = await stakerVotiumStrategy1.deposit(true, {
+    let tx = await stakerVotiumStrategy1.deposit({
       value: stakeAmount,
     });
     await tx.wait();
@@ -209,7 +209,7 @@ describe("Test VotiumErc20Strategy", async function () {
       await votiumStrategy.cvxPerVotium();
 
     // second account mints after rewards are claimed
-    tx = await stakerVotiumStrategy2.deposit(true, {
+    tx = await stakerVotiumStrategy2.deposit({
       value: stakeAmount,
     });
     await tx.wait();
@@ -284,7 +284,7 @@ describe("Test VotiumErc20Strategy", async function () {
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
 
     // first account mints before rewards are claimed
-    let tx = await stakerVotiumStrategy1.deposit(true, {
+    let tx = await stakerVotiumStrategy1.deposit({
       value: stakeAmount,
     });
     await tx.wait();
@@ -301,7 +301,7 @@ describe("Test VotiumErc20Strategy", async function () {
       .div(ethers.utils.parseEther("1"));
 
     // second account mints after rewards are claimed
-    tx = await stakerVotiumStrategy2.deposit(true, {
+    tx = await stakerVotiumStrategy2.deposit({
       value: stakeAmount2,
     });
     await tx.wait();
@@ -383,7 +383,7 @@ describe("Test VotiumErc20Strategy", async function () {
     let runningBalance = BigNumber.from(startingTotalSupply);
     for (let i = 1; i <= stakerAmounts; i++) {
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
-      tx = await stakerVotiumStrategy.deposit(true, {
+      tx = await stakerVotiumStrategy.deposit({
         value: stakeAmount,
       });
       await tx.wait();
@@ -464,7 +464,7 @@ describe("Test VotiumErc20Strategy", async function () {
     // mint for two accounts
     for (let i = 1; i <= stakerAmounts; i++) {
       const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
-      tx = await stakerVotiumStrategy.deposit(true, {
+      tx = await stakerVotiumStrategy.deposit({
         value: stakeAmount.div(i),
       });
       await tx.wait();
@@ -540,7 +540,7 @@ describe("Test VotiumErc20Strategy", async function () {
   });
   it("Should increase price proportionally to how much rewards were added vs tvl", async function () {
     const stakeAmount = ethers.utils.parseEther("25");
-    const tx = await votiumStrategy.deposit(true, {
+    const tx = await votiumStrategy.deposit({
       value: stakeAmount,
     });
     await tx.wait();
@@ -563,7 +563,7 @@ describe("Test VotiumErc20Strategy", async function () {
   });
   it("Should increase price twice as much when depositing twice as much rewards", async function () {
     const stakeAmount = ethers.utils.parseEther("25");
-    const tx = await votiumStrategy.deposit(true, {
+    const tx = await votiumStrategy.deposit({
       value: stakeAmount,
     });
     await tx.wait();
@@ -591,7 +591,7 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(within1Percent(rewardAmount, eventRewardAmount)).eq(true);
   });
   it("Should allow 1 user to withdraw over two epochs", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -636,11 +636,11 @@ describe("Test VotiumErc20Strategy", async function () {
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
 
     // mint for both accounts
-    let tx = await stakerVotiumStrategy1.deposit(true, {
+    let tx = await stakerVotiumStrategy1.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
-    tx = await stakerVotiumStrategy2.deposit(true, {
+    tx = await stakerVotiumStrategy2.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -710,7 +710,7 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
   });
   it("Should never take more than 16 weeks to withdraw from the queue", async function () {
-    let tx = await votiumStrategy.deposit(true, {
+    let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
@@ -752,18 +752,5 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(stuckTokenBalance).eq(0);
     stuckTokenBalance = await StuckTokenContract.balanceOf(accounts[0].address);
     expect(stuckTokenBalance).gt(0);
-  });
-  it("Should allow anyone apply rewards manually with depositRewards()", async function () {
-    const depositAmount = ethers.utils.parseEther("100");
-    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
-
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
-      value: depositAmount,
-    });
-    await tx.wait();
-
-    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
-
-    expect(priceAfterRewards).gt(priceBeforeRewards);
   });
 });

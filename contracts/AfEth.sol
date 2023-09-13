@@ -168,7 +168,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             if (strategies[i].ratio == 0) continue;
             uint256 mintAmount = strategy.deposit{
                 value: (amount * strategies[i].ratio) / totalRatio
-            }(true);
+            }();
             totalValue += (mintAmount * strategy.price());
         }
         uint256 amountToMint = totalValue / priceBeforeDeposit;
@@ -177,9 +177,18 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
-        @notice - Deposits rewards into each strategy
+        @notice - Deposits rewards into strategyAddress 
+        @notice - OR the first underweight strategy if strategyAddress = address(0)
     */
-    function depositRewards() external payable virtual {
+    function depositRewards(address _strategyAddress) external payable virtual {
+
+        if(_strategyAddress != address(0)) {
+            AbstractErc20Strategy strategy = AbstractErc20Strategy(_strategyAddress);
+            strategy.deposit{value: msg.value}();
+            emit DepositReward(msg.value, _strategyAddress);
+            return;
+        }
+
         uint256 totalEthValue = (totalSupply() * price()) / 1e18;
         for (uint256 i; i < strategies.length; i++) {
             if (strategies[i].ratio == 0) continue;
@@ -196,7 +205,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             ) {
                 // ELMUTT - change this false to true to see rewards being added
                 // this boolean is used to mint the underlying strategy token
-                strategy.deposit{value: msg.value}(false);
+                strategy.deposit{value: msg.value}();
                 emit DepositReward(msg.value, strategies[i].strategyAddress);
                 break;
             }
