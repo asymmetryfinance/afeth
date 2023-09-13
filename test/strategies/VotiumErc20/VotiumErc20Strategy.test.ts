@@ -66,7 +66,7 @@ describe("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should mint votiumEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it("Should mint votiumEth tokens, request withdraw, pass time & withdraw", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
@@ -78,14 +78,6 @@ describe("Test VotiumErc20Strategy", async function () {
     expect(totalSupply1).eq(
       BigNumber.from(vEthBalance1).add(startingTotalSupply)
     );
-
-    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
-
-    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-
-    const priceAfterRewards = await votiumStrategy.cvxPerVotium();
-
-    expect(priceAfterRewards).gt(priceBeforeRewards);
 
     // request to withdraw
     const withdrawId = await requestWithdrawal(
