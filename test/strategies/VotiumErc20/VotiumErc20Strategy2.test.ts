@@ -1,5 +1,5 @@
 import { network, ethers, upgrades } from "hardhat";
-import { VotiumErc20Strategy } from "../../../typechain-types";
+import { VotiumErc20Strategy, AfEth } from "../../../typechain-types";
 import { expect } from "chai";
 import {
   getCurrentEpoch,
@@ -7,13 +7,8 @@ import {
   oracleApplyRewards,
   readJSONFromFile,
 } from "./VotiumTestHelpers";
-import {
-  within1Percent,
-  within1Pip,
-  within2Percent,
-} from "../../helpers/helpers";
+import { within1Pip, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { AfEth } from "../../../typechain-types";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;

@@ -181,9 +181,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - OR the first underweight strategy if strategyAddress = address(0)
     */
     function depositRewards(address _strategyAddress) external payable virtual {
-
-        if(_strategyAddress != address(0)) {
-            AbstractErc20Strategy strategy = AbstractErc20Strategy(_strategyAddress);
+        if (_strategyAddress != address(0)) {
+            AbstractErc20Strategy strategy = AbstractErc20Strategy(
+                _strategyAddress
+            );
             strategy.deposit{value: msg.value}();
             emit DepositReward(msg.value, _strategyAddress);
             return;
@@ -235,8 +236,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 strategies[i].strategyAddress
             ).requestWithdraw(strategyWithdrawAmount);
             withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[
-                    i
-                ] = strategyWithdrawId;
+                i
+            ] = strategyWithdrawId;
         }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = _amount;

@@ -585,8 +585,6 @@ describe("Test AfEth", async function () {
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[2]);
 
-    let user2GasUsed = BigNumber.from(0);
-
     const depositAmount = ethers.utils.parseEther("1");
 
     const mintTx1 = await user1.deposit({ value: depositAmount });
@@ -603,7 +601,6 @@ describe("Test AfEth", async function () {
 
     const mintTx2 = await user2.deposit({ value: depositAmount });
     let mined = await mintTx2.wait();
-    user2GasUsed = user2GasUsed.add(mined.gasUsed.mul(mined.effectiveGasPrice));
 
     const afEthBalanceBeforeRequest1 = await afEth.balanceOf(
       accounts[1].address
@@ -624,7 +621,6 @@ describe("Test AfEth", async function () {
       await afEth.balanceOf(accounts[2].address)
     );
     mined = await requestWithdrawTx2.wait();
-    user2GasUsed = user2GasUsed.add(mined.gasUsed.mul(mined.effectiveGasPrice));
 
     for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
@@ -649,7 +645,6 @@ describe("Test AfEth", async function () {
     const withdrawTx2 = await user2.withdraw(2);
     mined = await withdrawTx2.wait();
     const withdrawGasUsed2 = mined.gasUsed.mul(mined.effectiveGasPrice);
-    user2GasUsed = user2GasUsed.add(withdrawGasUsed2);
 
     const ethBalanceAfterWithdraw1 = await ethers.provider.getBalance(
       accounts[1].address
