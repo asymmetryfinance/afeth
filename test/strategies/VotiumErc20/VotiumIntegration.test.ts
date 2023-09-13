@@ -18,6 +18,7 @@ import { within1Pip, within3Percent } from "../../helpers/helpers";
 import { expect } from "chai";
 import { getCurrentEpoch } from "./VotiumTestHelpers";
 import { BigNumber } from "ethers";
+import { AfEth } from "../../../typechain-types";
 
 const userCount = 6;
 const epochCount = 66;
@@ -27,6 +28,8 @@ const startingEthBalances: any = [];
 
 describe.skip("Votium integration test", async function () {
   let votiumStrategy: VotiumErc20Strategy;
+  let afEth: AfEth;
+
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
       method: "hardhat_reset",
@@ -46,10 +49,15 @@ describe.skip("Votium integration test", async function () {
 
     const ownerAccount = await getAdminAccount();
     const rewarderAccount = await getRewarderAccount();
+
+    const afEthFactory = await ethers.getContractFactory("AfEth");
+    afEth = (await upgrades.deployProxy(afEthFactory, [])) as AfEth;
+    await afEth.deployed();
+
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
-      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
+      afEth.address,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 

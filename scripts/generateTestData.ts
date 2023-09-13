@@ -19,7 +19,7 @@ function writeJSONToFile(obj: any, filePath: string): Promise<void> {
 async function main() {
   // address of VotiumStrategy contract that will be used in the tests
   const expectedVotiumStrategyAddress =
-    "0x64f5219563e28EeBAAd91Ca8D31fa3b36621FD4f";
+    "0x6484EB0792c646A4827638Fc1B6F20461418eB00";
   const recipients = [
     expectedVotiumStrategyAddress,
     "0x8a65ac0E23F31979db06Ec62Af62b132a6dF4741",
@@ -31,23 +31,28 @@ async function main() {
     "0x76a1f47f8d998d07a15189a07d9aada180e09ac6",
   ];
 
+  const slice = 40;
+
   const mockProofsAndSwaps = await generateMockProofsAndSwaps(
     recipients,
     expectedVotiumStrategyAddress,
-    BigNumber.from(10)
+    BigNumber.from(10),
+    slice
   );
 
   // this represents 12.5% of all token rewards to each user (12.5% of total to our contract)
   const mockProofsAndSwapSlippageTest = await generateMockProofsAndSwaps(
     recipients,
     expectedVotiumStrategyAddress,
-    BigNumber.from(1)
+    BigNumber.from(1),
+    slice
   );
   // this represents 0.125% of all token rewards to each mock user (0.125% to our contract)
   const mockProofsAndSwapSlippageTestSmall = await generateMockProofsAndSwaps(
     recipients,
     expectedVotiumStrategyAddress,
-    BigNumber.from(100)
+    BigNumber.from(100),
+    slice
   );
   // this represents a smaller subset of all assets to test that we dont have to claim all assets
   const mockProofsAndSwapsSliced = await generateMockProofsAndSwaps(

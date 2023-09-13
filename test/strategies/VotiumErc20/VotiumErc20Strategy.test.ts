@@ -50,6 +50,8 @@ describe("Test VotiumErc20Strategy", async function () {
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
+    console.log("votiumStrategy deployed to:", votiumStrategy.address);
+
     await afEth.addStrategy(
       votiumStrategy.address,
       ethers.utils.parseEther("1")

@@ -927,13 +927,7 @@ describe("Test AfEth", async function () {
     mintTx = await user1.deposit({ value: depositAmount });
     await mintTx.wait();
   });
-  it("Should be able to split rewards evenly between votium and safEth", async function () {
-    // TODO
-  });
-  it("Should be able to split rewards between votium (90%) and safEth (10%)", async function () {
-    // TODO
-  });
-  it("Should be able to split rewards between votium (10%) and safEth (90%)", async function () {
+  it("Should be able to send rewards to most underweight strategy", async function () {
     // TODO
   });
   it("Should be able to pause deposit & withdraw", async function () {

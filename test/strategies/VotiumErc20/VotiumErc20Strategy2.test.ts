@@ -13,9 +13,11 @@ import {
   within2Percent,
 } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { AfEth } from "../../../typechain-types";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
+  let afEth: AfEth;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
   let userAccount: SignerWithAddress;
@@ -38,13 +40,17 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     rewarderAccount = accounts[1];
     ownerAccount = accounts[2];
 
+    const afEthFactory = await ethers.getContractFactory("AfEth");
+    afEth = (await upgrades.deployProxy(afEthFactory, [])) as AfEth;
+    await afEth.deployed();
+
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumErc20Strategy"
     );
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
-      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
+      afEth.address,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
