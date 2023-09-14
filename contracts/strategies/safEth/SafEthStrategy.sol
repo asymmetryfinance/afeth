@@ -100,15 +100,15 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     }
 
     function depositRewards(
-        uint256 _amount,
-        bool applyToSelf
+        uint256 _amount
     ) public payable override {
-        if (!applyToSelf) {
-            IAfEth(manager).depositRewards{value: _amount}();
-            return;
-        }
         ISafEth(safEthAddress).stake{value: (_amount)}(
             0 // TODO: set minAmount
         );
+    }
+        function depositRewardsAll(
+        uint256 _amount
+    ) public payable override {
+            IAfEth(manager).depositRewards{value: _amount}();
     }
 }

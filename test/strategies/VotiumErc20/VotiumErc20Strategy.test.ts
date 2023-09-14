@@ -801,7 +801,7 @@ describe("Test VotiumErc20Strategy", async function () {
     const depositAmount = ethers.utils.parseEther("100");
     const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
-    const tx = await votiumStrategy.depositRewards(depositAmount, true, {
+    const tx = await votiumStrategy.depositRewards(depositAmount, {
       value: depositAmount,
     });
     await tx.wait();

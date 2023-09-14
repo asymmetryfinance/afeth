@@ -188,14 +188,14 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const depositAmountSmall = ethers.utils.parseEther("0.1");
     const depositAmountLarge = ethers.utils.parseEther("100");
 
-    const tx1 = await votiumStrategy.depositRewards(depositAmountSmall, true, {
+    const tx1 = await votiumStrategy.depositRewards(depositAmountSmall, {
       value: depositAmountSmall,
     });
     const mined1 = await tx1.wait();
     const e1 = mined1.events?.find((e) => e.event === "DepositReward");
     const cvxOut1 = e1?.args?.cvxAmount;
 
-    const tx2 = await votiumStrategy.depositRewards(depositAmountLarge, true, {
+    const tx2 = await votiumStrategy.depositRewards(depositAmountLarge, {
       value: depositAmountLarge,
     });
     const mined2 = await tx2.wait();

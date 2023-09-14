@@ -267,7 +267,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 (strategyEthValue * 1e18) / totalEthValue < strategyRatio
             ) {
                 // apply reward here
-                strategy.depositRewards{value: msg.value}(msg.value, true);
+                strategy.depositRewards{value: msg.value}(msg.value);
                 break;
             }
         }

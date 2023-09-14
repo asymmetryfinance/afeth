@@ -206,10 +206,14 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         revert("Invalid Locked Amount");
     }
 
-    function depositRewards(
-        uint256 _amount,
-        bool applyToSelf
-    ) public payable override {
-        this.depositRewardsInternal{value: msg.value}(_amount, applyToSelf);
+
+    function depositRewards(uint256 _amount) public payable virtual override {
+        this.depositRewardsInternal{value: msg.value}(_amount, true);
+    }
+
+    function depositRewardsAll(
+        uint256 _amount
+    ) public payable virtual override {
+        this.depositRewardsInternal{value: msg.value}(_amount, false);
     }
 }
