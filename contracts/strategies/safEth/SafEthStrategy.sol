@@ -31,14 +31,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
             0 // TODO: set minAmount
         );
         uint256 strategyMintAmount = (safEthMintAmount * 1e18) / priceBefore;
-
-        console.log(
-            "strategyMintAmount safEthMintAmount",
-            strategyMintAmount,
-            safEthMintAmount
-        );
         _mint(msg.sender, strategyMintAmount);
-        console.log("totalSupply", totalSupply());
         return strategyMintAmount;
     }
 
@@ -48,8 +41,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         if (totalSupply == 0 || safEthInSystem == 0) {
             return 1e18;
         }
-        uint256 p = (safEthInSystem * 1e18) / totalSupply;
-        return p;
+        return (safEthInSystem * 1e18) / totalSupply;
     }
 
     function requestWithdraw(
@@ -83,7 +75,6 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         uint256 safEthStrategyBalance = IERC20(safEthAddress).balanceOf(
             address(this)
         );
-        console.log("safEthStrategyBalance", safEthStrategyBalance);
         uint256 safEthTokenPrice = ISafEth(safEthAddress).approxPrice(false);
         uint256 underlyingValue = (safEthStrategyBalance * safEthTokenPrice);
         uint256 totalSupply = totalSupply();
