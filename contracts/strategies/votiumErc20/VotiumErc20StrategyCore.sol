@@ -298,7 +298,7 @@ contract VotiumErc20StrategyCore is
         }
         uint256 ethBalanceAfter = address(this).balance;
 
-        depositRewards(ethBalanceAfter - ethBalanceBefore);
+        depositRewardsAll(ethBalanceAfter - ethBalanceBefore);
     }
 
     /**
