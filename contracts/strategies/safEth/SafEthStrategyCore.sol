@@ -17,6 +17,8 @@ contract SafEthStrategyCore is
     address public constant safEthAddress =
         0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
 
+    address public manager;
+
     struct SafEthPosition {
         uint256 safEthAmount; // amount of safEth in this position
     }
@@ -40,6 +42,7 @@ contract SafEthStrategyCore is
     function initialize(address _manager) external initializer {
         _transferOwnership(_manager);
         _registerInterface(type(AbstractErc20Strategy).interfaceId);
+        manager = _manager;
     }
 
     receive() external payable {}

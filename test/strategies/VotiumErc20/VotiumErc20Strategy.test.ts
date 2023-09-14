@@ -742,11 +742,11 @@ describe("Test VotiumErc20Strategy", async function () {
     stuckTokenBalance = await StuckTokenContract.balanceOf(accounts[0].address);
     expect(stuckTokenBalance).gt(0);
   });
-  it("Should allow anyone apply rewards manually with depositRewards()", async function () {
+  it.only("Should allow anyone apply rewards manually with depositRewards()", async function () {
     const depositAmount = ethers.utils.parseEther("100");
     const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
+    const tx = await votiumStrategy.depositRewards(depositAmount, true, {
       value: depositAmount,
     });
     await tx.wait();

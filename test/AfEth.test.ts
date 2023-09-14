@@ -402,7 +402,7 @@ describe("Test AfEth", async function () {
     );
 
     // deposit votium rewards
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
+    const tx = await votiumStrategy.depositRewards(depositAmount, true, {
       value: depositAmount,
     });
     await tx.wait();
@@ -473,7 +473,7 @@ describe("Test AfEth", async function () {
     await mintTx1.wait();
 
     // deposit votium rewards
-    let tx = await votiumStrategy.depositRewards(depositAmount, {
+    let tx = await votiumStrategy.depositRewards(depositAmount, true, {
       value: depositAmount,
     });
     await tx.wait();
@@ -493,7 +493,7 @@ describe("Test AfEth", async function () {
     );
 
     // deposit votium rewards
-    tx = await votiumStrategy.depositRewards(depositAmount, {
+    tx = await votiumStrategy.depositRewards(depositAmount, true, {
       value: depositAmount,
     });
     await tx.wait();
@@ -583,7 +583,7 @@ describe("Test AfEth", async function () {
     await mintTx1.wait();
 
     // deposit votium rewards
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
+    const tx = await votiumStrategy.depositRewards(depositAmount, true, {
       value: depositAmount,
     });
     await tx.wait();

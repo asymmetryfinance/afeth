@@ -178,14 +178,14 @@ contract VotiumErc20StrategyCore is
     }
 
     function depositRewardsInternal(uint256 _amount, bool applyToSelf) public payable {
-        if (!applyToSelf)
+        if (!applyToSelf) {
             IAfEth(manager).depositRewards{value: _amount}();
-        else {
-            uint256 cvxAmount = buyCvx(_amount);
-            IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-            ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-            emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
+            return;
         }
+        uint256 cvxAmount = buyCvx(_amount);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
+        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
     }
 
     /**
@@ -250,7 +250,7 @@ contract VotiumErc20StrategyCore is
      * @dev - causes price to go up
      * @param _swapsData - array of SwapData for 0x swaps
      */
-    function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
+    function applyRewards(SwapData[] calldata _swapsData, bool applyToSelf) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
@@ -282,7 +282,7 @@ contract VotiumErc20StrategyCore is
         }
         uint256 ethBalanceAfter = address(this).balance;
 
-        depositRewardsInternal(ethBalanceAfter - ethBalanceBefore);
+        depositRewardsInternal(ethBalanceAfter - ethBalanceBefore, applyToSelf);
     }
 
     /**

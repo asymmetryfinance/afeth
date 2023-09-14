@@ -35,5 +35,5 @@ abstract contract AbstractErc20Strategy is
         uint256 _amount
     ) external view virtual returns (uint256);
 
-    function depositRewards(uint256 _amount) public payable virtual;
+    function depositRewards(uint256 _amount, bool applyToSelf) public payable virtual;
 }
