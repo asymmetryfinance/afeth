@@ -7,7 +7,6 @@ import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers"
 import { derivativeAbi } from "./abis/derivativeAbi";
 import { within1Percent, within1Pip, within5Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
-import { getRewarderAccount } from "./strategies/VotiumErc20/IntegrationHelpers";
 
 describe("Test AfEth", async function () {
   let afEth: AfEth;

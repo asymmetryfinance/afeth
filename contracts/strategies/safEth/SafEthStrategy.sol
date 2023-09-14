@@ -99,16 +99,13 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         return block.timestamp;
     }
 
-    function depositRewards(
-        uint256 _amount
-    ) public payable override {
+    function depositRewards(uint256 _amount) public payable override {
         ISafEth(safEthAddress).stake{value: (_amount)}(
             0 // TODO: set minAmount
         );
     }
-        function depositRewardsAll(
-        uint256 _amount
-    ) public payable override {
-            IAfEth(manager).depositRewards{value: _amount}();
+
+    function depositRewardsAll(uint256 _amount) public payable override {
+        IAfEth(manager).depositRewards{value: _amount}();
     }
 }
