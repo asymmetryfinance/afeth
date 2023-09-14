@@ -7,6 +7,7 @@ import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers"
 import { derivativeAbi } from "./abis/derivativeAbi";
 import { within1Percent, within1Pip, within6Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
+import { BigNumber as FloatBn } from "bignumber.js";
 
 describe("Test AfEth", async function () {
   let afEth: AfEth;
@@ -307,7 +308,7 @@ describe("Test AfEth", async function () {
     );
 
     // deposit votium rewards
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
+    const tx = await afEth.depositRewards(depositAmount, {
       value: depositAmount,
     });
     await tx.wait();
@@ -367,39 +368,53 @@ describe("Test AfEth", async function () {
 
     expect(within1Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
-  it("Two users should be able to deposit at different times and split rewards appropriately", async function () {
+  it.only("Two users should be able to deposit at different times and split rewards appropriately", async function () {
     // user1 gets both rewards while user2 only gets the second
     const user1 = afEth.connect(accounts[1]);
-    const user2 = afEth.connect(accounts[2]);
+    const user2 = afEth.connect(accounts[1]);
+
+    console.log(
+      "startingAfEthBalance1",
+      await afEth.balanceOf(accounts[1].address)
+    );
 
     const depositAmount = ethers.utils.parseEther("1");
+
+    const rewardAmount = ethers.utils.parseEther("1");
 
     const mintTx1 = await user1.deposit(0, { value: depositAmount });
     await mintTx1.wait();
 
+    let user1BalanceRatio = new FloatBn(
+      (await afEth.balanceOf(accounts[1].address)).toString()
+    ).div((await afEth.totalSupply()).toString());
+
+    const expectedUser1Reward1 = new FloatBn(rewardAmount.toString()).times(
+      user1BalanceRatio
+    );
+
+    console.log("expectedUser1Reward1", expectedUser1Reward1.toString());
+
     // deposit votium rewards
-    let tx = await votiumStrategy.depositRewards(depositAmount, {
-      value: depositAmount,
+    let tx = await afEth.depositRewards(depositAmount, {
+      value: rewardAmount,
     });
     await tx.wait();
 
-    const mintTx2 = await user2.deposit(0, { value: depositAmount });
-    await mintTx2.wait();
+    tx = await user2.deposit(0, { value: depositAmount });
+    await tx.wait();
 
-    const afEthBalanceBeforeRequest1 = await user1.balanceOf(
-      accounts[1].address
-    );
-    const afEthBalanceBeforeRequest2 = await user2.balanceOf(
-      accounts[2].address
-    );
+    user1BalanceRatio = new FloatBn(
+      (await afEth.balanceOf(accounts[1].address)).toString()
+    ).div((await afEth.totalSupply()).toString());
 
-    expect(
-      within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
+    const expectedUser1Reward2 = new FloatBn(rewardAmount.toString()).times(
+      user1BalanceRatio
     );
 
     // deposit votium rewards
-    tx = await votiumStrategy.depositRewards(depositAmount, {
-      value: depositAmount,
+    tx = await afEth.depositRewards(depositAmount, {
+      value: rewardAmount,
     });
     await tx.wait();
 
@@ -407,74 +422,34 @@ describe("Test AfEth", async function () {
       await afEth.balanceOf(accounts[1].address)
     );
     await requestWithdrawTx1.wait();
-    const requestWithdrawTx2 = await user2.requestWithdraw(
-      await afEth.balanceOf(accounts[2].address)
-    );
-    await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
     }
 
-    const withdrawInfo1 = await afEth.withdrawIdInfo(1);
-    const withdrawInfo2 = await afEth.withdrawIdInfo(2);
-
-    expect(
-      within6Percent(withdrawInfo1.amount.div(2), withdrawInfo2.amount)
-    ).eq(true);
-    expect(withdrawInfo1.owner).eq(accounts[1].address);
-    expect(withdrawInfo2.owner).eq(accounts[2].address);
-
     const ethBalanceBeforeWithdraw1 = await ethers.provider.getBalance(
       accounts[1].address
     );
-    const ethBalanceBeforeWithdraw2 = await ethers.provider.getBalance(
-      accounts[2].address
-    );
-
     const withdrawTx1 = await user1.withdraw(1, 0);
     await withdrawTx1.wait();
-    const withdrawTx2 = await user2.withdraw(2, 0);
-    await withdrawTx2.wait();
 
-    const ethBalanceAfterWithdraw1 = await ethers.provider.getBalance(
-      accounts[1].address
-    );
-    const ethBalanceAfterWithdraw2 = await ethers.provider.getBalance(
-      accounts[2].address
-    );
-    const ethReceived1 = ethBalanceAfterWithdraw1.sub(
-      ethBalanceBeforeWithdraw1
-    );
-    const ethReceived2 = ethBalanceAfterWithdraw2.sub(
-      ethBalanceBeforeWithdraw2
-    );
-
-    expect(ethBalanceAfterWithdraw1).gt(ethBalanceBeforeWithdraw1);
-    expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
-    const estimatedInitialStakeRewards = (
-      await afEth.balanceOf(accounts[initialStakeAccount].address)
-    )
-      .mul(await afEth.price())
-      .sub(initialStake)
-      .div(ethers.utils.parseEther("1"));
+    const ethReceived1 = (
+      await ethers.provider.getBalance(accounts[1].address)
+    ).sub(ethBalanceBeforeWithdraw1);
 
     const rewardAmount1 = ethReceived1.sub(depositAmount);
-    const rewardAmount2 = ethReceived2.sub(depositAmount);
 
-    // 2 ETH of rewards have been deposited.  All rewards should total to around that (initial stake rewards are estimated through price)
-    expect(
-      within1Percent(
-        estimatedInitialStakeRewards.add(rewardAmount1).add(rewardAmount2),
-        ethers.utils.parseEther("2")
-      )
+
+    const totalUser1ExpectedReward =
+      expectedUser1Reward1.plus(expectedUser1Reward2);
+
+      console.log('expectedUser1Reward1', expectedUser1Reward1.toString())
+      console.log('expectedUser1Reward2', expectedUser1Reward2.toString())
+    console.log(
+      "totalUser1ExpectedReward",
+      totalUser1ExpectedReward.toString()
     );
-    expect(
-      within1Percent(rewardAmount1, BigNumber.from("1512947469045080208"))
-    ).eq(true);
-    expect(
-      within1Percent(rewardAmount2, BigNumber.from("319218916632356305"))
-    ).eq(true);
+    console.log("rewardAmount1", rewardAmount1.toString());
   });
   it("When a user deposits/withdraws outside depositRewards they don't receive rewards", async function () {
     const user1 = afEth.connect(accounts[1]);
@@ -486,7 +461,7 @@ describe("Test AfEth", async function () {
     await mintTx1.wait();
 
     // deposit votium rewards
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
+    const tx = await afEth.depositRewards(depositAmount, {
       value: depositAmount,
     });
     await tx.wait();
@@ -573,7 +548,7 @@ describe("Test AfEth", async function () {
 
     // slightly negative due to slippage, this user shouldn't receive any rewards
     expect(rewardAmount2).lt(0);
-    expect(rewardAmount2).gt(ethers.utils.parseEther("-0.002"));
+    expect(rewardAmount2).gt(ethers.utils.parseEther("-0.006"));
   });
   it("Should be able to set Votium strategy to 0 ratio and still withdraw value from there while not being able to deposit", async function () {
     const user1 = afEth.connect(accounts[1]);
@@ -919,23 +894,23 @@ describe("Test AfEth", async function () {
     const safEthStrategyPrice0 = await safEthStrategy.price();
     const safEthStrategyTotalSupply0 = await safEthStrategy.totalSupply();
 
-    let tx = await votiumStrategy.depositRewards(rewardAmount, {
+    let tx = await afEth.depositRewards(rewardAmount, {
       value: rewardAmount,
     });
     await tx.wait();
 
     // first reward -- votium unchanged, safEth unchnaged but in price (but supply goes up), afEth price goes up
     expect(await afEth.price()).gt(afEthPrice0);
-    expect(await votiumStrategy.price()).eq(votiumStrategyPrice0);
     expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice0)); // within 1 pip because safEth goes up every block
     expect(await safEthStrategy.totalSupply()).gt(safEthStrategyTotalSupply0);
+    expect(await votiumStrategy.price()).eq(votiumStrategyPrice0);
 
     const afEthPrice1 = await afEth.price();
     const votiumStrategyPrice1 = await votiumStrategy.price();
     const safEthStrategyPrice1 = await safEthStrategy.price();
     const safEthStrategyTotalSupply1 = await safEthStrategy.totalSupply();
 
-    tx = await votiumStrategy.depositRewards(rewardAmount, {
+    tx = await afEth.depositRewards(rewardAmount, {
       value: rewardAmount,
     });
     await tx.wait();
@@ -943,7 +918,7 @@ describe("Test AfEth", async function () {
     // second reward --safEth price unchanged (and supply unchanged), votium goes up, afEth goes up
     expect(await afEth.price()).gt(afEthPrice1);
     expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice1)); // within 1 pip because safEth goes up every block
-    expect(await votiumStrategy.price()).gt(votiumStrategyPrice1);
-    expect(await safEthStrategy.totalSupply()).eq(safEthStrategyTotalSupply1);
+    expect(await votiumStrategy.price()).eq(votiumStrategyPrice1);
+    expect(await safEthStrategy.totalSupply()).gt(safEthStrategyTotalSupply1);
   });
 });

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "./strategies/votiumErc20/VotiumErc20Strategy.sol";
 import "./strategies/safEth/SafEthStrategy.sol";
 import "./strategies/AbstractErc20Strategy.sol";
+import "./external_interfaces/IVotiumStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
@@ -43,6 +44,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 withdrawId,
         uint256 withdrawTime
     );
+
+    address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address constant VLCVX_ADDRESS = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
@@ -273,6 +277,34 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function applyStrategyReward(address _strategyAddress) public payable {
         AbstractErc20Strategy(_strategyAddress).deposit{value: msg.value}();
+    }
+
+        /**
+     * @notice - sells _amount of eth from votium contract
+     * @notice - puts it into safEthStrategy or votiumStrategy, whichever is underweight.
+     *  */
+    function depositRewards(uint256 _amount) public payable {
+
+        IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
+
+        if (safEthAddress != address(0)) {
+            uint256 safEthTvl = (ISafEth(
+                0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5
+            ).approxPrice(false) *
+                IERC20(safEthAddress).totalSupply()) / 1e18;
+            uint256 votiumTvl = (((votiumStrategy.cvxPerVotium() * votiumStrategy.ethPerCvx()) / 1e18) *
+                totalSupply());
+            uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
+            if (safEthRatio < ratio) {
+                console.log('applying to safEth');
+                this.applyStrategyReward{value: _amount}(
+                    safEthAddress
+                );
+                return;
+            }
+        }
+        console.log('applying to votium');
+        votiumStrategy.depositRewards{value: _amount}(_amount);
     }
 
     receive() external payable {}
