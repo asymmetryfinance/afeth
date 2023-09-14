@@ -38,6 +38,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error Paused();
     error BelowMinOut();
 
+    event WithdrawRequest(
+        address indexed account,
+        uint256 amount,
+        uint256 withdrawId
+    );
+
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
         _;
@@ -214,6 +220,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = _amount;
+        emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
     }
 
     /**
@@ -238,20 +245,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Checks if withdraw can be executed from withdrawId
-        @param _safethWithdrawId - Id of the withdraw request for SafEth
-        @param _vEthWithdrawId - Id of the withdraw request for vEth
+        @param _withdrawId - Id of the withdraw request for SafEth
         @return - Bool if withdraw can be executed
     */
-    function canWithdraw(
-        uint256 _safethWithdrawId,
-        uint256 _vEthWithdrawId
-    ) public view returns (bool) {
+    function canWithdraw(uint256 _withdrawId) public view returns (bool) {
         return
             AbstractErc20Strategy(safEthInfo.strategyAddress).canWithdraw(
-                _safethWithdrawId
+                withdrawIdInfo[_withdrawId].safEthWithdrawId
             ) &&
             AbstractErc20Strategy(vEthInfo.strategyAddress).canWithdraw(
-                _vEthWithdrawId
+                withdrawIdInfo[_withdrawId].vEthWithdrawId
             );
     }
 
@@ -282,12 +285,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (pauseWithdraw) revert Paused();
         uint256 ethBalanceBefore = address(this).balance;
         WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
-        if (
-            !canWithdraw(
-                withdrawInfo.safEthWithdrawId,
-                withdrawInfo.vEthWithdrawId
-            )
-        ) revert CanNotWithdraw();
+        if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
 
         AbstractErc20Strategy(safEthInfo.strategyAddress).withdraw(
             withdrawInfo.safEthWithdrawId

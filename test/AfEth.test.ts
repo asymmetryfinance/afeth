@@ -924,8 +924,7 @@ describe("Test AfEth", async function () {
 
     expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
   });
-  it.skip("Should test withdrawTime() and canWithdraw()", async function () {
-    // TODO FIX
+  it("Should test withdrawTime() and canWithdraw()", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit(0, { value: depositAmount });
     await mintTx.wait();
