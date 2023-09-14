@@ -279,31 +279,27 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         AbstractErc20Strategy(_strategyAddress).deposit{value: msg.value}();
     }
 
-        /**
+    /**
      * @notice - sells _amount of eth from votium contract
      * @notice - puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
     function depositRewards(uint256 _amount) public payable {
-
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
 
         if (safEthAddress != address(0)) {
             uint256 safEthTvl = (ISafEth(
                 0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5
-            ).approxPrice(false) *
-                IERC20(safEthAddress).totalSupply()) / 1e18;
-            uint256 votiumTvl = (((votiumStrategy.cvxPerVotium() * votiumStrategy.ethPerCvx()) / 1e18) *
-                totalSupply());
+            ).approxPrice(false) * IERC20(safEthAddress).totalSupply()) / 1e18;
+            uint256 votiumTvl = (((votiumStrategy.cvxPerVotium() *
+                votiumStrategy.ethPerCvx()) / 1e18) * totalSupply());
             uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
             if (safEthRatio < ratio) {
-                console.log('applying to safEth');
-                this.applyStrategyReward{value: _amount}(
-                    safEthAddress
-                );
+                console.log("applying to safEth");
+                this.applyStrategyReward{value: _amount}(safEthAddress);
                 return;
             }
         }
-        console.log('applying to votium');
+        console.log("applying to votium");
         votiumStrategy.depositRewards{value: _amount}(_amount);
     }
 

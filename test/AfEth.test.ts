@@ -5,7 +5,7 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
-import { within1Percent, within1Pip, within6Percent } from "./helpers/helpers";
+import { within1Percent, within1Pip, within2Percent, within6Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
 import { BigNumber as FloatBn } from "bignumber.js";
 
@@ -371,7 +371,7 @@ describe("Test AfEth", async function () {
   it.only("Two users should be able to deposit at different times and split rewards appropriately", async function () {
     // user1 gets both rewards while user2 only gets the second
     const user1 = afEth.connect(accounts[1]);
-    const user2 = afEth.connect(accounts[1]);
+    const user2 = afEth.connect(accounts[2]);
 
     const depositAmount = ethers.utils.parseEther("1");
 
@@ -400,9 +400,15 @@ describe("Test AfEth", async function () {
     user1BalanceRatio = new FloatBn(
       (await afEth.balanceOf(accounts[1].address)).toString()
     ).div((await afEth.totalSupply()).toString());
+    const user2BalanceRatio = new FloatBn(
+      (await afEth.balanceOf(accounts[2].address)).toString()
+    ).div((await afEth.totalSupply()).toString());
 
     const expectedUser1Reward2 = new FloatBn(rewardAmount.toString()).times(
       user1BalanceRatio
+    );
+    const expectedUser2Reward = new FloatBn(rewardAmount.toString()).times(
+      user2BalanceRatio
     );
 
     tx = await afEth.depositRewards(depositAmount, {
@@ -414,6 +420,11 @@ describe("Test AfEth", async function () {
       await afEth.balanceOf(accounts[1].address)
     );
     await requestWithdrawTx1.wait();
+
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[2].address)
+    );
+    await requestWithdrawTx2.wait();
 
     for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
@@ -429,20 +440,32 @@ describe("Test AfEth", async function () {
       await ethers.provider.getBalance(accounts[1].address)
     ).sub(ethBalanceBeforeWithdraw1);
 
+    const ethBalanceBeforeWithdraw2 = await ethers.provider.getBalance(
+      accounts[2].address
+    );
+    const withdrawTx2 = await user2.withdraw(2, 0);
+    await withdrawTx2.wait();
+
+    const ethReceived2 = (
+      await ethers.provider.getBalance(accounts[2].address)
+    ).sub(ethBalanceBeforeWithdraw2);
+
     const rewardAmount1 = ethReceived1.sub(depositAmount);
+    const rewardAmount2 = ethReceived2.sub(depositAmount);
 
     const totalUser1ExpectedReward =
       expectedUser1Reward1.plus(expectedUser1Reward2);
 
-    console.log(
-      "totalUser1ExpectedReward",
-      totalUser1ExpectedReward.toString()
-    );
-    console.log("rewardAmount1", rewardAmount1.toString());
     expect(
       within1Percent(
         rewardAmount1,
         BigNumber.from(totalUser1ExpectedReward.toFixed(0))
+      )
+    ).eq(true);
+    expect(
+      within2Percent(
+        rewardAmount2,
+        BigNumber.from(expectedUser2Reward.toFixed(0))
       )
     ).eq(true);
   });
