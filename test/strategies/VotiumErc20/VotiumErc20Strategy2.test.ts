@@ -110,11 +110,19 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     await tx.wait();
 
     // this shouldnt throw
-    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    await oracleApplyRewards(
+      rewarderAccount,
+      votiumStrategy.address,
+      undefined as any
+    );
 
     // this should throw
     try {
-      await oracleApplyRewards(userAccount, votiumStrategy.address);
+      await oracleApplyRewards(
+        userAccount,
+        votiumStrategy.address,
+        undefined as any
+      );
     } catch (e: any) {
       expect(e.message).eq(
         "VM Exception while processing transaction: reverted with reason string 'not rewarder'"
@@ -180,14 +188,14 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const depositAmountSmall = ethers.utils.parseEther("0.1");
     const depositAmountLarge = ethers.utils.parseEther("100");
 
-    const tx1 = await votiumStrategy.depositRewards(depositAmountSmall, {
+    const tx1 = await votiumStrategy.depositRewards(depositAmountSmall, true, {
       value: depositAmountSmall,
     });
     const mined1 = await tx1.wait();
     const e1 = mined1.events?.find((e) => e.event === "DepositReward");
     const cvxOut1 = e1?.args?.cvxAmount;
 
-    const tx2 = await votiumStrategy.depositRewards(depositAmountLarge, {
+    const tx2 = await votiumStrategy.depositRewards(depositAmountLarge, true, {
       value: depositAmountLarge,
     });
     const mined2 = await tx2.wait();

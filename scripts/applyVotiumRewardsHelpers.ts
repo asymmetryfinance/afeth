@@ -108,7 +108,8 @@ export async function votiumSellRewards(
   account: SignerWithAddress,
   strategyAddress: string,
   proofs: any,
-  swapsDataOverride?: any
+  swapsDataOverride: any,
+  applyToSelf: boolean = true
 ) {
   const VotiumInterface = (
     await ethers.getContractFactory("VotiumErc20Strategy")
@@ -119,7 +120,10 @@ export async function votiumSellRewards(
     account
   ) as VotiumErc20Strategy;
   if (swapsDataOverride) {
-    const tx = await votiumStrategy.applyRewards(swapsDataOverride, true);
+    const tx = await votiumStrategy.applyRewards(
+      swapsDataOverride,
+      applyToSelf
+    );
     const mined1 = await tx.wait();
     return mined1?.events?.find((e) => e?.event === "DepositReward");
   }
@@ -127,7 +131,7 @@ export async function votiumSellRewards(
   const tokenAddresses = proofs.map((p: any) => p[0]);
   const tokenAmounts = proofs.map((p: any[]) => p[2]);
   const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
-  const tx = await votiumStrategy.applyRewards(swapsData, true);
+  const tx = await votiumStrategy.applyRewards(swapsData, applyToSelf);
   const mined2 = await tx.wait();
 
   return mined2?.events?.find((e) => e?.event === "DepositReward");

@@ -3,10 +3,14 @@ import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
-import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
+import {
+  incrementVlcvxEpoch,
+  oracleApplyRewards,
+} from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import { within1Percent, within1Pip, within5Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
+import { getRewarderAccount } from "./strategies/VotiumErc20/IntegrationHelpers";
 
 describe("Test AfEth", async function () {
   let afEth: AfEth;
@@ -45,7 +49,7 @@ describe("Test AfEth", async function () {
     );
     votiumStrategy = (await upgrades.deployProxy(votiumFactory, [
       accounts[0].address,
-      accounts[0].address,
+      (await getRewarderAccount()).address,
       afEth.address,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
@@ -928,15 +932,6 @@ describe("Test AfEth", async function () {
     mintTx = await user1.deposit(0, { value: depositAmount });
     await mintTx.wait();
   });
-  it("Should be able to split rewards evenly between votium and safEth", async function () {
-    // TODO
-  });
-  it("Should be able to split rewards between votium (90%) and safEth (10%)", async function () {
-    // TODO
-  });
-  it("Should be able to split rewards between votium (10%) and safEth (90%)", async function () {
-    // TODO
-  });
   it("Should be able to pause deposit & withdraw", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     await afEth.setPauseDeposit(true);
@@ -1072,5 +1067,39 @@ describe("Test AfEth", async function () {
     await expect(
       afEth.withdraw(withdrawId, depositAmount.mul(2))
     ).to.be.revertedWith("Slippage");
+  });
+  it("Should be able to deposit votium rewards to all strategies", async function () {
+    const depositAmount = ethers.utils.parseEther("1");
+    const rewardAmount = ethers.utils.parseEther("1");
+    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    await mintTx.wait();
+
+    const afEthPrice0 = await afEth.price();
+    const votiumStrategyPrice0 = await votiumStrategy.price();
+    const safEthStrategyPrice0 = await safEthStrategy.price();
+
+    let tx = await votiumStrategy.depositRewards(rewardAmount, false, {
+      value: rewardAmount,
+    });
+    await tx.wait();
+
+    // first reward -- afEth goes up, safEth goes up, votium unchanged
+    expect(await afEth.price()).gt(afEthPrice0);
+    expect(await votiumStrategy.price()).eq(votiumStrategyPrice0);
+    expect(await safEthStrategy.price()).gt(safEthStrategyPrice0);
+
+    const afEthPrice1 = await afEth.price();
+    const votiumStrategyPrice1 = await votiumStrategy.price();
+    const safEthStrategyPrice1 = await safEthStrategy.price();
+
+    tx = await votiumStrategy.depositRewards(rewardAmount, false, {
+      value: rewardAmount,
+    });
+    await tx.wait();
+
+    // second reward -- afEth goes up, votium goes up, safEth unchanged
+    expect(await afEth.price()).gt(afEthPrice1);
+    expect(await votiumStrategy.price()).gt(votiumStrategyPrice1);
+    expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice1));
   });
 });

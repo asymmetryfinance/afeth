@@ -34,20 +34,23 @@ async function main() {
   const mockProofsAndSwaps = await generateMockProofsAndSwaps(
     recipients,
     expectedVotiumStrategyAddress,
-    BigNumber.from(10)
+    BigNumber.from(10),
+    5
   );
 
   // this represents 12.5% of all token rewards to each user (12.5% of total to our contract)
   const mockProofsAndSwapSlippageTest = await generateMockProofsAndSwaps(
     recipients,
     expectedVotiumStrategyAddress,
-    BigNumber.from(1)
+    BigNumber.from(1),
+    5
   );
   // this represents 0.125% of all token rewards to each mock user (0.125% to our contract)
   const mockProofsAndSwapSlippageTestSmall = await generateMockProofsAndSwaps(
     recipients,
     expectedVotiumStrategyAddress,
-    BigNumber.from(100)
+    BigNumber.from(100),
+    5
   );
   // this represents a smaller subset of all assets to test that we dont have to claim all assets
   const mockProofsAndSwapsSliced = await generateMockProofsAndSwaps(

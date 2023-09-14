@@ -119,10 +119,14 @@ export const getNextEpochStartTime = async () => {
 export const oracleApplyRewards = async (
   account: SignerWithAddress,
   votiumStrategyAddress: string,
-  testDataOverride?: string
+  testDataOverride: any,
+  applyToSelf: boolean = true
 ) => {
+  console.log('testDataOverride', testDataOverride, testDataOverride == undefined)
   const testData =
-    testDataOverride || (await readJSONFromFile("./scripts/testData.json"));
+    testDataOverride !== undefined
+      ? testDataOverride
+      : await readJSONFromFile("./scripts/testData.json");
   await updateRewardsMerkleRoot(
     testData.merkleRoots,
     testData.swapsData.map((sd: any) => sd.sellToken)
@@ -136,7 +140,8 @@ export const oracleApplyRewards = async (
     account,
     votiumStrategyAddress,
     [],
-    testData.swapsData
+    testData.swapsData,
+    applyToSelf
   );
 
   return sellEvent;

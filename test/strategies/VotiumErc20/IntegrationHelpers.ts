@@ -98,7 +98,8 @@ export const increaseTime1Epoch = async (
       // 1) we dont want it running out of rewards
       // 2) the big one (testData.json) will cause large slippage when compounded over many weeks withnout arb to balance it out
       // 3) its unrealistic to do such massive rewards with only a few users in the system
-      await readJSONFromFile("./scripts/testDataSlippageSmall.json")
+      await readJSONFromFile("./scripts/testDataSlippageSmall.json"),
+      true
     );
 
     const rewardAmount = rewardEvent?.args?.ethAmount;
