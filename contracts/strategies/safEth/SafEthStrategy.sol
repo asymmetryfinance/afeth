@@ -47,6 +47,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     function requestWithdraw(
         uint256 _amount
     ) external virtual override returns (uint256 withdrawId) {
+        // solhint-disable-next-line
         console.log("this must be here");
         _burn(msg.sender, _amount);
         latestWithdrawId++;

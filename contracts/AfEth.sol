@@ -175,7 +175,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         latestWithdrawId++;
 
         uint256 withdrawRatio = (_amount * 1e18) / (totalSupply());
-
+        // solhint-disable-next-line
         console.log("this must be here");
         _burn(msg.sender, _amount);
 
