@@ -47,6 +47,7 @@ describe("Test AfEth", async function () {
       accounts[0].address,
       accounts[0].address,
       afEth.address,
+      safEthStrategy.address,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
@@ -892,6 +893,7 @@ describe("Test AfEth", async function () {
       accounts[0].address,
       accounts[0].address,
       afEth.address,
+      safEthStrategy.address,
     ])) as VotiumErc20Strategy;
     await afEth.addStrategy(
       votiumStrategy2.address,
@@ -1072,5 +1074,40 @@ describe("Test AfEth", async function () {
     await expect(
       afEth.withdraw(withdrawId, depositAmount.mul(2))
     ).to.be.revertedWith("Slippage");
+  });
+
+  it("Should be able to deposit votium rewards to all strategies", async function () {
+    const depositAmount = ethers.utils.parseEther("1");
+    const rewardAmount = ethers.utils.parseEther("1");
+    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    await mintTx.wait();
+
+    const afEthPrice0 = await afEth.price();
+    const votiumStrategyPrice0 = await votiumStrategy.price();
+    const safEthStrategyPrice0 = await safEthStrategy.price();
+
+    let tx = await votiumStrategy.depositRewardsAll(rewardAmount, {
+      value: rewardAmount,
+    });
+    await tx.wait();
+
+    // first reward -- votium goes up, safEth unchanged, votium goes up
+    expect(await afEth.price()).gt(afEthPrice0);
+    expect(await votiumStrategy.price()).eq(votiumStrategyPrice0);
+    expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice0));
+
+    const afEthPrice1 = await afEth.price();
+    const votiumStrategyPrice1 = await votiumStrategy.price();
+    const safEthStrategyPrice1 = await safEthStrategy.price();
+
+    tx = await votiumStrategy.depositRewardsAll(rewardAmount, {
+      value: rewardAmount,
+    });
+    await tx.wait();
+
+    // second reward --safEth goes up, votium unchanged, afEth goes up
+    expect(await afEth.price()).gt(afEthPrice1);
+    expect(await safEthStrategy.price()).gt(safEthStrategyPrice1);
+    expect(within1Pip(await votiumStrategy.price(), votiumStrategyPrice1));
   });
 });

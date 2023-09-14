@@ -256,13 +256,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     // deposit value to safEth side
-    function applySafEthReward() public payable {
-        // TODO mint msg.value of safEth strategy tokens
-    }
-
-    // deposit value to votium side
-    function applyVotiumReward() public payable {
-        // TODO mint msg.value to votium strategy tokens
+    function applyStrategyReward(address strategyAddress) public payable {
+        AbstractErc20Strategy(strategyAddress).deposit{value: msg.value}();
     }
 
     receive() external payable {}
