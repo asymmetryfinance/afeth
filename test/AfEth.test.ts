@@ -373,11 +373,6 @@ describe("Test AfEth", async function () {
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[1]);
 
-    console.log(
-      "startingAfEthBalance1",
-      await afEth.balanceOf(accounts[1].address)
-    );
-
     const depositAmount = ethers.utils.parseEther("1");
 
     const rewardAmount = ethers.utils.parseEther("1");
@@ -392,8 +387,6 @@ describe("Test AfEth", async function () {
     const expectedUser1Reward1 = new FloatBn(rewardAmount.toString()).times(
       user1BalanceRatio
     );
-
-    console.log("expectedUser1Reward1", expectedUser1Reward1.toString());
 
     // deposit votium rewards
     let tx = await afEth.depositRewards(depositAmount, {
@@ -412,7 +405,6 @@ describe("Test AfEth", async function () {
       user1BalanceRatio
     );
 
-    // deposit votium rewards
     tx = await afEth.depositRewards(depositAmount, {
       value: rewardAmount,
     });
@@ -439,18 +431,22 @@ describe("Test AfEth", async function () {
 
     const rewardAmount1 = ethReceived1.sub(depositAmount);
 
-
     const totalUser1ExpectedReward =
       expectedUser1Reward1.plus(expectedUser1Reward2);
 
-      console.log('expectedUser1Reward1', expectedUser1Reward1.toString())
-      console.log('expectedUser1Reward2', expectedUser1Reward2.toString())
     console.log(
       "totalUser1ExpectedReward",
       totalUser1ExpectedReward.toString()
     );
     console.log("rewardAmount1", rewardAmount1.toString());
+    expect(
+      within1Percent(
+        rewardAmount1,
+        BigNumber.from(totalUser1ExpectedReward.toFixed(0))
+      )
+    ).eq(true);
   });
+
   it("When a user deposits/withdraws outside depositRewards they don't receive rewards", async function () {
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[2]);
