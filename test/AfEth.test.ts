@@ -5,9 +5,13 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
-import { within1Percent, within1Pip, within2Percent, within6Percent } from "./helpers/helpers";
+import {
+  within1Percent,
+  within1Pip,
+  within2Percent,
+  within6Percent,
+} from "./helpers/helpers";
 import { BigNumber } from "ethers";
-import { BigNumber as FloatBn } from "bignumber.js";
 
 describe("Test AfEth", async function () {
   let afEth: AfEth;
@@ -380,13 +384,13 @@ describe("Test AfEth", async function () {
     const mintTx1 = await user1.deposit(0, { value: depositAmount });
     await mintTx1.wait();
 
-    let user1BalanceRatio = new FloatBn(
-      (await afEth.balanceOf(accounts[1].address)).toString()
-    ).div((await afEth.totalSupply()).toString());
+    let user1BalanceRatio = (await afEth.balanceOf(accounts[1].address))
+      .mul(ethers.utils.parseEther("1"))
+      .div((await afEth.totalSupply()).toString());
 
-    const expectedUser1Reward1 = new FloatBn(rewardAmount.toString()).times(
-      user1BalanceRatio
-    );
+    const expectedUser1Reward1 = BigNumber.from(rewardAmount)
+      .mul(user1BalanceRatio)
+      .div(ethers.utils.parseEther("1"));
 
     // deposit votium rewards
     let tx = await afEth.depositRewards(depositAmount, {
@@ -397,19 +401,19 @@ describe("Test AfEth", async function () {
     tx = await user2.deposit(0, { value: depositAmount });
     await tx.wait();
 
-    user1BalanceRatio = new FloatBn(
-      (await afEth.balanceOf(accounts[1].address)).toString()
-    ).div((await afEth.totalSupply()).toString());
-    const user2BalanceRatio = new FloatBn(
-      (await afEth.balanceOf(accounts[2].address)).toString()
-    ).div((await afEth.totalSupply()).toString());
+    user1BalanceRatio = (await afEth.balanceOf(accounts[1].address))
+      .mul(ethers.utils.parseEther("1"))
+      .div((await afEth.totalSupply()).toString());
+    const user2BalanceRatio = (await afEth.balanceOf(accounts[2].address))
+      .mul(ethers.utils.parseEther("1"))
+      .div((await afEth.totalSupply()).toString());
 
-    const expectedUser1Reward2 = new FloatBn(rewardAmount.toString()).times(
-      user1BalanceRatio
-    );
-    const expectedUser2Reward = new FloatBn(rewardAmount.toString()).times(
-      user2BalanceRatio
-    );
+    const expectedUser1Reward2 = BigNumber.from(rewardAmount)
+      .mul(user1BalanceRatio)
+      .div(ethers.utils.parseEther("1"));
+    const expectedUser2Reward = BigNumber.from(rewardAmount)
+      .mul(user2BalanceRatio)
+      .div(ethers.utils.parseEther("1"));
 
     tx = await afEth.depositRewards(depositAmount, {
       value: rewardAmount,
@@ -454,19 +458,11 @@ describe("Test AfEth", async function () {
     const rewardAmount2 = ethReceived2.sub(depositAmount);
 
     const totalUser1ExpectedReward =
-      expectedUser1Reward1.plus(expectedUser1Reward2);
+      expectedUser1Reward1.add(expectedUser1Reward2);
 
+    expect(within1Percent(rewardAmount1, totalUser1ExpectedReward)).eq(true);
     expect(
-      within1Percent(
-        rewardAmount1,
-        BigNumber.from(totalUser1ExpectedReward.toFixed(0))
-      )
-    ).eq(true);
-    expect(
-      within2Percent(
-        rewardAmount2,
-        BigNumber.from(expectedUser2Reward.toFixed(0))
-      )
+      within2Percent(rewardAmount2, BigNumber.from(expectedUser2Reward))
     ).eq(true);
   });
 
