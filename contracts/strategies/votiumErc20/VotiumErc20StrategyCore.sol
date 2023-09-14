@@ -181,27 +181,34 @@ contract VotiumErc20StrategyCore is
         claimVlCvxRewards();
     }
 
-    function depositRewardsAll(uint256 _amount) public payable {
-        if(safEthStrategyAddress != address(0)) {
-            uint256 safEthTvl = (ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5).approxPrice(false) * IERC20(safEthStrategyAddress).totalSupply()) / 1e18;
-            uint256 votiumTvl = ((cvxPerVotium() * ethPerCvx()) / 1e18 * totalSupply()) / 1e18;
-            uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl+votiumTvl);
+    /**
+     * @notice - sells _amount of eth from votium contract
+     * @notice - puts it into safEthStrategy or votiumStrategy, whichever is underweight.
+     *  */
+    function depositRewards(uint256 _amount) public payable {
+        if (safEthStrategyAddress != address(0)) {
+            uint256 safEthTvl = (ISafEth(
+                0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5
+            ).approxPrice(false) *
+                IERC20(safEthStrategyAddress).totalSupply()) / 1e18;
+            uint256 votiumTvl = (((cvxPerVotium() * ethPerCvx()) / 1e18) *
+                totalSupply()) / 1e18;
+            uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
             // too much safEth, deposit to votium
-            if(safEthRatio > 7e17) IAfEth(manager).applyStrategyReward{value: _amount}(address(this));
-            else IAfEth(manager).applyStrategyReward{value: _amount}(safEthStrategyAddress);
+            if (safEthRatio > 7e17)
+                IAfEth(manager).applyStrategyReward{value: _amount}(
+                    address(this)
+                );
+            else
+                IAfEth(manager).applyStrategyReward{value: _amount}(
+                    safEthStrategyAddress
+                );
         } else {
             uint256 cvxAmount = buyCvx(_amount);
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
             emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
         }
-    }
-
-    function depositRewards(uint256 _amount) public payable {
-        uint256 cvxAmount = buyCvx(_amount);
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
     }
 
     /**
@@ -298,7 +305,7 @@ contract VotiumErc20StrategyCore is
         }
         uint256 ethBalanceAfter = address(this).balance;
 
-        depositRewardsAll(ethBalanceAfter - ethBalanceBefore);
+        depositRewards(ethBalanceAfter - ethBalanceBefore);
     }
 
     /**
