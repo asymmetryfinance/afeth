@@ -182,15 +182,10 @@ contract VotiumErc20StrategyCore is
     }
 
     function depositRewardsAll(uint256 _amount) public payable {
-        console.log('fuck1');
         if(safEthStrategyAddress != address(0)) {
-        console.log('fuck2');
             uint256 safEthTvl = (ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5).approxPrice(false) * IERC20(safEthStrategyAddress).totalSupply()) / 1e18;
-        console.log('fuck3');
             uint256 votiumTvl = ((cvxPerVotium() * ethPerCvx()) / 1e18 * totalSupply()) / 1e18;
             uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl+votiumTvl);
-
-            console.log('safEthRatio', safEthRatio);
             // too much safEth, deposit to votium
             if(safEthRatio > 7e17) IAfEth(manager).applyStrategyReward{value: _amount}(address(this));
             else IAfEth(manager).applyStrategyReward{value: _amount}(safEthStrategyAddress);
