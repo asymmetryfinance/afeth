@@ -186,7 +186,7 @@ contract VotiumErc20StrategyCore is
         claimVlCvxRewards();
     }
 
-    function depositRewardsInternal(uint256 _amount) internal {
+    function depositRewardsInternal(uint256 _amount) public payable {
         uint256 safEthShare = (_amount * safEthRewardsShare) / 1e18;
         uint256 votiumShare = _amount - safEthShare;
         if (safEthShare > 0)

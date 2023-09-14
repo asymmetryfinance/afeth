@@ -206,6 +206,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     }
 
     function depositRewards(uint256 _amount) public payable override {
-        depositRewardsInternal(_amount);
+        this.depositRewardsInternal(_amount);
     }
 }

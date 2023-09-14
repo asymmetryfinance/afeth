@@ -160,7 +160,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             }();
             totalValue += (mintAmount * strategy.price());
         }
-        uint256 amountToMint = (totalValue / priceBeforeDeposit);
+        uint256 amountToMint = totalValue / priceBeforeDeposit;
         require(amountToMint >= _minout, "Slippage");
         _mint(msg.sender, amountToMint);
     }
@@ -174,9 +174,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (pauseWithdraw) revert Paused();
         latestWithdrawId++;
 
-        // ratio of afEth being withdrawn to totalSupply
-        // we are transfering the afEth to the contract when we requestWithdraw
-        // we shouldn't include that in the withdrawRatio
         uint256 withdrawRatio = (_amount * 1e18) / (totalSupply());
 
         _burn(msg.sender, _amount);
@@ -269,7 +266,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 (strategyEthValue * 1e18) / totalEthValue < strategyRatio
             ) {
                 // apply reward here
-                strategy.deposit{value: msg.value}();
+                strategy.depositRewards(msg.value);
                 break;
             }
         }

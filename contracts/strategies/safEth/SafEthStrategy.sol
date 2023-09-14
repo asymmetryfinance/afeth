@@ -106,6 +106,10 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     }
 
     function depositRewards(uint256 _amount) public payable override {
-        // todo price go up
+        ISafEth(safEthAddress).stake{
+            value: (_amount)
+        }(
+            0 // TODO: set minAmount
+        );
     }
 }
