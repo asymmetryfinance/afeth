@@ -16,6 +16,7 @@ import "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
 import "../AbstractErc20Strategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "hardhat/console.sol";
+import "../../external_interfaces/ISafEth.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
@@ -47,10 +48,8 @@ contract VotiumErc20StrategyCore is
     uint256 public cvxUnlockObligations;
     address public rewarder;
     address public manager;
+    address public safEthStrategyAddress;
 
-    // share of votium rewards to be deposited back into safEth
-    // TODO this should come from manager contract
-    uint256 safEthRewardsShare; // 1e17 = 50%
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
 
@@ -96,7 +95,8 @@ contract VotiumErc20StrategyCore is
     function initialize(
         address _owner,
         address _rewarder,
-        address _manager
+        address _manager,
+        address _safEthStrategyAddress
     ) external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -113,12 +113,7 @@ contract VotiumErc20StrategyCore is
         chainlinkCvxEthFeed = AggregatorV3Interface(
             0xC9CbF687f43176B302F03f5e58470b77D07c61c6
         );
-    }
-
-    function setSafEthRewardsShare(
-        uint256 _safEthRewardsShare
-    ) external onlyOwner {
-        safEthRewardsShare = _safEthRewardsShare;
+        safEthStrategyAddress = _safEthStrategyAddress;
     }
 
     /**
@@ -186,15 +181,33 @@ contract VotiumErc20StrategyCore is
         claimVlCvxRewards();
     }
 
+    /**
+     * @notice - sells _amount of eth from votium contract
+     * @notice - puts it into safEthStrategy or votiumStrategy, whichever is underweight.
+     *  */
     function depositRewards(uint256 _amount) public payable {
-        uint256 safEthShare = (_amount * safEthRewardsShare) / 1e18;
-        uint256 votiumShare = _amount - safEthShare;
-        if (safEthShare > 0)
-            IAfEth(manager).applySafEthReward{value: safEthShare}();
-        uint256 cvxAmount = buyCvx(votiumShare);
+        if (safEthStrategyAddress != address(0)) {
+            uint256 safEthTvl = (ISafEth(
+                0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5
+            ).approxPrice(false) *
+                IERC20(safEthStrategyAddress).totalSupply()) / 1e18;
+            uint256 votiumTvl = (((cvxPerVotium() * ethPerCvx()) / 1e18) *
+                totalSupply()) / 1e18;
+            uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
+            if (safEthRatio < 7e17) {
+                IAfEth(manager).applyStrategyReward{value: _amount}(
+                    safEthStrategyAddress
+                );
+                return;
+            }
+        }
+        // we add votium rewards this way instead of manager.applyStrategyReward()
+        // because applyStrategyReward() does not increase the price of the underlying asset
+        // and we have a lot of existing tests around votium strategy price increasing on rewards being applied
+        uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(cvxPerVotium(), votiumShare, cvxAmount);
+        emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
     }
 
     /**
