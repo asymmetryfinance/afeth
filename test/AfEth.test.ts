@@ -143,7 +143,8 @@ describe("Test AfEth", async function () {
   });
 
   it("Should mint, requestwithdraw, and withdraw afETH with 70/30 (safEth/votium) ratios", async function () {
-    await afEth.updateRatio(ethers.utils.parseEther(".7"));
+    const safEthVotiumRatio = ethers.utils.parseEther(".7");
+    await afEth.updateRatio(safEthVotiumRatio);
 
     const user1 = afEth.connect(accounts[1]);
 
@@ -190,9 +191,10 @@ describe("Test AfEth", async function () {
       .mul("1000000000000000000")
       .div(safEthValueGained.add(votiumValueGained));
 
-    expect(within1Percent(gainRatio, BigNumber.from("300000000000000000"))).eq(
-      true
+    const expectedGainRatio = BigNumber.from("1000000000000000000").sub(
+      safEthVotiumRatio
     );
+    expect(within1Percent(gainRatio, expectedGainRatio)).eq(true);
   });
   it("Should fail to withdraw if epoch for votium hasn't been reached", async function () {
     const depositAmount = ethers.utils.parseEther("1");
