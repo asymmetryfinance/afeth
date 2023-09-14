@@ -195,7 +195,9 @@ contract VotiumErc20StrategyCore is
                 totalSupply()) / 1e18;
             uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
             if (safEthRatio < 7e17) {
-                IAfEth(manager).applyStrategyReward{value: _amount}(safEthStrategyAddress);
+                IAfEth(manager).applyStrategyReward{value: _amount}(
+                    safEthStrategyAddress
+                );
                 return;
             }
         } else {
