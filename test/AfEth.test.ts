@@ -46,7 +46,7 @@ describe("Test AfEth", async function () {
     );
     votiumStrategy = (await upgrades.deployProxy(votiumFactory, [
       accounts[0].address,
-      (await getRewarderAccount()).address,
+      accounts[0].address,
       afEth.address,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
