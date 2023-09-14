@@ -122,7 +122,6 @@ export const oracleApplyRewards = async (
   testDataOverride: any,
   applyToSelf: boolean = true
 ) => {
-  console.log('testDataOverride', testDataOverride, testDataOverride == undefined)
   const testData =
     testDataOverride !== undefined
       ? testDataOverride

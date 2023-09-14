@@ -6,6 +6,7 @@ import "../AbstractErc20Strategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 import "hardhat/console.sol";
 import "../../external_interfaces/IAfEth.sol";
+
 contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     event WithdrawRequest(
         address indexed account,
@@ -98,7 +99,10 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         return block.timestamp;
     }
 
-    function depositRewards(uint256 _amount, bool applyToSelf) public payable override {
+    function depositRewards(
+        uint256 _amount,
+        bool applyToSelf
+    ) public payable override {
         if (!applyToSelf) {
             IAfEth(manager).depositRewards{value: _amount}();
             return;

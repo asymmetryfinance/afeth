@@ -177,7 +177,10 @@ contract VotiumErc20StrategyCore is
         claimVlCvxRewards();
     }
 
-    function depositRewardsInternal(uint256 _amount, bool applyToSelf) public payable {
+    function depositRewardsInternal(
+        uint256 _amount,
+        bool applyToSelf
+    ) public payable {
         if (!applyToSelf) {
             IAfEth(manager).depositRewards{value: _amount}();
             return;
@@ -250,7 +253,10 @@ contract VotiumErc20StrategyCore is
      * @dev - causes price to go up
      * @param _swapsData - array of SwapData for 0x swaps
      */
-    function applyRewards(SwapData[] calldata _swapsData, bool applyToSelf) public onlyRewarder {
+    function applyRewards(
+        SwapData[] calldata _swapsData,
+        bool applyToSelf
+    ) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
