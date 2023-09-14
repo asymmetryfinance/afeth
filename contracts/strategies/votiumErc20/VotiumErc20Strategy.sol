@@ -13,12 +13,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 amount,
         uint256 withdrawId
     );
-    event Withdraw(
-        address indexed user,
-        uint256 cvxAmount,
-        uint256 unlockEpoch,
-        uint256 ethAmount
-    );
 
     struct WithdrawRequestInfo {
         uint256 cvxOwed;
@@ -136,7 +130,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
 
         // TODO: use call to send eth instead
         payable(msg.sender).transfer(ethReceived);
-        emit Withdraw(msg.sender, cvxWithdrawAmount, withdrawId, ethReceived);
     }
 
     /**
