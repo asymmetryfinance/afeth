@@ -8,18 +8,20 @@ import "./strategies/AbstractErc20Strategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
-    struct Strategy {
+    struct StrategyInfo {
         address strategyAddress;
         uint256 ratio;
     }
-    Strategy[] public strategies; // mapping of strategy address to ratio
+    StrategyInfo public safEthInfo; // SafEth Strategy Info
+    StrategyInfo public vEthInfo; // Votium Strategy Info
     uint256 public totalRatio;
     uint256 public latestWithdrawId;
 
     struct WithdrawInfo {
         address owner;
         uint256 amount;
-        uint256[] strategyWithdrawIds;
+        uint256 safEthWithdrawId;
+        uint256 vEthWithdrawId;
     }
     mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
     bool public pauseDeposit;
@@ -32,7 +34,15 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error CanNotWithdraw();
     error NotOwner();
     error FailedToSend();
+    error FailedToDeposit();
     error Paused();
+    error BelowMinOut();
+
+    event WithdrawRequest(
+        address indexed account,
+        uint256 amount,
+        uint256 withdrawId
+    );
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
@@ -54,55 +64,58 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
-        @notice - Add strategies to the strategies array
-        @dev - These will rarely change, if at all once deployed
-        @dev - ERC165 protects against contracts that don't implement the correct interface
-        @param _strategy - Address of the strategy contract
-        @param _ratio - Ratio for the strategy
+        @notice - Initialize values for the contracts
+        @dev - This replaces the constructor for upgradeable contracts
+        @param _safEthAddress - Address of the safEth strategy
+        @param _vEthAddress - Address of the vEth strategy
     */
-    function addStrategy(address _strategy, uint256 _ratio) external onlyOwner {
-        try
-            ERC165(_strategy).supportsInterface(
-                type(AbstractErc20Strategy).interfaceId
-            )
-        returns (bool supported) {
-            // Contract supports ERC-165 but invalid
-            if (!supported) revert InvalidStrategy();
-        } catch {
-            // Contract doesn't support ERC-165
-            revert InvalidStrategy();
-        }
-        uint256 total = 0;
-        for (uint256 i = 0; i < strategies.length; i++) {
-            unchecked {
-                total += strategies[i].ratio;
-            }
-            if (strategies[i].strategyAddress == _strategy)
-                revert StrategyAlreadyAdded();
-        }
-        Strategy memory strategy = Strategy(_strategy, _ratio);
-        strategies.push(strategy);
-        totalRatio = total + _ratio;
+    function initializeStrategies(
+        address _safEthAddress,
+        address _vEthAddress
+    ) external onlyOwner {
+        if (safEthInfo.strategyAddress != address(0))
+            revert StrategyAlreadyAdded();
+        safEthInfo.strategyAddress = _safEthAddress;
+        safEthInfo.ratio = 7e17;
+        vEthInfo.strategyAddress = _vEthAddress;
+        vEthInfo.ratio = 3e17;
+        totalRatio = safEthInfo.ratio + vEthInfo.ratio;
     }
 
     /**
         @notice - Add strategies to the strategies array
         @dev - To remove a strategy just set ratio to zero
-        @param _strategy - Address of the strategy contract
+        @param _strategyAddress - Address of the strategy contract
         @param _ratio - Ratio for the strategy
     */
-    function updateRatio(address _strategy, uint256 _ratio) external onlyOwner {
-        for (uint256 i = 0; i < strategies.length; i++) {
-            if (strategies[i].strategyAddress == _strategy) {
-                unchecked {
-                    totalRatio -= strategies[i].ratio;
-                    totalRatio += _ratio;
-                }
-                strategies[i].ratio = _ratio;
-                return;
-            }
+    function updateRatio(
+        address _strategyAddress,
+        uint256 _ratio
+    ) external onlyOwner {
+        if (safEthInfo.strategyAddress == _strategyAddress) {
+            changeRatio(safEthInfo, _ratio);
+            return;
+        } else if (vEthInfo.strategyAddress == _strategyAddress) {
+            changeRatio(vEthInfo, _ratio);
+            return;
         }
         revert StrategyNotFound();
+    }
+
+    /**
+        @notice - Private function to update ratio
+        @param _strategy - Strategy to update ratio
+        @param _ratio - Ratio to update to
+    */
+    function changeRatio(
+        StrategyInfo storage _strategy,
+        uint256 _ratio
+    ) private {
+        unchecked {
+            totalRatio -= _strategy.ratio;
+            totalRatio += _ratio;
+        }
+        _strategy.ratio = _ratio;
     }
 
     /**
@@ -124,20 +137,22 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
         @notice - Get's the price of afEth
-        @dev - Loops through each strategy and calculates the total value in ETH divided by supply of afETH tokens
+        @dev - Checks each strategy and calculates the total value in ETH divided by supply of afETH tokens
+        @return - Price of afEth
     */
     function price() public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
-        uint256 totalValue = 0;
-        for (uint256 i = 0; i < strategies.length; i++) {
-            AbstractErc20Strategy strategy = AbstractErc20Strategy(
-                strategies[i].strategyAddress
-            );
-            uint256 strategyValueInEth = (strategy.price() *
-                strategy.balanceOf(address(this))) / 1e18;
-            totalValue += strategyValueInEth;
-        }
-        return (totalValue * 1e18) / totalSupply();
+        AbstractErc20Strategy safEthStrategy = AbstractErc20Strategy(
+            safEthInfo.strategyAddress
+        );
+        AbstractErc20Strategy vEthStrategy = AbstractErc20Strategy(
+            vEthInfo.strategyAddress
+        );
+        uint256 safEthValueInEth = (safEthStrategy.price() *
+            safEthStrategy.balanceOf(address(this))) / 1e18;
+        uint256 vEthValueInEth = (vEthStrategy.price() *
+            vEthStrategy.balanceOf(address(this))) / 1e18;
+        return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply();
     }
 
     /**
@@ -148,29 +163,39 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function deposit(uint256 _minout) external payable virtual {
         if (pauseDeposit) revert Paused();
         uint256 amount = msg.value;
-        uint256 totalValue = 0;
         uint256 priceBeforeDeposit = price();
-        for (uint256 i = 0; i < strategies.length; i++) {
-            AbstractErc20Strategy strategy = AbstractErc20Strategy(
-                strategies[i].strategyAddress
-            );
-            if (strategies[i].ratio == 0) continue;
-            uint256 mintAmount = strategy.deposit{
-                value: (amount * strategies[i].ratio) / totalRatio
-            }();
-            totalValue += (mintAmount * strategy.price());
-        }
+        uint256 totalValue;
+        AbstractErc20Strategy safEthStrategy = AbstractErc20Strategy(
+            safEthInfo.strategyAddress
+        );
+        AbstractErc20Strategy vEthStrategy = AbstractErc20Strategy(
+            vEthInfo.strategyAddress
+        );
+        uint256 safEthMintAmount = safEthInfo.ratio > 0
+            ? safEthStrategy.deposit{
+                value: (amount * safEthInfo.ratio) / totalRatio
+            }()
+            : 0;
+        uint256 vEthMintAmount = vEthInfo.ratio > 0
+            ? vEthStrategy.deposit{
+                value: (amount * vEthInfo.ratio) / totalRatio
+            }()
+            : 0;
+        if (safEthMintAmount > 0)
+            totalValue += safEthMintAmount * safEthStrategy.price();
+        if (vEthMintAmount > 0)
+            totalValue += vEthMintAmount * vEthStrategy.price();
+        if (totalValue == 0) revert FailedToDeposit();
         uint256 amountToMint = totalValue / priceBeforeDeposit;
-        require(amountToMint >= _minout, "Slippage");
+        if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
     }
 
     /**
         @notice - Request to close position
+        @param _amount - Amount of afEth to withdraw
     */
-    function requestWithdraw(
-        uint256 _amount
-    ) external virtual returns (uint256 withdrawId) {
+    function requestWithdraw(uint256 _amount) external virtual {
         if (pauseWithdraw) revert Paused();
         latestWithdrawId++;
 
@@ -182,45 +207,69 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             (totalSupply() - afEthBalance);
 
         _transfer(msg.sender, address(this), _amount);
-        withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
-            strategies.length
+        uint256 safEthWithdrawId = requestWithdrawFromStrategy(
+            safEthInfo.strategyAddress,
+            withdrawRatio
         );
-        for (uint256 i = 0; i < strategies.length; i++) {
-            uint256 strategyBalance = ERC20Upgradeable(
-                strategies[i].strategyAddress
-            ).balanceOf(address(this));
+        uint256 vEthWithdrawId = requestWithdrawFromStrategy(
+            vEthInfo.strategyAddress,
+            withdrawRatio
+        );
+        withdrawIdInfo[latestWithdrawId].safEthWithdrawId = safEthWithdrawId;
+        withdrawIdInfo[latestWithdrawId].vEthWithdrawId = vEthWithdrawId;
 
-            uint256 strategyWithdrawAmount = (withdrawRatio * strategyBalance) /
-                1e18;
-            uint256 strategyWithdrawId = AbstractErc20Strategy(
-                strategies[i].strategyAddress
-            ).requestWithdraw(strategyWithdrawAmount);
-            withdrawIdInfo[latestWithdrawId].strategyWithdrawIds[
-                i
-            ] = strategyWithdrawId;
-        }
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
         withdrawIdInfo[latestWithdrawId].amount = _amount;
-        return latestWithdrawId;
+        emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
     }
 
-    function canWithdraw(uint256 withdrawId) public view returns (bool) {
-        for (uint256 i = 0; i < strategies.length; i++) {
-            if (
-                !AbstractErc20Strategy(strategies[i].strategyAddress)
-                    .canWithdraw(withdrawId)
-            ) return false;
-        }
-        return true;
+    /**
+        @notice - Private function to request withdraw from strategy
+        @param _strategyAddress - Strategy address to withdraw from
+        @param _withdrawRatio - Ratio of afEth to withdraw
+        @return withdrawId - Withdraw id of the strategy
+    */
+    function requestWithdrawFromStrategy(
+        address _strategyAddress,
+        uint256 _withdrawRatio
+    ) private returns (uint256 withdrawId) {
+        uint256 strategyBalance = ERC20Upgradeable(_strategyAddress).balanceOf(
+            address(this)
+        );
+        uint256 strategyWithdrawAmount = (_withdrawRatio * strategyBalance) /
+            1e18;
+        withdrawId = AbstractErc20Strategy(_strategyAddress).requestWithdraw(
+            strategyWithdrawAmount
+        );
     }
 
+    /**
+        @notice - Checks if withdraw can be executed from withdrawId
+        @param _withdrawId - Id of the withdraw request for SafEth
+        @return - Bool if withdraw can be executed
+    */
+    function canWithdraw(uint256 _withdrawId) public view returns (bool) {
+        return
+            AbstractErc20Strategy(safEthInfo.strategyAddress).canWithdraw(
+                withdrawIdInfo[_withdrawId].safEthWithdrawId
+            ) &&
+            AbstractErc20Strategy(vEthInfo.strategyAddress).canWithdraw(
+                withdrawIdInfo[_withdrawId].vEthWithdrawId
+            );
+    }
+
+    /**
+        @notice - Get's the withdraw time for an amount of AfEth
+        @param _amount - Amount of afETH to withdraw
+        @return - Highest withdraw time of the strategies
+    */
     function withdrawTime(uint256 _amount) public view returns (uint256) {
-        uint256 highestTime = 0;
-        for (uint256 i = 0; i < strategies.length; i++) {
-            uint256 time = AbstractErc20Strategy(strategies[i].strategyAddress)
-                .withdrawTime(_amount);
-            if (time > highestTime) highestTime = time;
-        }
+        uint256 safEthTime = AbstractErc20Strategy(safEthInfo.strategyAddress)
+            .withdrawTime(_amount);
+        uint256 vEthTime = AbstractErc20Strategy(vEthInfo.strategyAddress)
+            .withdrawTime(_amount);
+        uint256 highestTime = safEthTime > vEthTime ? safEthTime : vEthTime;
+
         return highestTime;
     }
 
@@ -235,29 +284,32 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     ) external virtual onlyWithdrawIdOwner(_withdrawId) {
         if (pauseWithdraw) revert Paused();
         uint256 ethBalanceBefore = address(this).balance;
-        uint256[] memory strategyWithdrawIds = withdrawIdInfo[_withdrawId]
-            .strategyWithdrawIds;
+        WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
-        for (uint256 i = 0; i < strategyWithdrawIds.length; i++) {
-            AbstractErc20Strategy strategy = AbstractErc20Strategy(
-                strategies[i].strategyAddress
-            );
-            strategy.withdraw(strategyWithdrawIds[i]);
-        }
+
+        AbstractErc20Strategy(safEthInfo.strategyAddress).withdraw(
+            withdrawInfo.safEthWithdrawId
+        );
+        AbstractErc20Strategy(vEthInfo.strategyAddress).withdraw(
+            withdrawInfo.vEthWithdrawId
+        );
 
         _burn(address(this), withdrawIdInfo[_withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
-        require(ethReceived >= _minout, "Slippage");
+        if (ethReceived < _minout) revert BelowMinOut();
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         if (!sent) revert FailedToSend();
     }
 
-    // deposit value to safEth side
-    function applyStrategyReward(address strategyAddress) public payable {
-        AbstractErc20Strategy(strategyAddress).deposit{value: msg.value}();
+    /**
+        @notice - Applies reward to a strategy
+        @param _strategyAddress - Address of the strategy to apply reward to
+    */
+    function applyStrategyReward(address _strategyAddress) public payable {
+        AbstractErc20Strategy(_strategyAddress).deposit{value: msg.value}();
     }
 
     receive() external payable {}

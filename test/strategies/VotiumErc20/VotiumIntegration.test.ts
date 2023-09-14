@@ -49,7 +49,8 @@ describe.skip("Votium integration test", async function () {
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
-      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
+      ethers.constants.AddressZero, // TODO this should be an afEth mock but doesnt matter right now
+      ethers.constants.AddressZero,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
