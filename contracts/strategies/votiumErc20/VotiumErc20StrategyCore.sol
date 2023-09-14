@@ -48,9 +48,6 @@ contract VotiumErc20StrategyCore is
     address public rewarder;
     address public manager;
 
-    // share of votium rewards to be deposited back into safEth
-    // TODO this should come from manager contract
-    uint256 safEthRewardsShare; // 1e17 = 50%
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
 
@@ -186,15 +183,15 @@ contract VotiumErc20StrategyCore is
         claimVlCvxRewards();
     }
 
-    function depositRewardsInternal(uint256 _amount) public payable {
-        uint256 safEthShare = (_amount * safEthRewardsShare) / 1e18;
-        uint256 votiumShare = _amount - safEthShare;
-        if (safEthShare > 0)
-            IAfEth(manager).applySafEthReward{value: safEthShare}();
-        uint256 cvxAmount = buyCvx(votiumShare);
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(cvxPerVotium(), votiumShare, cvxAmount);
+    function depositRewardsInternal(uint256 _amount, bool applyToSelf) public payable {
+        if (!applyToSelf)
+            IAfEth(manager).depositRewards{value: _amount}();
+        else {
+            uint256 cvxAmount = buyCvx(_amount);
+            IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
+            ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+            emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
+        }
     }
 
     /**
