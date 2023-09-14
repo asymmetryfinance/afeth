@@ -1081,16 +1081,18 @@ describe("Test AfEth", async function () {
     const afEthPrice0 = await afEth.price();
     const votiumStrategyPrice0 = await votiumStrategy.price();
     const safEthStrategyPrice0 = await safEthStrategy.price();
+    const safEthStrategyTotalSupply0 = await safEthStrategy.totalSupply();
 
     let tx = await votiumStrategy.depositRewards(rewardAmount, {
       value: rewardAmount,
     });
     await tx.wait();
 
-    // first reward -- votium goes up, safEth unchanged, votium goes up
+    // first reward -- votium unchanged, safEth unchnaged but in price (but supply goes up), afEth price goes up
     expect(await afEth.price()).gt(afEthPrice0);
     expect(await votiumStrategy.price()).eq(votiumStrategyPrice0);
     expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice0));
+    expect(await safEthStrategy.totalSupply()).gt(safEthStrategyTotalSupply0);
 
     const afEthPrice1 = await afEth.price();
     const votiumStrategyPrice1 = await votiumStrategy.price();
@@ -1101,9 +1103,9 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    // second reward --safEth goes up, votium unchanged, afEth goes up
+    // second reward --safEth price unchanged (and supply unchanged), votium goes up, afEth goes up
     expect(await afEth.price()).gt(afEthPrice1);
-    expect(await safEthStrategy.price()).gt(safEthStrategyPrice1);
-    expect(within1Pip(await votiumStrategy.price(), votiumStrategyPrice1));
+    expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice1));
+    expect(await votiumStrategy.price()).gt(votiumStrategyPrice1);
   });
 });
