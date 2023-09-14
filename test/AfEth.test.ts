@@ -5,10 +5,15 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
-import { within1Percent, within1Pip, within2Percent, within5Percent } from "./helpers/helpers";
+import {
+  within1Percent,
+  within1Pip,
+  within2Percent,
+  within5Percent,
+} from "./helpers/helpers";
 import { BigNumber } from "ethers";
 
-describe.only("Test AfEth", async function () {
+describe("Test AfEth", async function () {
   let afEth: AfEth;
   let safEthStrategy: SafEthStrategy;
   let votiumStrategy: VotiumErc20Strategy;
@@ -165,7 +170,7 @@ describe.only("Test AfEth", async function () {
     );
 
     let ratio = votiumBalanceBeforeDeposit1.div(safEthBalanceBeforeDeposit1);
-    expect(ratio).eq(603);
+    expect(ratio).eq(598);
 
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await user1.deposit(0, { value: depositAmount });
@@ -179,7 +184,7 @@ describe.only("Test AfEth", async function () {
     );
 
     ratio = votiumBalanceAfterDeposit1.div(safEthBalanceAfterDeposit1);
-    expect(ratio).eq(1293);
+    expect(ratio).eq(1283);
 
     const afEthBalanceBeforeRequest = await user1.balanceOf(
       accounts[1].address
@@ -238,7 +243,7 @@ describe.only("Test AfEth", async function () {
     );
 
     let ratio = votiumBalanceBeforeDeposit1.div(safEthBalanceBeforeDeposit1);
-    expect(ratio).eq(603);
+    expect(ratio).eq(598);
 
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await user1.deposit(0, { value: depositAmount });
@@ -252,7 +257,7 @@ describe.only("Test AfEth", async function () {
     );
 
     ratio = votiumBalanceAfterDeposit1.div(safEthBalanceAfterDeposit1);
-    expect(ratio).eq(281);
+    expect(ratio).eq(279);
 
     const afEthBalanceBeforeRequest = await user1.balanceOf(
       accounts[1].address
@@ -307,7 +312,7 @@ describe.only("Test AfEth", async function () {
       "CanNotWithdraw()"
     );
   });
-  it.only("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw", async function () {
+  it("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw", async function () {
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[2]);
 
@@ -315,73 +320,70 @@ describe.only("Test AfEth", async function () {
 
     const mintTx1 = await user1.deposit(0, { value: depositAmount });
     await mintTx1.wait();
-    const priceAfter = await afEth.price();
-    // const mintTx2 = await user2.deposit(0, { value: depositAmount });
-    // await mintTx2.wait();
+    const mintTx2 = await user2.deposit(0, { value: depositAmount });
+    await mintTx2.wait();
 
-    // const afEthBalanceBeforeRequest1 = await user1.balanceOf(
-    //   accounts[1].address
-    // );
-    // const afEthBalanceBeforeRequest2 = await user2.balanceOf(
-    //   accounts[2].address
-    // );
+    const afEthBalanceBeforeRequest1 = await user1.balanceOf(
+      accounts[1].address
+    );
+    const afEthBalanceBeforeRequest2 = await user2.balanceOf(
+      accounts[2].address
+    );
 
-    // expect(
-    //   within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
-    // );
+    expect(
+      within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
+    );
 
-    // const requestWithdrawTx1 = await user1.requestWithdraw(
-    //   await afEth.balanceOf(accounts[1].address)
-    // );
-    // await requestWithdrawTx1.wait();
-    // const requestWithdrawTx2 = await user2.requestWithdraw(
-    //   await afEth.balanceOf(accounts[2].address)
-    // );
-    // await requestWithdrawTx2.wait();
+    const requestWithdrawTx1 = await user1.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
+    await requestWithdrawTx1.wait();
+    const requestWithdrawTx2 = await user2.requestWithdraw(
+      await afEth.balanceOf(accounts[2].address)
+    );
+    await requestWithdrawTx2.wait();
 
-    // for (let i = 0; i < 17; i++) {
-    //   await incrementVlcvxEpoch();
-    // }
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
 
-    // const withdrawInfo1 = await afEth.withdrawIdInfo(1);
-    // const withdrawInfo2 = await afEth.withdrawIdInfo(2);
+    const withdrawInfo1 = await afEth.withdrawIdInfo(1);
+    const withdrawInfo2 = await afEth.withdrawIdInfo(2);
 
-    // console.log('withdrawInfo1', withdrawInfo1.amount);
-    // console.log('withdrawInfo2', withdrawInfo2.amount);
-    // expect(within1Percent(withdrawInfo1.amount, withdrawInfo2.amount)).eq(true);
-    // expect(withdrawInfo1.owner).eq(accounts[1].address);
-    // expect(withdrawInfo2.owner).eq(accounts[2].address);
+    expect(within1Percent(withdrawInfo1.amount, withdrawInfo2.amount)).eq(true);
+    expect(withdrawInfo1.owner).eq(accounts[1].address);
+    expect(withdrawInfo2.owner).eq(accounts[2].address);
 
-    // const ethBalanceBeforeWithdraw1 = await ethers.provider.getBalance(
-    //   accounts[1].address
-    // );
-    // const ethBalanceBeforeWithdraw2 = await ethers.provider.getBalance(
-    //   accounts[2].address
-    // );
+    const ethBalanceBeforeWithdraw1 = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    const ethBalanceBeforeWithdraw2 = await ethers.provider.getBalance(
+      accounts[2].address
+    );
 
-    // const withdrawTx1 = await user1.withdraw(1, 0);
-    // await withdrawTx1.wait();
-    // const withdrawTx2 = await user2.withdraw(2, 0);
-    // await withdrawTx2.wait();
+    const withdrawTx1 = await user1.withdraw(1, 0);
+    await withdrawTx1.wait();
+    const withdrawTx2 = await user2.withdraw(2, 0);
+    await withdrawTx2.wait();
 
-    // const ethBalanceAfterWithdraw1 = await ethers.provider.getBalance(
-    //   accounts[1].address
-    // );
-    // const ethBalanceAfterWithdraw2 = await ethers.provider.getBalance(
-    //   accounts[2].address
-    // );
-    // const ethReceived1 = ethBalanceAfterWithdraw1.sub(
-    //   ethBalanceBeforeWithdraw1
-    // );
-    // const ethReceived2 = ethBalanceAfterWithdraw2.sub(
-    //   ethBalanceBeforeWithdraw2
-    // );
+    const ethBalanceAfterWithdraw1 = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    const ethBalanceAfterWithdraw2 = await ethers.provider.getBalance(
+      accounts[2].address
+    );
+    const ethReceived1 = ethBalanceAfterWithdraw1.sub(
+      ethBalanceBeforeWithdraw1
+    );
+    const ethReceived2 = ethBalanceAfterWithdraw2.sub(
+      ethBalanceBeforeWithdraw2
+    );
 
-    // expect(ethBalanceAfterWithdraw1).gt(ethBalanceBeforeWithdraw1);
-    // expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
+    expect(ethBalanceAfterWithdraw1).gt(ethBalanceBeforeWithdraw1);
+    expect(ethBalanceAfterWithdraw2).gt(ethBalanceBeforeWithdraw2);
 
-    // expect(within1Percent(ethReceived1, ethReceived2)).eq(true);
-    // expect(within1Percent(ethReceived2, depositAmount)).eq(true);
+    expect(within1Percent(ethReceived1, ethReceived2)).eq(true);
+    expect(within1Percent(ethReceived2, depositAmount)).eq(true);
   });
   it("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw and split rewards", async function () {
     const user1 = afEth.connect(accounts[1]);

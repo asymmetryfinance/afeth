@@ -177,8 +177,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         // ratio of afEth being withdrawn to totalSupply
         // we are transfering the afEth to the contract when we requestWithdraw
         // we shouldn't include that in the withdrawRatio
-        uint256 withdrawRatio = (_amount * 1e18) /
-            (totalSupply());
+        uint256 withdrawRatio = (_amount * 1e18) / (totalSupply());
 
         _burn(msg.sender, _amount);
 
@@ -242,7 +241,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             AbstractErc20Strategy strategy = AbstractErc20Strategy(
                 strategies[i].strategyAddress
             );
-            console.log('withdrawing from strategy ', strategyWithdrawIds[i]);
             strategy.withdraw(strategyWithdrawIds[i]);
         }
 

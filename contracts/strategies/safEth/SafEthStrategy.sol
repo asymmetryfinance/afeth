@@ -23,20 +23,33 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
 
     mapping(uint256 => uint256) public withdrawIdToAmount;
 
-    function deposit()
-        external
-        payable
-        virtual
-        override
-        returns (uint256)
-    {
-        uint256 priceBefore = this.price();
-        uint256 mintAmount = ISafEth(safEthAddress).stake{value: (msg.value)}(
+    function deposit() external payable virtual override returns (uint256) {
+        uint256 priceBefore = this.safEthPerStrategyToken();
+        uint256 safEthMintAmount = ISafEth(safEthAddress).stake{
+            value: (msg.value)
+        }(
             0 // TODO: set minAmount
         );
-        uint256 mintAmountConverted = (mintAmount * 1e18) / priceBefore;
-        _mint(msg.sender, mintAmountConverted);
-        return mintAmountConverted;
+        uint256 strategyMintAmount = (safEthMintAmount * 1e18) / priceBefore;
+
+        console.log(
+            "strategyMintAmount safEthMintAmount",
+            strategyMintAmount,
+            safEthMintAmount
+        );
+        _mint(msg.sender, strategyMintAmount);
+        console.log("totalSupply", totalSupply());
+        return strategyMintAmount;
+    }
+
+    function safEthPerStrategyToken() external view virtual returns (uint256) {
+        uint256 safEthInSystem = IERC20(safEthAddress).balanceOf(address(this));
+        uint256 totalSupply = totalSupply();
+        if (totalSupply == 0 || safEthInSystem == 0) {
+            return 1e18;
+        }
+        uint256 p = (safEthInSystem * 1e18) / totalSupply;
+        return p;
     }
 
     function requestWithdraw(
@@ -66,20 +79,17 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
     }
 
     function price() external view virtual override returns (uint256) {
-        uint256 safEthStrategyBalance = IERC20(safEthAddress).balanceOf(address(this));
+        uint256 safEthStrategyBalance = IERC20(safEthAddress).balanceOf(
+            address(this)
+        );
+        console.log("safEthStrategyBalance", safEthStrategyBalance);
         uint256 safEthTokenPrice = ISafEth(safEthAddress).approxPrice(false);
         uint256 underlyingValue = (safEthStrategyBalance * safEthTokenPrice);
         uint256 totalSupply = totalSupply();
-        if(totalSupply == 0 || underlyingValue == 0) {
+        if (totalSupply == 0 || underlyingValue == 0) {
             return safEthTokenPrice;
         }
-        console.log('*****');
-        console.log('safEthAddress', safEthAddress);
-        console.log('safEthTokenPrice', safEthTokenPrice);
-        console.log('safEth underlyingValue is', underlyingValue);
-        console.log('safEth totalSupply is', totalSupply);
         uint256 p = (underlyingValue) / totalSupply;
-        console.log('safEth p is', p);
         return p;
     }
 
