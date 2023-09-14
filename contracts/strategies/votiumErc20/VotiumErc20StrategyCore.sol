@@ -112,12 +112,6 @@ contract VotiumErc20StrategyCore is
         );
     }
 
-    function setSafEthRewardsShare(
-        uint256 _safEthRewardsShare
-    ) external onlyOwner {
-        safEthRewardsShare = _safEthRewardsShare;
-    }
-
     /**
      * @notice - Function to set the address of the rewarder account that periodically claims rewards
      * @param _rewarder - address of the rewarder account
