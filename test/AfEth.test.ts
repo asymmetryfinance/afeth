@@ -289,7 +289,6 @@ describe("Test AfEth", async function () {
     const ethReceived = ethBalanceAfterWithdraw.sub(ethBalanceBeforeWithdraw);
 
     expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
-
     expect(within1Percent(ethReceived, depositAmount)).eq(true);
   });
   it("Should fail to withdraw if epoch for votium hasn't been reached", async function () {
