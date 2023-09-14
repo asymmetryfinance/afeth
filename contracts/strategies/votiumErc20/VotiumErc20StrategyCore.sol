@@ -194,16 +194,14 @@ contract VotiumErc20StrategyCore is
             uint256 votiumTvl = (((cvxPerVotium() * ethPerCvx()) / 1e18) *
                 totalSupply()) / 1e18;
             uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
-            // too much safEth, deposit to votium
-            if (safEthRatio > 7e17)
-                IAfEth(manager).applyStrategyReward{value: _amount}(
-                    address(this)
-                );
-            else
-                IAfEth(manager).applyStrategyReward{value: _amount}(
-                    safEthStrategyAddress
-                );
+            if (safEthRatio < 7e17) {
+                IAfEth(manager).applyStrategyReward{value: _amount}(safEthStrategyAddress);
+                return;
+            }
         } else {
+            // we add votium rewards this way instead of manager.applyStrategyReward()
+            // because applyStrategyReward() does not increase the price of the underlying asset
+            // and we have a lot of existing tests around votium strategy price increasing on rewards being applied
             uint256 cvxAmount = buyCvx(_amount);
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
