@@ -5,12 +5,7 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
-import {
-  within1Percent,
-  within1Pip,
-  within2Percent,
-  within5Percent,
-} from "./helpers/helpers";
+import { within1Percent, within1Pip, within5Percent } from "./helpers/helpers";
 import { BigNumber } from "ethers";
 
 describe("Test AfEth", async function () {
@@ -295,7 +290,7 @@ describe("Test AfEth", async function () {
 
     expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
 
-    expect(within2Percent(ethReceived, depositAmount)).eq(true);
+    expect(within1Percent(ethReceived, depositAmount)).eq(true);
   });
   it("Should fail to withdraw if epoch for votium hasn't been reached", async function () {
     const depositAmount = ethers.utils.parseEther("1");

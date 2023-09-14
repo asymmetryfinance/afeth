@@ -176,6 +176,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
         uint256 withdrawRatio = (_amount * 1e18) / (totalSupply());
 
+        console.log('this must be here');
         _burn(msg.sender, _amount);
 
         withdrawIdInfo[latestWithdrawId].strategyWithdrawIds = new uint256[](
