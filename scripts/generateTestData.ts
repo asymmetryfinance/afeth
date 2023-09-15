@@ -52,7 +52,7 @@ async function main() {
     recipients,
     expectedVotiumStrategyAddress,
     BigNumber.from(100),
-    5
+    splice
   );
   // this represents a smaller subset of all assets to test that we dont have to claim all assets
   const mockProofsAndSwapsSliced = await generateMockProofsAndSwaps(

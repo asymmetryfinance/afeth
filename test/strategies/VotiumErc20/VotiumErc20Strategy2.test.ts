@@ -53,12 +53,18 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
-    console.log("VotiumStrategy deployed to:", votiumStrategy.address);
-
     await afEth.setStrategyAddresses(
       ethers.constants.AddressZero,
       votiumStrategy.address
     );
+
+    const chainLinkCvxFeedFactory = await ethers.getContractFactory(
+      "ChainLinkCvxFeedMock"
+    );
+    const chainLinkCvxFeed = await chainLinkCvxFeedFactory.deploy();
+    await votiumStrategy
+      .connect(ownerAccount)
+      .setChainlinkCvxEthFeed(chainLinkCvxFeed.address);
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).deposit({
@@ -168,16 +174,14 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
-    console.log(0);
+
     const sellEventSmall = await oracleApplyRewards(
       rewarderAccount,
       votiumStrategy.address,
       await readJSONFromFile("./scripts/testDataSlippageSmall.json")
     );
-    console.log("1.5");
     const ethReceived0 = sellEventSmall?.args?.ethAmount;
 
-    console.log(1);
     const sellEventLarge = await oracleApplyRewards(
       rewarderAccount,
       votiumStrategy.address,
@@ -187,6 +191,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     // second sell should be 100x the first sell
     const expectedEthReceived1 = ethReceived0.mul(100);
+    console.log({ ethReceived1, expectedEthReceived1 });
     expect(within2Percent(ethReceived1, expectedEthReceived1)).eq(true);
   });
 
@@ -212,7 +217,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
   });
-  it.only("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
+  it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
     const price0 = await votiumStrategy.price();
 
     let tx = await votiumStrategy.deposit({
