@@ -6,7 +6,6 @@ import "./strategies/votiumErc20/VotiumErc20Strategy.sol";
 import "./strategies/safEth/SafEthStrategy.sol";
 import "./strategies/AbstractErc20Strategy.sol";
 import "./external_interfaces/IVotiumStrategy.sol";
-import "hardhat/console.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
