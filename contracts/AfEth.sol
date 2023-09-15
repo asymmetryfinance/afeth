@@ -294,12 +294,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 votiumStrategy.ethPerCvx()) / 1e18) * totalSupply());
             uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
             if (safEthRatio < ratio) {
-                console.log("applying to safEth");
                 this.applyStrategyReward{value: _amount}(safEthAddress);
                 return;
             }
         }
-        console.log("applying to votium");
         votiumStrategy.depositRewards{value: _amount}(_amount);
     }
 
