@@ -9,6 +9,7 @@ import {
   within1Percent,
   within1Pip,
   within2Percent,
+  within5Percent,
   within6Percent,
 } from "./helpers/helpers";
 import { BigNumber } from "ethers";
@@ -928,15 +929,18 @@ describe("Test AfEth", async function () {
     // user1 gets both rewards while user2 only gets the second
     const user1 = afEth.connect(accounts[1]);
 
-    const initialDepositAmount = ethers.utils.parseEther("0.1");
+    const initialDepositAmount = ethers.utils.parseEther("1");
 
-    const rewardAmount = ethers.utils.parseEther("0.1");
+    const rewardAmount = ethers.utils.parseEther("0.05");
 
     const mintTx1 = await user1.deposit(0, { value: initialDepositAmount });
     await mintTx1.wait();
 
-    // update from 50% safEth to 90% safEth
-    await afEth.setRatio(ethers.utils.parseEther("0.9"));
+    const startingTargetRatio = await afEth.ratio();
+
+    const newRatioTargetRatio = ethers.utils.parseEther("0.7");
+    // update from 50% safEth to 70% safEth
+    await afEth.setRatio(newRatioTargetRatio);
 
     let votiumBalance = await votiumStrategy.balanceOf(afEth.address);
     let safEthBalance = await safEthStrategy.balanceOf(afEth.address);
@@ -958,9 +962,8 @@ describe("Test AfEth", async function () {
       .mul("1000000000000000000")
       .div(safEthValue.add(votiumValue));
 
-    console.log("ratio is", ethers.utils.formatEther(ratio));
-
-    // show that it approaches 90% safEth as deposits are added
+    expect(within1Percent(ratio, startingTargetRatio)).eq(true);
+    // show the true ratio gets to 70%
     for (let i = 0; i < 20; i++) {
       const tx = await afEth.depositRewards(rewardAmount, {
         value: rewardAmount,
@@ -981,8 +984,36 @@ describe("Test AfEth", async function () {
         .mul("1000000000000000000")
         .div(safEthValue.add(votiumValue));
 
-      console.log("ratio is", ethers.utils.formatEther(ratio));
+      if (ratio.gt(newRatioTargetRatio)) {
+        break;
+      }
     }
+
+    // show that the true ratio stays around 70% as more rewards are added
+    for (let i = 0; i < 10; i++) {
+      const tx = await afEth.depositRewards(rewardAmount, {
+        value: rewardAmount,
+      });
+      await tx.wait();
+
+      votiumBalance = await votiumStrategy.balanceOf(afEth.address);
+      safEthBalance = await safEthStrategy.balanceOf(afEth.address);
+
+      votiumValue = votiumBalance
+        .mul(await votiumStrategy.price())
+        .div("1000000000000000000");
+      safEthValue = safEthBalance
+        .mul(await safEthStrategy.price())
+        .div("1000000000000000000");
+
+      ratio = safEthValue
+        .mul("1000000000000000000")
+        .div(safEthValue.add(votiumValue));
+
+      expect(within5Percent(ratio, newRatioTargetRatio)).eq(true);
+    }
+    // after lots more rewards, show that the ratio is now even closer to 70%
+    expect(within1Percent(ratio, newRatioTargetRatio)).eq(true);
   });
   it("Should be able to handle protocol fees from rewards", async function () {
     const feeAmount = ethers.utils.parseEther("0.1");
