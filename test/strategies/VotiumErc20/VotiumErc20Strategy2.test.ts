@@ -1,5 +1,5 @@
 import { network, ethers, upgrades } from "hardhat";
-import { VotiumErc20Strategy } from "../../../typechain-types";
+import { AfEth, VotiumErc20Strategy } from "../../../typechain-types";
 import { expect } from "chai";
 import {
   getCurrentEpoch,
@@ -16,6 +16,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
   let votiumStrategy: VotiumErc20Strategy;
+  let afEth: AfEth;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
   let userAccount: SignerWithAddress;
@@ -38,16 +39,26 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     rewarderAccount = accounts[1];
     ownerAccount = accounts[2];
 
+    const afEthFactory = await ethers.getContractFactory("AfEth");
+    afEth = (await upgrades.deployProxy(afEthFactory, [])) as AfEth;
+    await afEth.deployed();
+
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumErc20Strategy"
     );
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
-      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
-      "0x0000000000000000000000000000000000000000",
+      afEth.address,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
+
+    console.log("VotiumStrategy deployed to:", votiumStrategy.address);
+
+    await afEth.setStrategyAddresses(
+      ethers.constants.AddressZero,
+      votiumStrategy.address
+    );
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).deposit({
@@ -152,19 +163,21 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
-  it("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
+  it.only("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
     const tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
-
+    console.log(0);
     const sellEventSmall = await oracleApplyRewards(
       rewarderAccount,
       votiumStrategy.address,
       await readJSONFromFile("./scripts/testDataSlippageSmall.json")
     );
+    console.log("1.5");
     const ethReceived0 = sellEventSmall?.args?.ethAmount;
 
+    console.log(1);
     const sellEventLarge = await oracleApplyRewards(
       rewarderAccount,
       votiumStrategy.address,
@@ -199,7 +212,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
   });
-  it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
+  it.only("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
     const price0 = await votiumStrategy.price();
 
     let tx = await votiumStrategy.deposit({

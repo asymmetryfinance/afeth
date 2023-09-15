@@ -48,7 +48,6 @@ contract VotiumErc20StrategyCore is
     uint256 public cvxUnlockObligations;
     address public rewarder;
     address public manager;
-    address public safEthStrategyAddress;
 
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
@@ -98,8 +97,7 @@ contract VotiumErc20StrategyCore is
     function initialize(
         address _owner,
         address _rewarder,
-        address _manager,
-        address _safEthStrategyAddress
+        address _manager
     ) external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -116,7 +114,6 @@ contract VotiumErc20StrategyCore is
         chainlinkCvxEthFeed = AggregatorV3Interface(
             0xC9CbF687f43176B302F03f5e58470b77D07c61c6
         );
-        safEthStrategyAddress = _safEthStrategyAddress;
     }
 
     /**
