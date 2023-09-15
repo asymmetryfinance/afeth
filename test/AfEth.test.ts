@@ -311,7 +311,6 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    // deposit votium rewards
     const tx = await afEth.depositRewards(depositAmount, {
       value: depositAmount,
     });
@@ -392,7 +391,6 @@ describe("Test AfEth", async function () {
       .mul(user1BalanceRatio)
       .div(ethers.utils.parseEther("1"));
 
-    // deposit votium rewards
     let tx = await afEth.depositRewards(depositAmount, {
       value: rewardAmount,
     });
@@ -475,7 +473,6 @@ describe("Test AfEth", async function () {
     const mintTx1 = await user1.deposit(0, { value: depositAmount });
     await mintTx1.wait();
 
-    // deposit votium rewards
     const tx = await afEth.depositRewards(depositAmount, {
       value: depositAmount,
     });
@@ -759,14 +756,41 @@ describe("Test AfEth", async function () {
     expect(votiumBalanceAfterDeposit1).gt(votiumBalanceBeforeDeposit1);
     expect(safEthBalanceAfterDeposit1).gt(safEthBalanceBeforeDeposit1);
   });
-  it("Should be able to split rewards evenly between votium and safEth", async function () {
-    // TODO
-  });
-  it("Should be able to split rewards between votium (90%) and safEth (10%)", async function () {
-    // TODO
-  });
-  it("Should be able to split rewards between votium (10%) and safEth (90%)", async function () {
-    // TODO
+  it.only("Should show rewards push the ratio towards the target ratio", async function () {
+    // user1 gets both rewards while user2 only gets the second
+    const user1 = afEth.connect(accounts[1]);
+
+    const initialDepositAmount = ethers.utils.parseEther("1");
+
+    const rewardAmount = ethers.utils.parseEther("0.1");
+
+    const mintTx1 = await user1.deposit(0, { value: initialDepositAmount });
+    await mintTx1.wait();
+
+    // update from 50% safEth to 90% safEth
+    await afEth.updateRatio(ethers.utils.parseEther("0.9"));
+
+    // show that it approaches 90% safEth as deposits are added
+    for (let i = 0; i < 20; i++) {
+      const tx = await afEth.depositRewards(rewardAmount, {
+        value: rewardAmount,
+      });
+      await tx.wait();
+
+      const votiumBalance = await votiumStrategy.balanceOf(afEth.address);
+      const safEthBalance = await safEthStrategy.balanceOf(afEth.address);
+
+      const votiumValue = votiumBalance
+        .mul(await votiumStrategy.price())
+        .div("1000000000000000000");
+      const safEthValue = safEthBalance
+        .mul(await safEthStrategy.price())
+        .div("1000000000000000000");
+
+      const ratio = votiumValue.mul("1000000000000000000").div(safEthValue);
+
+      console.log('ratio is', ethers.utils.formatEther(ratio));
+    }
   });
   it("Should be able to pause deposit & withdraw", async function () {
     const depositAmount = ethers.utils.parseEther("1");
@@ -898,7 +922,7 @@ describe("Test AfEth", async function () {
     ).to.be.revertedWith("BelowMinOut()");
   });
 
-  it("Should be able to deposit votium rewards to all strategies", async function () {
+  it("Should be able to deposit rewards to all strategies", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const rewardAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit(0, { value: depositAmount });

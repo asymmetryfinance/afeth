@@ -128,9 +128,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
 
-        // solhint-disable-next-line
-        (bool sent, ) = address(msg.sender).call{value: ethReceived}("");
-        if (!sent) revert FailedToSend();
+        // TODO: use call to send eth instead
+        payable(msg.sender).transfer(ethReceived);
     }
 
     /**
