@@ -66,7 +66,7 @@ contract VotiumErc20StrategyCore is
 
     /**
         @notice - Sets the address for the chainlink feed
-        @param _cvxEthFeedAddress - address of the chainlink feed
+        @param _cvxEthFeedAddress - Address of the chainlink feed
     */
     function setChainlinkCvxEthFeed(
         address _cvxEthFeedAddress
@@ -88,9 +88,9 @@ contract VotiumErc20StrategyCore is
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
-        @param _owner - address of the owner of the contract (asym multisig)
-        @param _rewarder - address of the rewarder contract (reward oracle)
-        @param _manager - address of the manager contract (afEth)
+        @param _owner - Address of the owner of the contract (asym multisig)
+        @param _rewarder - Address of the rewarder contract (reward oracle)
+        @param _manager - Address of the manager contract (afEth)
     */
     function initialize(
         address _owner,
@@ -118,14 +118,15 @@ contract VotiumErc20StrategyCore is
 
     /**
      * @notice - Function to set the address of the rewarder account that periodically claims rewards
-     * @param _rewarder - address of the rewarder account
+     * @param _rewarder - Address of the rewarder account
      */
     function setRewarder(address _rewarder) external onlyOwner {
         rewarder = _rewarder;
     }
 
     /**
-     * @notice - returns how much total cvx is backing afEth
+     * @notice - The amount of cvx in the entire system
+     * @return - Amount of cvx in the entire system
      */
     function cvxInSystem() public view returns (uint256) {
         (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
@@ -135,8 +136,8 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - gets price of afEth in cvx
-     * @return - price of afEth in cvx
+     * @notice - Gets price of afEth in cvx
+     * @return - Price of afEth in cvx
      */
     function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
@@ -148,7 +149,7 @@ contract VotiumErc20StrategyCore is
 
     /**
         @notice - Eth per cvx (chainlink)
-        @return - price of cvx in eth
+        @return - Price of cvx in eth
      */
     function ethPerCvx() public view returns (uint256) {
         ChainlinkResponse memory cl;
@@ -171,8 +172,8 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * Allow rewarder oracle account to claim rewards
-     * @param _claimProofs - array of claim proofs
+     * @notice Allow rewarder oracle account to claim rewards
+     * @param _claimProofs - Array of claim proofs
      */
     function claimRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
@@ -182,8 +183,8 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - sells _amount of eth from votium contract
-     * @notice - puts it into safEthStrategy or votiumStrategy, whichever is underweight.
+     * @notice - Sells _amount of eth from votium contract
+     * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
     function depositRewards(uint256 _amount) public payable {
         uint256 cvxAmount = buyCvx(_amount);
@@ -194,8 +195,8 @@ contract VotiumErc20StrategyCore is
 
     /**
      * @notice - Allows owner to withdraw any stuck erc20 tokens
-     * @dev - lets us handle any that were not successfully sold via cvx
-     * @param _token - address of the token to withdraw
+     * @dev - Lets us handle any that were not successfully sold via cvx
+     * @param _token - Address of the token to withdraw
      */
     function withdrawStuckTokens(address _token) public onlyOwner {
         IERC20(_token).transfer(
@@ -205,9 +206,9 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - internal utility function to buy cvx using eth
-     * @param _ethAmountIn - amount of eth to spend
-     * @return cvxAmountOut - amount of cvx bought
+     * @notice - Internal utility function to buy cvx using eth
+     * @param _ethAmountIn - Amount of eth to spend
+     * @return cvxAmountOut - Amount of cvx bought
      */
     function buyCvx(
         uint256 _ethAmountIn
@@ -228,9 +229,9 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - internal utility function to sell cvx for eth
-     * @param _cvxAmountIn - amount of cvx to sell
-     * @return ethAmountOut - amount of eth received
+     * @notice - Internal utility function to sell cvx for eth
+     * @param _cvxAmountIn - Amount of cvx to sell
+     * @return ethAmountOut - Amount of eth received
      */
     function sellCvx(
         uint256 _cvxAmountIn
@@ -250,9 +251,9 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - function for rewarder to sell all claimed token rewards and buy & lock more cvx
-     * @dev - causes price to go up
-     * @param _swapsData - array of SwapData for 0x swaps
+     * @notice - Function for rewarder to sell all claimed token rewards and buy & lock more cvx
+     * @dev - Causes price to go up
+     * @param _swapsData - Array of SwapData for 0x swaps
      */
     function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
@@ -291,8 +292,8 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - internal utility function to claim votium reward tokens
-     * @param _claimProofs - array of claim proofs
+     * @notice - Internal utility function to claim votium reward tokens
+     * @param _claimProofs - Array of claim proofs
      */
     function claimVotiumRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
@@ -302,7 +303,7 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - internal utility function to claim vlCvx reward tokens
+     * @notice - Internal utility function to claim vlCvx reward tokens
      */
     function claimVlCvxRewards() private {
         address[] memory emptyArray;
