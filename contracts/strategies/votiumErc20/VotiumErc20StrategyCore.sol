@@ -186,24 +186,6 @@ contract VotiumErc20StrategyCore is
      * @notice - puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
     function depositRewards(uint256 _amount) public payable {
-        if (safEthStrategyAddress != address(0)) {
-            uint256 safEthTvl = (ISafEth(
-                0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5
-            ).approxPrice(false) *
-                IERC20(safEthStrategyAddress).totalSupply()) / 1e18;
-            uint256 votiumTvl = (((cvxPerVotium() * ethPerCvx()) / 1e18) *
-                totalSupply()) / 1e18;
-            uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
-            if (safEthRatio < 7e17) {
-                IAfEth(manager).applyStrategyReward{value: _amount}(
-                    safEthStrategyAddress
-                );
-                return;
-            }
-        }
-        // we add votium rewards this way instead of manager.applyStrategyReward()
-        // because applyStrategyReward() does not increase the price of the underlying asset
-        // and we have a lot of existing tests around votium strategy price increasing on rewards being applied
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
@@ -303,8 +285,9 @@ contract VotiumErc20StrategyCore is
             }
         }
         uint256 ethBalanceAfter = address(this).balance;
+        uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
-        depositRewards(ethBalanceAfter - ethBalanceBefore);
+        IAfEth(manager).depositRewards{value: ethReceived}(ethReceived);
     }
 
     /**
