@@ -64,6 +64,7 @@ contract VotiumErc20StrategyCore is
 
     error SwapFailed(uint256 index);
 
+    error FailedToSend();
     /**
         @notice - Sets the address for the chainlink feed
         @param _cvxEthFeedAddress - address of the chainlink feed
