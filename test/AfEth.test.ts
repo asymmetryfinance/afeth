@@ -936,7 +936,7 @@ describe("Test AfEth", async function () {
     await mintTx1.wait();
 
     // update from 50% safEth to 90% safEth
-    await afEth.updateRatio(ethers.utils.parseEther("0.9"));
+    await afEth.setRatio(ethers.utils.parseEther("0.9"));
 
     let votiumBalance = await votiumStrategy.balanceOf(afEth.address);
     let safEthBalance = await safEthStrategy.balanceOf(afEth.address);
@@ -983,32 +983,33 @@ describe("Test AfEth", async function () {
 
       console.log("ratio is", ethers.utils.formatEther(ratio));
     }
-  it("Should be able to handle protocol fees from rewards", async function () {
-    const feeAmount = ethers.utils.parseEther("0.1");
-    await afEth.setProtocolFee(feeAmount);
-    await afEth.setFeeAddress(accounts[3].address);
-    const feeAddressBalanceBefore = await ethers.provider.getBalance(
-      accounts[3].address
-    );
-    const depositAmount = ethers.utils.parseEther("1");
-    const rewardAmount = ethers.utils.parseEther("1");
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
-    await mintTx.wait();
+    it("Should be able to handle protocol fees from rewards", async function () {
+      const feeAmount = ethers.utils.parseEther("0.1");
+      await afEth.setProtocolFee(feeAmount);
+      await afEth.setFeeAddress(accounts[3].address);
+      const feeAddressBalanceBefore = await ethers.provider.getBalance(
+        accounts[3].address
+      );
+      const depositAmount = ethers.utils.parseEther("1");
+      const rewardAmount = ethers.utils.parseEther("1");
+      const mintTx = await afEth.deposit(0, { value: depositAmount });
+      await mintTx.wait();
 
-    const tx = await afEth.depositRewards(rewardAmount, {
-      value: rewardAmount,
+      const tx = await afEth.depositRewards(rewardAmount, {
+        value: rewardAmount,
+      });
+      await tx.wait();
+
+      const feeAddressBalanceAfter = await ethers.provider.getBalance(
+        accounts[3].address
+      );
+      const feeAmountReceived = feeAddressBalanceAfter.sub(
+        feeAddressBalanceBefore
+      );
+      expect(feeAmountReceived).eq(feeAmount);
     });
-    await tx.wait();
-
-    const feeAddressBalanceAfter = await ethers.provider.getBalance(
-      accounts[3].address
-    );
-    const feeAmountReceived = feeAddressBalanceAfter.sub(
-      feeAddressBalanceBefore
-    );
-    expect(feeAmountReceived).eq(feeAmount);
-  });
-  it("Should show rewards push the ratio towards the target ratio", async function () {
-    // TODO
+    it("Should show rewards push the ratio towards the target ratio", async function () {
+      // TODO
+    });
   });
 });
