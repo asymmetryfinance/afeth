@@ -371,7 +371,7 @@ describe("Test AfEth", async function () {
 
     expect(within1Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
-  it.only("Two users should be able to deposit at different times and split rewards appropriately", async function () {
+  it("Two users should be able to deposit at different times and split rewards appropriately", async function () {
     // user1 gets both rewards while user2 only gets the second
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[2]);
