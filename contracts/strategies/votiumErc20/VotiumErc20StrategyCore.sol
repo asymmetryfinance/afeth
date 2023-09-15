@@ -62,9 +62,7 @@ contract VotiumErc20StrategyCore is
         uint256 indexed cvxAmount
     );
 
-    event FailedToSell(
-        address indexed tokenAddress
-    );
+    event FailedToSell(address indexed tokenAddress);
 
     error SwapFailed(uint256 index);
     error ChainlinkFailed();
