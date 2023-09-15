@@ -62,7 +62,10 @@ contract VotiumErc20StrategyCore is
         uint256 indexed cvxAmount
     );
 
+    event FailedToSell(address indexed tokenAddress);
+
     error SwapFailed(uint256 index);
+    error ChainlinkFailed();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -166,8 +169,19 @@ contract VotiumErc20StrategyCore is
         } catch {
             cl.success = false;
         }
-        // TODO verify < 24 hours old and valid
-        return uint256(cl.answer);
+        // verify chainlink response
+        if (
+            (cl.success == true &&
+                cl.roundId != 0 &&
+                cl.answer >= 0 &&
+                cl.updatedAt != 0 &&
+                cl.updatedAt <= block.timestamp &&
+                block.timestamp - cl.updatedAt <= 25 hours)
+        ) {
+            return uint256(cl.answer);
+        } else {
+            revert ChainlinkFailed();
+        }
     }
 
     /**
@@ -278,10 +292,7 @@ contract VotiumErc20StrategyCore is
                 _swapsData[i].swapCallData
             );
             if (!success) {
-                console.log("FAILED TO SELL TOKEN", _swapsData[i].sellToken);
-                // TODO emit an event or something?
-                // this causes unsold tokens to build up in the contract, see:
-                // https://app.zenhub.com/workspaces/af-engineering-636020e6fe7394001d996825/issues/gh/asymmetryfinance/safeth/478
+                emit FailedToSell(_swapsData[i].sellToken);
             }
         }
         uint256 ethBalanceAfter = address(this).balance;

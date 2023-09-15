@@ -44,7 +44,6 @@ export const generate0xSwapData = async (
       swapsData.push(newData);
     } else {
       let result;
-      // TODO do we want slippage protection or does it not matter and we just dump all the tokens anyway?
       try {
         result = await axios.get(
           `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${sellAmount}&slippagePercentage=0.50`,
