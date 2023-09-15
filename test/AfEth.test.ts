@@ -756,67 +756,6 @@ describe("Test AfEth", async function () {
     expect(votiumBalanceAfterDeposit1).gt(votiumBalanceBeforeDeposit1);
     expect(safEthBalanceAfterDeposit1).gt(safEthBalanceBeforeDeposit1);
   });
-  it.only("Should show rewards push the ratio towards the target ratio", async function () {
-    // user1 gets both rewards while user2 only gets the second
-    const user1 = afEth.connect(accounts[1]);
-
-    const initialDepositAmount = ethers.utils.parseEther("2");
-
-    const rewardAmount = ethers.utils.parseEther("1");
-
-    const mintTx1 = await user1.deposit(0, { value: initialDepositAmount });
-    await mintTx1.wait();
-
-    // update from 50% safEth to 90% safEth
-    await afEth.updateRatio(ethers.utils.parseEther("0.9"));
-
-    let votiumBalance = await votiumStrategy.balanceOf(afEth.address);
-    let safEthBalance = await safEthStrategy.balanceOf(afEth.address);
-
-    let votiumValue = votiumBalance
-      .mul(await votiumStrategy.price())
-      .div("1000000000000000000");
-    let safEthValue = safEthBalance
-      .mul(await safEthStrategy.price())
-      .div("1000000000000000000");
-
-    votiumValue = votiumBalance
-      .mul(await votiumStrategy.price())
-      .div("1000000000000000000");
-    safEthValue = safEthBalance
-      .mul(await safEthStrategy.price())
-      .div("1000000000000000000");
-    let ratio = safEthValue
-      .mul("1000000000000000000")
-      .div(safEthValue.add(votiumValue));
-
-    console.log("ratio is", ethers.utils.formatEther(ratio));
-//    console.log("ratioInverted is", ethers.utils.formatEther(ratioInverted));
-
-    // // show that it approaches 90% safEth as deposits are added
-    // for (let i = 0; i < 20; i++) {
-    //   const tx = await afEth.depositRewards(rewardAmount, {
-    //     value: rewardAmount,
-    //   });
-    //   await tx.wait();
-
-    //   votiumBalance = await votiumStrategy.balanceOf(afEth.address);
-    //   safEthBalance = await safEthStrategy.balanceOf(afEth.address);
-
-    //   votiumValue = votiumBalance
-    //     .mul(await votiumStrategy.price())
-    //     .div("1000000000000000000");
-    //   safEthValue = safEthBalance
-    //     .mul(await safEthStrategy.price())
-    //     .div("1000000000000000000");
-
-    //   ratio = votiumValue.mul("1000000000000000000").div(safEthValue);
-    //   ratioInverted = BigNumber.from("1000000000000000000").sub(ratio);
-
-    //   console.log("ratio is", ethers.utils.formatEther(ratio));
-    //   console.log("ratioInverted is", ethers.utils.formatEther(ratioInverted));
-    // }
-  });
   it("Should be able to pause deposit & withdraw", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     await afEth.setPauseDeposit(true);
