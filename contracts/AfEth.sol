@@ -9,8 +9,9 @@ import "./external_interfaces/IVotiumStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
-    uint256 ratio;
-
+    uint256 public ratio;
+    uint256 public protocolFee;
+    address public feeAddress;
     address public safEthAddress; // SafEth Strategy Address
     address public vEthAddress; // Votium Strategy Address
     uint256 public latestWithdrawId;
@@ -31,6 +32,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error StrategyNotFound();
     error InsufficientBalance();
     error InvalidStrategy();
+    error InvalidFee();
     error CanNotWithdraw();
     error NotOwner();
     error FailedToSend();
@@ -77,12 +79,29 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
-        @notice - Updates the target ratio of safEth to votium. 
+        @notice - Sets the target ratio of safEth to votium. 
         @notice target ratio is maintained by directing rewards into either safEth or votium strategy
         @param _newRatio - New ratio of safEth to votium
     */
-    function updateRatio(uint256 _newRatio) public onlyOwner {
+    function setRatio(uint256 _newRatio) public onlyOwner {
         ratio = _newRatio;
+    }
+
+    /**
+        @notice - Sets the protocol fee address which takes a percentage of the rewards.
+        @param _newFeeAddress - New protocol fee address to collect rewards
+    */
+    function setFeeAddress(address _newFeeAddress) public onlyOwner {
+        feeAddress = _newFeeAddress;
+    }
+
+    /**
+        @notice - Sets the protocol fee which takes a percentage of the rewards.
+        @param _newFee - New protocol fee
+    */
+    function setProtocolFee(uint256 _newFee) public onlyOwner {
+        if (_newFee > 1e18) revert InvalidFee();
+        protocolFee = _newFee;
     }
 
     /**
@@ -281,11 +300,18 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
      * @notice - sells _amount of eth from votium contract
-     * @notice - puts it into safEthStrategy or votiumStrategy, whichever is underweight.
+     * @dev - puts it into safEthStrategy or votiumStrategy, whichever is underweight.\
+     * @param _amount - amount of eth to sell
      *  */
     function depositRewards(uint256 _amount) public payable {
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
-
+        uint256 feeAmount = (_amount * protocolFee) / 1e18;
+        if (feeAmount > 0) {
+            // solhint-disable-next-line
+            (bool sent, ) = feeAddress.call{value: feeAmount}("");
+            if (!sent) revert FailedToSend();
+        }
+        uint256 amount = _amount - feeAmount;
         if (safEthAddress != address(0)) {
             uint256 safEthTvl = (ISafEth(
                 0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5
@@ -294,13 +320,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 votiumStrategy.ethPerCvx()) / 1e18) * totalSupply());
             uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
             if (safEthRatio < ratio) {
-                console.log('depositing reward to safEth');
-                this.applyStrategyReward{value: _amount}(safEthAddress);
+                this.applyStrategyReward{value: amount}(safEthAddress);
                 return;
             }
         }
-        console.log('depositing reward to votium');
-        votiumStrategy.depositRewards{value: _amount}(_amount);
+        votiumStrategy.depositRewards{value: amount}(amount);
     }
 
     receive() external payable {}
