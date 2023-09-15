@@ -924,4 +924,8 @@ describe("Test AfEth", async function () {
     expect(await votiumStrategy.price()).eq(votiumStrategyPrice1);
     expect(await safEthStrategy.totalSupply()).gt(safEthStrategyTotalSupply1);
   });
+
+  it("Should show rewards push the ratio towards the target ratio", async function () {
+    // TODO
+  });
 });
