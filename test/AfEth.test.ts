@@ -311,7 +311,6 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    // deposit votium rewards
     const tx = await afEth.depositRewards(depositAmount, {
       value: depositAmount,
     });
@@ -392,7 +391,6 @@ describe("Test AfEth", async function () {
       .mul(user1BalanceRatio)
       .div(ethers.utils.parseEther("1"));
 
-    // deposit votium rewards
     let tx = await afEth.depositRewards(depositAmount, {
       value: rewardAmount,
     });
@@ -475,7 +473,6 @@ describe("Test AfEth", async function () {
     const mintTx1 = await user1.deposit(0, { value: depositAmount });
     await mintTx1.wait();
 
-    // deposit votium rewards
     const tx = await afEth.depositRewards(depositAmount, {
       value: depositAmount,
     });
@@ -759,15 +756,6 @@ describe("Test AfEth", async function () {
     expect(votiumBalanceAfterDeposit1).gt(votiumBalanceBeforeDeposit1);
     expect(safEthBalanceAfterDeposit1).gt(safEthBalanceBeforeDeposit1);
   });
-  it("Should be able to split rewards evenly between votium and safEth", async function () {
-    // TODO
-  });
-  it("Should be able to split rewards between votium (90%) and safEth (10%)", async function () {
-    // TODO
-  });
-  it("Should be able to split rewards between votium (10%) and safEth (90%)", async function () {
-    // TODO
-  });
   it("Should be able to pause deposit & withdraw", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     await afEth.setPauseDeposit(true);
@@ -898,7 +886,7 @@ describe("Test AfEth", async function () {
     ).to.be.revertedWith("BelowMinOut()");
   });
 
-  it("Should be able to deposit votium rewards to all strategies", async function () {
+  it("Should be able to deposit rewards to all strategies", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const rewardAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit(0, { value: depositAmount });
@@ -960,5 +948,8 @@ describe("Test AfEth", async function () {
       feeAddressBalanceBefore
     );
     expect(feeAmountReceived).eq(feeAmount);
+  });
+  it("Should show rewards push the ratio towards the target ratio", async function () {
+    // TODO
   });
 });
