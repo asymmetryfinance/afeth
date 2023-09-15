@@ -31,7 +31,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         returns (uint256 mintAmount)
     {
         mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
-            0 // TODO: set minAmount
+            0
         );
         _mint(msg.sender, mintAmount);
     }

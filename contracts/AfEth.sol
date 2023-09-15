@@ -76,31 +76,30 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function initialize() external initializer {
         _transferOwnership(msg.sender);
         ratio = 5e17;
-        protocolFee = 5e16;
     }
 
     /**
-        @notice - Updates the target ratio of safEth to votium. 
+        @notice - Sets the target ratio of safEth to votium. 
         @notice target ratio is maintained by directing rewards into either safEth or votium strategy
         @param _newRatio - New ratio of safEth to votium
     */
-    function updateRatio(uint256 _newRatio) public onlyOwner {
+    function setRatio(uint256 _newRatio) public onlyOwner {
         ratio = _newRatio;
     }
 
     /**
-        @notice - Updates the protocol fee address which takes a percentage of the rewards.
+        @notice - Sets the protocol fee address which takes a percentage of the rewards.
         @param _newFeeAddress - New protocol fee address to collect rewards
     */
-    function updateFeeAddress(address _newFeeAddress) public onlyOwner {
+    function setFeeAddress(address _newFeeAddress) public onlyOwner {
         feeAddress = _newFeeAddress;
     }
 
     /**
-        @notice - Updates the protocol fee which takes a percentage of the rewards.
+        @notice - Sets the protocol fee which takes a percentage of the rewards.
         @param _newFee - New protocol fee
     */
-    function updateProtocolFee(uint256 _newFee) public onlyOwner {
+    function setProtocolFee(uint256 _newFee) public onlyOwner {
         if (_newFee > 1e18) revert InvalidFee();
         protocolFee = _newFee;
     }
@@ -307,6 +306,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function depositRewards(uint256 _amount) public payable {
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;
+        if (feeAmount > 0) {
+            // solhint-disable-next-line
+            (bool sent, ) = feeAddress.call{value: feeAmount}("");
+            if (!sent) revert FailedToSend();
+        }
         uint256 amount = _amount - feeAmount;
         if (safEthAddress != address(0)) {
             uint256 safEthTvl = (ISafEth(
@@ -321,9 +325,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             }
         }
         votiumStrategy.depositRewards{value: amount}(amount);
-        // solhint-disable-next-line
-        (bool sent, ) = feeAddress.call{value: feeAmount}("");
-        if (!sent) revert FailedToSend();
     }
 
     receive() external payable {}
