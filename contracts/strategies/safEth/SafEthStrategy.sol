@@ -30,9 +30,7 @@ contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
         override
         returns (uint256 mintAmount)
     {
-        mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
-            0
-        );
+        mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(0);
         _mint(msg.sender, mintAmount);
     }
 
