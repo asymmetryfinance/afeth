@@ -149,7 +149,7 @@ describe("Test AfEth", async function () {
 
   it("Should mint, requestwithdraw, and withdraw afETH with 70/30 (safEth/votium) ratios", async function () {
     const safEthVotiumRatio = ethers.utils.parseEther(".7");
-    await afEth.updateRatio(safEthVotiumRatio);
+    await afEth.setRatio(safEthVotiumRatio);
 
     const user1 = afEth.connect(accounts[1]);
 
@@ -589,7 +589,7 @@ describe("Test AfEth", async function () {
     expect(afEthBalanceBeforeRequest).gt(0);
 
     // set votium strategy to 0 ratio
-    await afEth.updateRatio("1000000000000000000"); // 100% safEth strategy
+    await afEth.setRatio("1000000000000000000"); // 100% safEth strategy
 
     const requestWithdrawTx = await user1.requestWithdraw(
       await afEth.balanceOf(accounts[1].address)
@@ -686,7 +686,7 @@ describe("Test AfEth", async function () {
     expect(afEthBalanceBeforeRequest).gt(0);
 
     // set safEth strategy to 0 ratio
-    await afEth.updateRatio(0);
+    await afEth.setRatio(0);
 
     const requestWithdrawTx = await user1.requestWithdraw(
       await afEth.balanceOf(accounts[1].address)
@@ -924,7 +924,31 @@ describe("Test AfEth", async function () {
     expect(await votiumStrategy.price()).eq(votiumStrategyPrice1);
     expect(await safEthStrategy.totalSupply()).gt(safEthStrategyTotalSupply1);
   });
+  it("Should be able to handle protocol fees from rewards", async function () {
+    const feeAmount = ethers.utils.parseEther("0.1");
+    await afEth.setProtocolFee(feeAmount);
+    await afEth.setFeeAddress(accounts[3].address);
+    const feeAddressBalanceBefore = await ethers.provider.getBalance(
+      accounts[3].address
+    );
+    const depositAmount = ethers.utils.parseEther("1");
+    const rewardAmount = ethers.utils.parseEther("1");
+    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    await mintTx.wait();
 
+    const tx = await afEth.depositRewards(rewardAmount, {
+      value: rewardAmount,
+    });
+    await tx.wait();
+
+    const feeAddressBalanceAfter = await ethers.provider.getBalance(
+      accounts[3].address
+    );
+    const feeAmountReceived = feeAddressBalanceAfter.sub(
+      feeAddressBalanceBefore
+    );
+    expect(feeAmountReceived).eq(feeAmount);
+  });
   it("Should show rewards push the ratio towards the target ratio", async function () {
     // TODO
   });
