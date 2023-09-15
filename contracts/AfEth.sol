@@ -6,6 +6,7 @@ import "./strategies/votiumErc20/VotiumErc20Strategy.sol";
 import "./strategies/safEth/SafEthStrategy.sol";
 import "./strategies/AbstractErc20Strategy.sol";
 import "./external_interfaces/IVotiumStrategy.sol";
+import "hardhat/console.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
@@ -316,14 +317,18 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             uint256 safEthTvl = (ISafEth(
                 0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5
             ).approxPrice(false) * IERC20(safEthAddress).totalSupply()) / 1e18;
-            uint256 votiumTvl = (((votiumStrategy.cvxPerVotium() *
-                votiumStrategy.ethPerCvx()) / 1e18) * totalSupply());
-            uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
+            uint256 votiumTvl = ((votiumStrategy.cvxPerVotium() *
+                votiumStrategy.ethPerCvx()) *
+                IERC20(vEthAddress).totalSupply()) / 1e36;
+            uint256 totalTvl = (safEthTvl + votiumTvl);
+            uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
             if (safEthRatio < ratio) {
+                console.log("depositing reward to safEth");
                 this.applyStrategyReward{value: amount}(safEthAddress);
                 return;
             }
         }
+        console.log("depositing reward to votium");
         votiumStrategy.depositRewards{value: amount}(amount);
     }
 
