@@ -50,7 +50,6 @@ describe.skip("Votium integration test", async function () {
       ownerAccount.address,
       rewarderAccount.address,
       ethers.constants.AddressZero, // TODO this should be an afEth mock but doesnt matter right now
-      ethers.constants.AddressZero,
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 

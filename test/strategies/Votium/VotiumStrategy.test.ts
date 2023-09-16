@@ -37,7 +37,6 @@ describe("Test VotiumStrategy", async function () {
       accounts[0].address,
       rewarderAccount.address,
       "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
-      "0x0000000000000000000000000000000000000000",
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)

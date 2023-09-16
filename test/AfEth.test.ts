@@ -51,7 +51,6 @@ describe("Test AfEth", async function () {
       accounts[0].address,
       accounts[0].address,
       afEth.address,
-      safEthStrategy.address,
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 

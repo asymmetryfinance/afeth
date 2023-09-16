@@ -45,7 +45,6 @@ describe("Test VotiumStrategy (Part 2)", async function () {
       ownerAccount.address,
       rewarderAccount.address,
       "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
-      "0x0000000000000000000000000000000000000000",
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
