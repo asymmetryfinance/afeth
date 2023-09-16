@@ -139,18 +139,6 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - Gets price of afEth in cvx
-     * @return - Price of afEth in cvx
-     */
-    function cvxPerVotium() public view returns (uint256) {
-        uint256 supply = totalSupply();
-        if (supply == 0) return 1e18;
-        uint256 totalCvx = cvxInSystem();
-        if (totalCvx == 0) return 1e18;
-        return ((totalCvx - cvxUnlockObligations) * 1e18) / supply;
-    }
-
-    /**
         @notice - Eth per cvx (chainlink)
         @return - Price of cvx in eth
      */
@@ -204,7 +192,7 @@ contract VotiumErc20StrategyCore is
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
+        emit DepositReward(1e18, _amount, cvxAmount);
     }
 
     /**

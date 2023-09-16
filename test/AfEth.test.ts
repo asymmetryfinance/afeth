@@ -206,7 +206,6 @@ describe("Test AfEth", async function () {
     const expectedGainRatio = BigNumber.from("1000000000000000000").sub(
       safEthVotiumRatio
     );
-
     expect(within1Percent(gainRatio, expectedGainRatio)).eq(true);
   });
   it("Should fail to withdraw if epoch for votium hasn't been reached", async function () {

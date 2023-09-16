@@ -29,7 +29,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
      * @return Price of token in eth
      */
     function price() external view override returns (uint256) {
-        return (cvxPerVotium() * ethPerCvx()) / 1e18;
+        return ethPerCvx();
     }
 
     /**
@@ -37,11 +37,10 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
      * @return mintAmount Amount of tokens minted
      */
     function deposit() public payable override returns (uint256 mintAmount) {
-        uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        mintAmount = ((cvxAmount * 1e18) / priceBefore);
+        mintAmount = cvxAmount;
         _mint(msg.sender, mintAmount);
     }
 
@@ -55,7 +54,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
         uint256 _amount
     ) public override returns (uint256 withdrawId) {
         latestWithdrawId++;
-        uint256 _priceInCvx = cvxPerVotium();
 
         _burn(msg.sender, _amount);
 
@@ -68,7 +66,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
             ,
             ILockedCvx.LockedBalance[] memory lockedBalances
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
-        uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
+        uint256 cvxAmount = _amount;
         cvxUnlockObligations += cvxAmount;
 
         uint256 totalLockedBalancePlusUnlockable = unlockable +
@@ -175,14 +173,13 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
     function withdrawTime(
         uint256 _amount
     ) external view virtual override returns (uint256) {
-        uint256 _priceInCvx = cvxPerVotium();
         (
             ,
             uint256 unlockable,
             ,
             ILockedCvx.LockedBalance[] memory lockedBalances
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
-        uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
+        uint256 cvxAmount = _amount;
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             IERC20(CVX_ADDRESS).balanceOf(address(this));
 
