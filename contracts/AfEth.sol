@@ -312,20 +312,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             if (!sent) revert FailedToSend();
         }
         uint256 amount = _amount - feeAmount;
-        if (safEthAddress != address(0)) {
-            uint256 safEthTvl = (ISafEth(
-                0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5
-            ).approxPrice(false) * IERC20(safEthAddress).totalSupply()) / 1e18;
-            uint256 votiumTvl = (votiumStrategy.ethPerCvx() * totalSupply());
-            uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
-            if (safEthRatio < ratio) {
-                this.applyStrategyReward{value: amount}(safEthAddress);
-                return;
-            }
-        }
-        this.applyStrategyReward{value: amount}(vEthAddress);
-
-        //        votiumStrategy.depositRewards{value: amount}(amount);
+        uint256 safEthTvl = (ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5)
+            .approxPrice(false) * IERC20(safEthAddress).totalSupply()) / 1e18;
+        uint256 votiumTvl = (votiumStrategy.ethPerCvx() * totalSupply());
+        uint256 safEthRatio = (safEthTvl * 1e18) / (safEthTvl + votiumTvl);
+        if (safEthRatio < ratio)
+            this.applyStrategyReward{value: amount}(safEthAddress);
+        else this.applyStrategyReward{value: amount}(vEthAddress);
     }
 
     receive() external payable {}
