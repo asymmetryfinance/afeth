@@ -63,6 +63,7 @@ contract VotiumStrategyCore is
 
     error SwapFailed(uint256 index);
     error ChainlinkFailed();
+    error NotRewarder();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -75,7 +76,7 @@ contract VotiumStrategyCore is
     }
 
     modifier onlyRewarder() {
-        require(msg.sender == rewarder, "not rewarder");
+        if (msg.sender != rewarder) revert NotRewarder();
         _;
     }
 

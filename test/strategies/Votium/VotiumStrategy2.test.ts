@@ -121,13 +121,9 @@ describe("Test VotiumStrategy (Part 2)", async function () {
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
     // this should throw
-    try {
-      await oracleApplyRewards(userAccount, votiumStrategy.address);
-    } catch (e: any) {
-      expect(e.message).eq(
-        "VM Exception while processing transaction: reverted with reason string 'not rewarder'"
-      );
-    }
+    await expect(
+      oracleApplyRewards(userAccount, votiumStrategy.address)
+    ).to.be.revertedWith("NotRewarder()");
   });
   it("Should not be able to requestWithdraw for more than a users balance", async function () {
     const tx = await votiumStrategy.deposit({

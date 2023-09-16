@@ -98,6 +98,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 return latestWithdrawId;
             }
         }
+        // should never get here
         revert("Invalid Locked Amount");
     }
 
