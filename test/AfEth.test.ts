@@ -894,7 +894,7 @@ describe("Test AfEth", async function () {
     ).to.be.revertedWith("BelowMinOut()");
   });
 
-  it.only("Should be able to deposit rewards to all strategies", async function () {
+  it("Should be able to deposit rewards to all strategies", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const rewardAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit(0, { value: depositAmount });
@@ -926,11 +926,15 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
+    console.log(afEthPrice1, await afEth.price());
+    console.log(safEthStrategyPrice1, await safEthStrategy.price());
+    console.log(votiumStrategyPrice1, await votiumStrategy.price());
+    console.log(safEthStrategyTotalSupply1, await safEthStrategy.totalSupply());
     // second reward --safEth price unchanged (and supply unchanged), votium goes up, afEth goes up
     expect(await afEth.price()).gt(afEthPrice1);
     expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice1)); // within 1 pip because safEth goes up every block
+    expect(await safEthStrategy.totalSupply()).eq(safEthStrategyTotalSupply1);
     expect(await votiumStrategy.price()).eq(votiumStrategyPrice1);
-    expect(await safEthStrategy.totalSupply()).gt(safEthStrategyTotalSupply1);
   });
   it("Should show rewards push the ratio towards the target ratio", async function () {
     // user1 gets both rewards while user2 only gets the second
