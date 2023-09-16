@@ -1,8 +1,5 @@
 import { network, ethers, upgrades } from "hardhat";
-import {
-  VotiumStrategy,
-  VotiumStrategyCore,
-} from "../../../typechain-types";
+import { VotiumStrategy, VotiumStrategyCore } from "../../../typechain-types";
 import { expect } from "chai";
 import {
   incrementVlcvxEpoch,
