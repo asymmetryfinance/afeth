@@ -139,9 +139,8 @@ contract VotiumStrategyCore is
      */
     function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
-        if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
-        if (totalCvx == 0) return 1e18;
+        if (supply == 0 || totalCvx == 0) return 1e18;
         return ((totalCvx - cvxUnlockObligations) * 1e18) / supply;
     }
 

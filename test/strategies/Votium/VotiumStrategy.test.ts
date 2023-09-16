@@ -798,17 +798,21 @@ describe("Test VotiumStrategy", async function () {
   it("Should protect permissioned functions", async function () {
     await expect(
       votiumStrategy.connect(accounts[5]).setRewarder(accounts[6].address)
-    ).not.eq("Ownable: caller is not the owner");
+    ).to.be.revertedWith("Ownable: caller is not the owner");
     await expect(
-      votiumStrategy.withdrawStuckTokens(ethers.constants.AddressZero)
-    ).not.eq("Ownable: caller is not the owner");
-    await expect(votiumStrategy.applyRewards([])).not.eq("NotRewarder()");
+      votiumStrategy
+        .connect(accounts[5])
+        .withdrawStuckTokens(ethers.constants.AddressZero)
+    ).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(votiumStrategy.applyRewards([])).to.be.revertedWith(
+      "NotRewarder()"
+    );
     await expect(
       votiumStrategy.initialize(
         ethers.constants.AddressZero,
         ethers.constants.AddressZero,
         ethers.constants.AddressZero
       )
-    ).not.eq("Initializable: contract is already initialized");
+    ).to.be.revertedWith("Initializable: contract is already initialized");
   });
 });
