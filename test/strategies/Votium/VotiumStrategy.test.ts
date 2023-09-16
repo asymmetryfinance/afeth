@@ -98,7 +98,7 @@ describe("Test VotiumStrategy", async function () {
     await tx.wait();
 
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "already withdrawn"
+      "AlreadyWithdrawn"
     );
 
     const ethBalanceAfter = await ethers.provider.getBalance(
@@ -719,9 +719,9 @@ describe("Test VotiumStrategy", async function () {
     }
     await expect(
       votiumStrategy.connect(accounts[6]).withdraw(withdrawId)
-    ).to.be.revertedWith("Not withdraw request owner");
+    ).to.be.revertedWith("NotOwner()");
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "Can't withdraw from future epoch"
+      "WithdrawNotReady()"
     );
     await incrementVlcvxEpoch();
 

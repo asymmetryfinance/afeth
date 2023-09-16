@@ -347,7 +347,7 @@ describe("Test VotiumStrategy (Part 2)", async function () {
     }
 
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "Can't withdraw from future epoch"
+      "WithdrawNotReady()"
     );
 
     await incrementVlcvxEpoch();
@@ -404,7 +404,7 @@ describe("Test VotiumStrategy (Part 2)", async function () {
     expect(ethReceived1).gt(0);
 
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "already withdrawn"
+      "AlreadyWithdrawn()"
     );
     await tx.wait();
   });
@@ -444,7 +444,7 @@ describe("Test VotiumStrategy (Part 2)", async function () {
       (await ethers.provider.getBlock("latest")).timestamp
     );
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "Can't withdraw from future epoch"
+      "WithdrawNotReady()"
     );
 
     await incrementVlcvxEpoch();

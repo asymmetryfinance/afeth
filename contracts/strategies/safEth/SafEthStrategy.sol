@@ -20,6 +20,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
     );
 
     uint256 latestWithdrawId;
+    error FailedToSend();
 
     mapping(uint256 => uint256) public withdrawIdToAmount;
 
@@ -73,7 +74,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
 
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
-        require(sent, "Failed to send Ether");
+        if (!sent) revert FailedToSend();
 
         emit Withdraw(msg.sender, withdrawAmount, ethReceived);
     }

@@ -64,6 +64,10 @@ contract VotiumStrategyCore is
     error SwapFailed(uint256 index);
     error ChainlinkFailed();
     error NotRewarder();
+    error InvalidLockedAmount();
+    error NotOwner();
+    error WithdrawNotReady();
+    error AlreadyWithdrawn();
 
     /**
         @notice - Sets the address for the chainlink feed
