@@ -54,6 +54,14 @@ describe.skip("Votium integration test", async function () {
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
+    const chainLinkCvxEthFeedFactory = await ethers.getContractFactory(
+      "ChainLinkCvxEthFeedMock"
+    );
+    const chainLinkCvxEthFeed = await chainLinkCvxEthFeedFactory.deploy();
+    await votiumStrategy
+      .connect(ownerAccount)
+      .setChainlinkCvxEthFeed(chainLinkCvxEthFeed.address);
+
     const userAccounts = await getUserAccounts();
     for (let i = 0; i < userAccounts.length; i++) {
       const balance = await ethers.provider.getBalance(userAccounts[i].address);

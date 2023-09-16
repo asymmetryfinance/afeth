@@ -322,7 +322,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (safEthRatio < ratio) {
             this.applyStrategyReward{value: amount}(safEthAddress);
         } else {
-            this.applyStrategyReward{value: amount}(vEthAddress);
+            votiumStrategy.depositRewards{value: amount}(amount);
         }
     }
 

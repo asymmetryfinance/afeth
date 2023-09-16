@@ -926,11 +926,11 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    // second reward --safEth price unchanged (and supply unchanged), votium goes up, afEth goes up
+    // second reward --safEth price unchanged (and supply unchanged), votium price goes up, afEth goes up
     expect(await afEth.price()).gt(afEthPrice1);
     expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice1)); // within 1 pip because safEth goes up every block
     expect(await safEthStrategy.totalSupply()).eq(safEthStrategyTotalSupply1);
-    expect(await votiumStrategy.price()).eq(votiumStrategyPrice1);
+    expect(await votiumStrategy.price()).gt(votiumStrategyPrice1);
   });
   it("Should show rewards push the ratio towards the target ratio", async function () {
     // user1 gets both rewards while user2 only gets the second
