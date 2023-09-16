@@ -54,6 +54,14 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       value: ethers.utils.parseEther("0.000001"),
     });
     await tx.wait();
+
+    const chainLinkCvxEthFeedFactory = await ethers.getContractFactory(
+      "ChainLinkCvxEthFeedMock"
+    );
+    const chainLinkCvxEthFeed = await chainLinkCvxEthFeedFactory.deploy();
+    await votiumStrategy
+      .connect(ownerAccount)
+      .setChainlinkCvxEthFeed(chainLinkCvxEthFeed.address);
   };
 
   beforeEach(
