@@ -321,12 +321,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 IERC20(vEthAddress).totalSupply()) / 1e36;
             uint256 totalTvl = (safEthTvl + votiumTvl);
             uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
-            if (safEthRatio < ratio) {
+            if (safEthRatio < ratio)
                 this.applyStrategyReward{value: amount}(safEthAddress);
-                return;
-            }
+            else votiumStrategy.depositRewards{value: amount}(amount);
         }
-        votiumStrategy.depositRewards{value: amount}(amount);
     }
 
     receive() external payable {}
