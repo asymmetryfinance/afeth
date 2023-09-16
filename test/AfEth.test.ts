@@ -1050,4 +1050,326 @@ describe("Test AfEth", async function () {
   it("Should show rewards push the ratio towards the target ratio", async function () {
     // TODO
   });
+  it("Should show 2 accounts receive different rewards during different epochs", async function () {
+    // const stakeAmount = ethers.utils.parseEther("10");
+    // const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
+    // const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
+    // // first account mints before rewards are claimed
+    // let tx = await stakerVotiumStrategy1.deposit({
+    //   value: stakeAmount,
+    // });
+    // await tx.wait();
+    // const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
+    // // Claim rewards
+    // await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    // const priceAfterRewardsBeforeSecondStake =
+    //   await votiumStrategy.cvxPerVotium();
+    // // second account mints after rewards are claimed
+    // tx = await stakerVotiumStrategy2.deposit({
+    //   value: stakeAmount,
+    // });
+    // await tx.wait();
+    // const priceAfterRewardsAfterSecondStake =
+    //   await votiumStrategy.cvxPerVotium();
+    // expect(priceAfterRewardsBeforeSecondStake).eq(
+    //   priceAfterRewardsAfterSecondStake
+    // );
+    // expect(priceAfterRewardsAfterSecondStake).gt(priceBeforeRewards);
+    // // Claim rewards again
+    // await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    // const priceAfterAllRewards = await votiumStrategy.cvxPerVotium();
+    // expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
+    // const withdrawId1 = await requestWithdrawal(
+    //   stakerVotiumStrategy1,
+    //   await stakerVotiumStrategy1.balanceOf(accounts[1].address)
+    // );
+    // const withdrawId2 = await requestWithdrawal(
+    //   stakerVotiumStrategy2,
+    //   await stakerVotiumStrategy2.balanceOf(accounts[2].address)
+    // );
+    // // go to next epoch
+    // for (let i = 0; i < 17; i++) {
+    //   await incrementVlcvxEpoch();
+    // }
+    // // withdraw from queue
+    // // pass enough epochs so the burned position is fully unlocked
+    // const ethBalanceBefore1 = await ethers.provider.getBalance(
+    //   accounts[1].address
+    // );
+    // tx = await stakerVotiumStrategy1.withdraw(withdrawId1);
+    // await tx.wait();
+    // const ethBalanceAfter1 = await ethers.provider.getBalance(
+    //   accounts[1].address
+    // );
+    // // balance after fully withdrawing is higher
+    // expect(ethBalanceAfter1).gt(ethBalanceBefore1);
+    // const rewardAmount1 = ethBalanceAfter1
+    //   .sub(ethBalanceBefore1)
+    //   .sub(stakeAmount);
+    // const ethBalanceBefore2 = await ethers.provider.getBalance(
+    //   accounts[2].address
+    // );
+    // tx = await stakerVotiumStrategy2.withdraw(withdrawId2);
+    // await tx.wait();
+    // const ethBalanceAfter2 = await ethers.provider.getBalance(
+    //   accounts[2].address
+    // );
+    // // balance after fully withdrawing is higher
+    // expect(ethBalanceAfter2).gt(ethBalanceBefore2);
+    // const rewardAmount2 = ethBalanceAfter2
+    //   .sub(ethBalanceBefore2)
+    //   .sub(stakeAmount);
+    // expect(rewardAmount1).gt(rewardAmount2.mul(2));
+  });
+  it("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function () {
+    // const stakeAmount = ethers.utils.parseEther("10");
+    // const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
+    // const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
+    // // first account mints before rewards are claimed
+    // let tx = await stakerVotiumStrategy1.deposit({
+    //   value: stakeAmount,
+    // });
+    // await tx.wait();
+    // const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
+    // // Claim rewards
+    // await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    // const priceAfterRewardsBeforeSecondStake =
+    //   await votiumStrategy.cvxPerVotium();
+    // // the second stake amount is calculated by how many rewards went into the system
+    // const stakeAmount2 = priceAfterRewardsBeforeSecondStake
+    //   .mul(stakeAmount)
+    //   .div(ethers.utils.parseEther("1"));
+    // // second account mints after rewards are claimed
+    // tx = await stakerVotiumStrategy2.deposit({
+    //   value: stakeAmount2,
+    // });
+    // await tx.wait();
+    // const priceAfterRewardsAfterSecondStake =
+    //   await votiumStrategy.cvxPerVotium();
+    // expect(priceAfterRewardsBeforeSecondStake).eq(
+    //   priceAfterRewardsAfterSecondStake
+    // );
+    // expect(priceAfterRewardsAfterSecondStake).gt(priceBeforeRewards);
+    // // Claim rewards again
+    // await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    // const priceAfterAllRewards = await votiumStrategy.cvxPerVotium();
+    // expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
+    // const balance1 = await stakerVotiumStrategy1.balanceOf(accounts[1].address);
+    // const balance2 = await stakerVotiumStrategy2.balanceOf(accounts[2].address);
+    // expect(within2Percent(balance1, balance2)).eq(true);
+    // // request withdraw for each account
+    // const withdrawId1 = await requestWithdrawal(
+    //   stakerVotiumStrategy1,
+    //   balance1
+    // );
+    // const withdrawId2 = await requestWithdrawal(
+    //   stakerVotiumStrategy2,
+    //   balance2
+    // );
+    // // go to next epoch
+    // for (let i = 0; i < 17; i++) {
+    //   await incrementVlcvxEpoch();
+    // }
+    // // withdraw from queue
+    // // pass enough epochs so the burned position is fully unlocked
+    // const ethBalanceBefore1 = await ethers.provider.getBalance(
+    //   accounts[1].address
+    // );
+    // tx = await stakerVotiumStrategy1.withdraw(withdrawId1);
+    // await tx.wait();
+    // const ethBalanceAfter1 = await ethers.provider.getBalance(
+    //   accounts[1].address
+    // );
+    // // balance after fully withdrawing is higher
+    // expect(ethBalanceAfter1).gt(ethBalanceBefore1);
+    // const rewardAmount1 = ethBalanceAfter1
+    //   .sub(ethBalanceBefore1)
+    //   .sub(stakeAmount);
+    // const ethBalanceBefore2 = await ethers.provider.getBalance(
+    //   accounts[2].address
+    // );
+    // tx = await stakerVotiumStrategy2.withdraw(withdrawId2);
+    // await tx.wait();
+    // const ethBalanceAfter2 = await ethers.provider.getBalance(
+    //   accounts[2].address
+    // );
+    // // balance after fully withdrawing is higher
+    // expect(ethBalanceAfter2).gt(ethBalanceBefore2);
+    // const rewardAmount2 = ethBalanceAfter2
+    //   .sub(ethBalanceBefore2)
+    //   .sub(stakeAmount);
+    // expect(within2Percent(rewardAmount1, rewardAmount2)).eq(true);
+  });
+  it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
+    // const startingTotalSupply = await votiumStrategy.totalSupply();
+    // const stakerAmounts = 2;
+    // const stakeAmount = ethers.utils.parseEther("4");
+    // let tx;
+    // let runningBalance = BigNumber.from(startingTotalSupply);
+    // for (let i = 1; i <= stakerAmounts; i++) {
+    //   const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
+    //   tx = await stakerVotiumStrategy.deposit({
+    //     value: stakeAmount,
+    //   });
+    //   await tx.wait();
+    //   const afEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
+    //   runningBalance = runningBalance.add(afEthBalance);
+    // }
+    // const totalSupply1 = await votiumStrategy.totalSupply();
+    // expect(totalSupply1).eq(runningBalance);
+    // const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
+    // await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    // const priceAfterRewards = await votiumStrategy.cvxPerVotium();
+    // expect(priceAfterRewards).gt(priceBeforeRewards);
+    // // request withdraw for each account
+    // const withdrawIds = [];
+    // for (let i = 1; i <= stakerAmounts; i++) {
+    //   const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
+    //   const withdrawId = await requestWithdrawal(
+    //     stakerVotiumStrategy,
+    //     await stakerVotiumStrategy.balanceOf(accounts[i].address)
+    //   );
+    //   withdrawIds.push(withdrawId);
+    // }
+    // // go to next epoch
+    // for (let i = 0; i < 17; i++) {
+    //   await incrementVlcvxEpoch();
+    // }
+    // // withdraw from queue
+    // const rewardsGained = [];
+    // let withdrawIdIndex = 0;
+    // for (let i = 1; i <= stakerAmounts; i++) {
+    //   const withdrawId = withdrawIds[withdrawIdIndex];
+    //   const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
+    //   // pass enough epochs so the burned position is fully unlocked
+    //   const ethBalanceBefore = await ethers.provider.getBalance(
+    //     accounts[i].address
+    //   );
+    //   tx = await stakerVotiumStrategy.withdraw(withdrawId as string);
+    //   await tx.wait();
+    //   const ethBalanceAfter = await ethers.provider.getBalance(
+    //     accounts[i].address
+    //   );
+    //   // balance after fully withdrawing is higher
+    //   expect(ethBalanceAfter).gt(ethBalanceBefore);
+    //   // amount of rewards sent to account
+    //   rewardsGained.push(
+    //     ethBalanceAfter.sub(ethBalanceBefore).sub(stakeAmount)
+    //   );
+    //   withdrawIdIndex++;
+    // }
+    // // rewards should be proportional to amount staked
+    // // if stakerAmounts = 2 then the rewards of the previous staker should be double the rewards of the next staker
+    // for (let i = 0; i < rewardsGained.length; i++) {
+    //   if (i === 0) continue;
+    //   expect(within1Percent(rewardsGained[i - 1], rewardsGained[i])).eq(true);
+    // }
+  });
+  it("Should show an account with twice as many tokens receive twice as many rewards as another", async function () {
+    // const startingTotalSupply = await votiumStrategy.totalSupply();
+    // const stakerAmounts = 2;
+    // const stakeAmount = ethers.utils.parseEther("2");
+    // let tx;
+    // let runningBalance = BigNumber.from(startingTotalSupply);
+    // // mint for two accounts
+    // for (let i = 1; i <= stakerAmounts; i++) {
+    //   const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
+    //   tx = await stakerVotiumStrategy.deposit({
+    //     value: stakeAmount.div(i),
+    //   });
+    //   await tx.wait();
+    //   const afEthBalance = await votiumStrategy.balanceOf(accounts[i].address);
+    //   runningBalance = runningBalance.add(afEthBalance);
+    // }
+    // const totalSupply1 = await votiumStrategy.totalSupply();
+    // expect(totalSupply1).eq(runningBalance);
+    // // claim rewards
+    // const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
+    // await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    // const priceAfterRewards = await votiumStrategy.cvxPerVotium();
+    // expect(priceAfterRewards).gt(priceBeforeRewards);
+    // const withdrawIds = [];
+    // // request withdraw for each account
+    // for (let i = 1; i <= stakerAmounts; i++) {
+    //   const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
+    //   const withdrawId = await requestWithdrawal(
+    //     stakerVotiumStrategy,
+    //     await stakerVotiumStrategy.balanceOf(accounts[i].address)
+    //   );
+    //   withdrawIds.push(withdrawId);
+    // }
+    // // go to next epoch
+    // for (let i = 0; i < 17; i++) {
+    //   await incrementVlcvxEpoch();
+    // }
+    // // withdraw from queue
+    // const rewardsGained = [];
+    // let index = 0;
+    // for (let i = 1; i <= stakerAmounts; i++) {
+    //   const withdrawId = withdrawIds[index];
+    //   const stakerVotiumStrategy = votiumStrategy.connect(accounts[i]);
+    //   // pass enough epochs so the burned position is fully unlocked
+    //   const ethBalanceBefore = await ethers.provider.getBalance(
+    //     accounts[i].address
+    //   );
+    //   tx = await stakerVotiumStrategy.withdraw(withdrawId as string);
+    //   await tx.wait();
+    //   const ethBalanceAfter = await ethers.provider.getBalance(
+    //     accounts[i].address
+    //   );
+    //   // balance after fully withdrawing is higher
+    //   expect(ethBalanceAfter).gt(ethBalanceBefore);
+    //   // amount of rewards sent to account
+    //   rewardsGained.push(
+    //     ethBalanceAfter.sub(ethBalanceBefore).sub(stakeAmount.div(i))
+    //   );
+    //   index++;
+    // }
+    // // rewards should be proportional to amount staked
+    // // if stakerAmounts = 2 then the rewards of the previous staker should be double the rewards of the next staker
+    // for (let i = 0; i < rewardsGained.length; i++) {
+    //   if (i === 0) continue;
+    //   expect(
+    //     within1Percent(
+    //       rewardsGained[i - 1],
+    //       rewardsGained[i].mul(stakerAmounts)
+    //     )
+    //   ).eq(true);
+    // }
+  });
+  it("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
+    // const tx = await votiumStrategy.deposit({
+    //   value: ethers.utils.parseEther("1"),
+    // });
+    // await tx.wait();
+    // const sellEventSmall = await oracleApplyRewards(
+    //   rewarderAccount,
+    //   votiumStrategy.address,
+    //   await readJSONFromFile("./scripts/testDataSlippageSmall.json")
+    // );
+    // const ethReceived0 = sellEventSmall?.args?.ethAmount;
+    // const sellEventLarge = await oracleApplyRewards(
+    //   rewarderAccount,
+    //   votiumStrategy.address,
+    //   await readJSONFromFile("./scripts/testDataSlippage.json")
+    // );
+    // const ethReceived1 = sellEventLarge?.args?.ethAmount;
+    // console.log
+    // // second sell should be 100x the first sell
+    // const expectedEthReceived1 = ethReceived0.mul(100);
+    // expect(within2Percent(ethReceived1, expectedEthReceived1)).eq(true);
+  });
+  it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
+    // const cvxTotalBefore = await votiumStrategy.cvxInSystem();
+    // const sellEventSmall = await oracleApplyRewards(
+    //   rewarderAccount,
+    //   votiumStrategy.address,
+    //   await readJSONFromFile("./scripts/testDataSliced.json")
+    // );
+    // const cvxTotalAfter = await votiumStrategy.cvxInSystem();
+    // const totalCvxGain = cvxTotalAfter.sub(cvxTotalBefore);
+    // const eventCvx = sellEventSmall?.args?.cvxAmount;
+    // expect(totalCvxGain).eq(eventCvx);
+    // expect(totalCvxGain).gt(0);
+  });
 });

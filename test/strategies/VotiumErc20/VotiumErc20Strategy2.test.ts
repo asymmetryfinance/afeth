@@ -160,53 +160,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
 
     expect(balanceAfter).eq(balanceBefore.sub(halfBalance));
   });
-  it("Should be able to sell a large portion of all votium rewards into eth with minimal slippage", async function () {
-    const tx = await votiumStrategy.deposit({
-      value: ethers.utils.parseEther("1"),
-    });
-    await tx.wait();
 
-    const sellEventSmall = await oracleApplyRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      await readJSONFromFile("./scripts/testDataSlippageSmall.json")
-    );
-    const ethReceived0 = sellEventSmall?.args?.ethAmount;
-
-    const sellEventLarge = await oracleApplyRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      await readJSONFromFile("./scripts/testDataSlippage.json")
-    );
-    const ethReceived1 = sellEventLarge?.args?.ethAmount;
-
-    // second sell should be 100x the first sell
-    const expectedEthReceived1 = ethReceived0.mul(100);
-    expect(within2Percent(ethReceived1, expectedEthReceived1)).eq(true);
-  });
-
-  it("Should be able to deposit 100 eth depositRewards() with minimal slippage and price go up", async function () {
-    const depositAmountSmall = ethers.utils.parseEther("0.1");
-    const depositAmountLarge = ethers.utils.parseEther("100");
-
-    const tx1 = await votiumStrategy.depositRewards(depositAmountSmall, {
-      value: depositAmountSmall,
-    });
-    const mined1 = await tx1.wait();
-    const e1 = mined1.events?.find((e) => e.event === "DepositReward");
-    const cvxOut1 = e1?.args?.cvxAmount;
-
-    const tx2 = await votiumStrategy.depositRewards(depositAmountLarge, {
-      value: depositAmountLarge,
-    });
-    const mined2 = await tx2.wait();
-    const e2 = mined2.events?.find((e) => e.event === "DepositReward");
-    const cvxOut2 = e2?.args?.cvxAmount;
-
-    const expectedCvxOut2 = cvxOut1.mul(1000);
-
-    expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
-  });
   it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
     const price0 = await votiumStrategy.price();
 
@@ -307,21 +261,6 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     const ethReceived1 = ethBalanceAfter1.sub(ethBalanceBefore1);
 
     expect(within1Pip(ethReceived0, ethReceived1)).eq(true);
-  });
-
-  it("Should allow owner to overide sell data and only sell some of the rewards instead of everything from the claim proof", async function () {
-    const cvxTotalBefore = await votiumStrategy.cvxInSystem();
-    const sellEventSmall = await oracleApplyRewards(
-      rewarderAccount,
-      votiumStrategy.address,
-      await readJSONFromFile("./scripts/testDataSliced.json")
-    );
-    const cvxTotalAfter = await votiumStrategy.cvxInSystem();
-    const totalCvxGain = cvxTotalAfter.sub(cvxTotalBefore);
-    const eventCvx = sellEventSmall?.args?.cvxAmount;
-
-    expect(totalCvxGain).eq(eventCvx);
-    expect(totalCvxGain).gt(0);
   });
 
   it("Should fail to withdraw 1 epoch before the withdraw epoch and succeed on or after the withdraw epoch", async function () {

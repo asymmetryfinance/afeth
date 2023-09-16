@@ -197,17 +197,6 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - Sells _amount of eth from votium contract
-     * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
-     *  */
-    function depositRewards(uint256 _amount) public payable {
-        uint256 cvxAmount = buyCvx(_amount);
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
-        ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
-        emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
-    }
-
-    /**
      * @notice - Allows owner to withdraw any stuck erc20 tokens
      * @dev - Lets us handle any that were not successfully sold via cvx
      * @param _token - Address of the token to withdraw
@@ -301,7 +290,6 @@ contract VotiumErc20StrategyCore is
 
         if (address(manager) != address(0))
             IAfEth(manager).depositRewards{value: ethReceived}(ethReceived);
-        else depositRewards(ethReceived);
     }
 
     /**
