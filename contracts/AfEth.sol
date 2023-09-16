@@ -128,9 +128,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function price() public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
-        AbstractStrategy safEthStrategy = AbstractStrategy(
-            safEthAddress
-        );
+        AbstractStrategy safEthStrategy = AbstractStrategy(safEthAddress);
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
         uint256 safEthValueInEth = (safEthStrategy.price() *
             safEthStrategy.balanceOf(address(this))) / 1e18;
@@ -251,9 +249,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 safEthTime = AbstractStrategy(safEthAddress).withdrawTime(
             _amount
         );
-        uint256 vEthTime = AbstractStrategy(vEthAddress).withdrawTime(
-            _amount
-        );
+        uint256 vEthTime = AbstractStrategy(vEthAddress).withdrawTime(_amount);
         uint256 highestTime = safEthTime > vEthTime ? safEthTime : vEthTime;
 
         return highestTime;
@@ -273,12 +269,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
 
-        AbstractStrategy(safEthAddress).withdraw(
-            withdrawInfo.safEthWithdrawId
-        );
-        AbstractStrategy(vEthAddress).withdraw(
-            withdrawInfo.vEthWithdrawId
-        );
+        AbstractStrategy(safEthAddress).withdraw(withdrawInfo.safEthWithdrawId);
+        AbstractStrategy(vEthAddress).withdraw(withdrawInfo.vEthWithdrawId);
 
         _burn(address(this), withdrawIdInfo[_withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
@@ -302,7 +294,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @notice - sells _amount of eth from votium contract
      * @dev - puts it into safEthStrategy or votiumStrategy, whichever is underweight.\
      * @param _amount - amount of eth to sell
-    */
+     */
     function depositRewards(uint256 _amount) public payable {
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;
