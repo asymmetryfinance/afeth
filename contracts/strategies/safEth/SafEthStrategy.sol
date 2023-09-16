@@ -2,11 +2,11 @@
 pragma solidity 0.8.19;
 
 import "./SafEthStrategyCore.sol";
-import "../AbstractErc20Strategy.sol";
+import "../AbstractStrategy.sol";
 import "../../external_interfaces/ISafEth.sol";
 import "hardhat/console.sol";
 
-contract SafEthStrategy is AbstractErc20Strategy, SafEthStrategyCore {
+contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
     event WithdrawRequest(
         address indexed account,
         uint256 amount,

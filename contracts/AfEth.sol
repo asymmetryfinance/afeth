@@ -2,10 +2,10 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "./strategies/votiumErc20/VotiumErc20Strategy.sol";
+import "./strategies/votium/VotiumStrategy.sol";
 import "./strategies/safEth/SafEthStrategy.sol";
-import "./strategies/AbstractErc20Strategy.sol";
 import "./external_interfaces/IVotiumStrategy.sol";
+import "./strategies/AbstractStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
@@ -128,10 +128,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function price() public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
-        AbstractErc20Strategy safEthStrategy = AbstractErc20Strategy(
+        AbstractStrategy safEthStrategy = AbstractStrategy(
             safEthAddress
         );
-        AbstractErc20Strategy vEthStrategy = AbstractErc20Strategy(vEthAddress);
+        AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
         uint256 safEthValueInEth = (safEthStrategy.price() *
             safEthStrategy.balanceOf(address(this))) / 1e18;
         uint256 vEthValueInEth = (vEthStrategy.price() *
@@ -150,8 +150,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 priceBeforeDeposit = price();
         uint256 totalValue;
 
-        AbstractErc20Strategy sStrategy = AbstractErc20Strategy(safEthAddress);
-        AbstractErc20Strategy vStrategy = AbstractErc20Strategy(vEthAddress);
+        AbstractStrategy sStrategy = AbstractStrategy(safEthAddress);
+        AbstractStrategy vStrategy = AbstractStrategy(vEthAddress);
 
         uint256 sValue = (amount * ratio) / 1e18;
         uint256 sMinted = sValue > 0 ? sStrategy.deposit{value: sValue}() : 0;
@@ -222,7 +222,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         );
         uint256 strategyWithdrawAmount = (_withdrawRatio * strategyBalance) /
             1e18;
-        withdrawId = AbstractErc20Strategy(_strategyAddress).requestWithdraw(
+        withdrawId = AbstractStrategy(_strategyAddress).requestWithdraw(
             strategyWithdrawAmount
         );
     }
@@ -234,10 +234,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function canWithdraw(uint256 _withdrawId) public view returns (bool) {
         return
-            AbstractErc20Strategy(safEthAddress).canWithdraw(
+            AbstractStrategy(safEthAddress).canWithdraw(
                 withdrawIdInfo[_withdrawId].safEthWithdrawId
             ) &&
-            AbstractErc20Strategy(vEthAddress).canWithdraw(
+            AbstractStrategy(vEthAddress).canWithdraw(
                 withdrawIdInfo[_withdrawId].vEthWithdrawId
             );
     }
@@ -248,10 +248,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @return - Highest withdraw time of the strategies
     */
     function withdrawTime(uint256 _amount) public view returns (uint256) {
-        uint256 safEthTime = AbstractErc20Strategy(safEthAddress).withdrawTime(
+        uint256 safEthTime = AbstractStrategy(safEthAddress).withdrawTime(
             _amount
         );
-        uint256 vEthTime = AbstractErc20Strategy(vEthAddress).withdrawTime(
+        uint256 vEthTime = AbstractStrategy(vEthAddress).withdrawTime(
             _amount
         );
         uint256 highestTime = safEthTime > vEthTime ? safEthTime : vEthTime;
@@ -273,10 +273,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
 
-        AbstractErc20Strategy(safEthAddress).withdraw(
+        AbstractStrategy(safEthAddress).withdraw(
             withdrawInfo.safEthWithdrawId
         );
-        AbstractErc20Strategy(vEthAddress).withdraw(
+        AbstractStrategy(vEthAddress).withdraw(
             withdrawInfo.vEthWithdrawId
         );
 
@@ -295,14 +295,14 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @param _strategyAddress - Address of the strategy to apply reward to
     */
     function applyStrategyReward(address _strategyAddress) public payable {
-        AbstractErc20Strategy(_strategyAddress).deposit{value: msg.value}();
+        AbstractStrategy(_strategyAddress).deposit{value: msg.value}();
     }
 
     /**
      * @notice - sells _amount of eth from votium contract
      * @dev - puts it into safEthStrategy or votiumStrategy, whichever is underweight.\
      * @param _amount - amount of eth to sell
-     *  */
+    */
     function depositRewards(uint256 _amount) public payable {
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;

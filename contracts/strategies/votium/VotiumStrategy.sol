@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "../AbstractErc20Strategy.sol";
+import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "./VotiumErc20StrategyCore.sol";
+import "./VotiumStrategyCore.sol";
 
 /// @title Votium Strategy Token
 /// @author Asymmetry Finance
-contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
+contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
     event WithdrawRequest(
         address indexed user,
         uint256 amount,

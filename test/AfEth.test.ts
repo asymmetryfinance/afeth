@@ -1,9 +1,9 @@
-import { AfEth, SafEthStrategy, VotiumErc20Strategy } from "../typechain-types";
+import { AfEth, SafEthStrategy, VotiumStrategy } from "../typechain-types";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
-import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
+import { incrementVlcvxEpoch } from "./strategies/Votium/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import {
   within1Percent,
@@ -17,7 +17,7 @@ import { BigNumber } from "ethers";
 describe("Test AfEth", async function () {
   let afEth: AfEth;
   let safEthStrategy: SafEthStrategy;
-  let votiumStrategy: VotiumErc20Strategy;
+  let votiumStrategy: VotiumStrategy;
   let accounts: SignerWithAddress[];
 
   const initialStake = ethers.utils.parseEther(".1");
@@ -46,15 +46,13 @@ describe("Test AfEth", async function () {
     ])) as SafEthStrategy;
     await safEthStrategy.deployed();
 
-    const votiumFactory = await ethers.getContractFactory(
-      "VotiumErc20Strategy"
-    );
+    const votiumFactory = await ethers.getContractFactory("VotiumStrategy");
     votiumStrategy = (await upgrades.deployProxy(votiumFactory, [
       accounts[0].address,
       accounts[0].address,
       afEth.address,
       safEthStrategy.address,
-    ])) as VotiumErc20Strategy;
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
     await afEth.setStrategyAddresses(

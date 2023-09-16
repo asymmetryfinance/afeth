@@ -1,7 +1,7 @@
 import { network, ethers, upgrades } from "hardhat";
 import {
-  VotiumErc20Strategy,
-  VotiumErc20StrategyCore,
+  VotiumStrategy,
+  VotiumStrategyCore,
 } from "../../../typechain-types";
 import { expect } from "chai";
 import {
@@ -14,8 +14,8 @@ import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 
-describe("Test VotiumErc20Strategy", async function () {
-  let votiumStrategy: VotiumErc20Strategy & VotiumErc20StrategyCore;
+describe("Test VotiumStrategy", async function () {
+  let votiumStrategy: VotiumStrategy & VotiumStrategyCore;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
 
@@ -33,7 +33,7 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     accounts = await ethers.getSigners();
     const votiumStrategyFactory = await ethers.getContractFactory(
-      "VotiumErc20Strategy"
+      "VotiumStrategy"
     );
     rewarderAccount = accounts[9];
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
@@ -41,7 +41,7 @@ describe("Test VotiumErc20Strategy", async function () {
       rewarderAccount.address,
       "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
       "0x0000000000000000000000000000000000000000",
-    ])) as VotiumErc20Strategy;
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).deposit({

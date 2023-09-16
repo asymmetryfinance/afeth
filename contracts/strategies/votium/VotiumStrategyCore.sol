@@ -12,16 +12,14 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 import "../../external_interfaces/IAfEth.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
-import "../AbstractErc20Strategy.sol";
+import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "hardhat/console.sol";
 import "../../external_interfaces/ISafEth.sol";
+import "hardhat/console.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
-contract VotiumErc20StrategyCore is
-    ERC165Storage,
+contract VotiumStrategyCore is
     Initializable,
     OwnableUpgradeable,
     ERC20Upgradeable
@@ -112,7 +110,6 @@ contract VotiumErc20StrategyCore is
         manager = _manager;
         __ERC20_init("Votium AfEth Strategy", "vAfEth");
         _transferOwnership(_owner);
-        _registerInterface(type(AbstractErc20Strategy).interfaceId);
         chainlinkCvxEthFeed = AggregatorV3Interface(
             0xC9CbF687f43176B302F03f5e58470b77D07c61c6
         );

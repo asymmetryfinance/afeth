@@ -1,5 +1,5 @@
 import { network, ethers, upgrades } from "hardhat";
-import { VotiumErc20Strategy } from "../../../typechain-types";
+import { VotiumStrategy } from "../../../typechain-types";
 import {
   getAdminAccount,
   getRewarderAccount,
@@ -26,7 +26,7 @@ const userInteractionsPerEpoch = 2;
 const startingEthBalances: any = [];
 
 describe.skip("Votium integration test", async function () {
-  let votiumStrategy: VotiumErc20Strategy;
+  let votiumStrategy: VotiumStrategy;
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
       method: "hardhat_reset",
@@ -41,7 +41,7 @@ describe.skip("Votium integration test", async function () {
     });
 
     const votiumStrategyFactory = await ethers.getContractFactory(
-      "VotiumErc20Strategy"
+      "VotiumStrategy"
     );
 
     const ownerAccount = await getAdminAccount();
@@ -51,7 +51,7 @@ describe.skip("Votium integration test", async function () {
       rewarderAccount.address,
       ethers.constants.AddressZero, // TODO this should be an afEth mock but doesnt matter right now
       ethers.constants.AddressZero,
-    ])) as VotiumErc20Strategy;
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
     const chainLinkCvxEthFeedFactory = await ethers.getContractFactory(

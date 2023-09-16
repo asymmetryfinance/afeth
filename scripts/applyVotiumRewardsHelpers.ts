@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { VotiumErc20Strategy } from "../typechain-types";
+import { VotiumStrategy } from "../typechain-types";
 import axios from "axios";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { wethAbi } from "../test/abis/wethAbi";
@@ -80,14 +80,13 @@ export async function votiumClaimRewards(
   strategyAddress: string,
   proofsOverride?: any
 ): Promise<any> {
-  const VotiumInterface = (
-    await ethers.getContractFactory("VotiumErc20Strategy")
-  ).interface as any;
+  const VotiumInterface = (await ethers.getContractFactory("VotiumStrategy"))
+    .interface as any;
   const votiumStrategy = new ethers.Contract(
     strategyAddress,
     VotiumInterface,
     account
-  ) as VotiumErc20Strategy;
+  ) as VotiumStrategy;
 
   let proofs: any;
   if (!proofsOverride) {
@@ -109,14 +108,13 @@ export async function votiumSellRewards(
   proofs: any,
   swapsDataOverride?: any
 ) {
-  const VotiumInterface = (
-    await ethers.getContractFactory("VotiumErc20Strategy")
-  ).interface as any;
+  const VotiumInterface = (await ethers.getContractFactory("VotiumStrategy"))
+    .interface as any;
   const votiumStrategy = new ethers.Contract(
     strategyAddress,
     VotiumInterface,
     account
-  ) as VotiumErc20Strategy;
+  ) as VotiumStrategy;
   if (swapsDataOverride) {
     const tx = await votiumStrategy.applyRewards(swapsDataOverride);
     const mined1 = await tx.wait();
