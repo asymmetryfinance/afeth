@@ -122,6 +122,9 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
     await expect(notOwner.withdraw(0)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     );
+    await expect(
+      safEthStrategy.initialize(ethers.constants.AddressZero)
+    ).to.be.revertedWith("Initializable: contract is already initialized");
   });
   it("Should fail to call requestWithdraw() if no balance", async function () {
     // Hardhat bug is causing this to revert with "Error: Transaction reverted and Hardhat couldn't infer the reason."

@@ -39,6 +39,7 @@ describe("Test VotiumStrategy", async function () {
       "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesn't matter right now
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
+
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).deposit({
       value: ethers.utils.parseEther(".0001"),
@@ -51,8 +52,6 @@ describe("Test VotiumStrategy", async function () {
   );
 
   it("Should mint vEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
-    const initialPrice = await votiumStrategy.cvxPerVotium();
-    expect(initialPrice).eq(ethers.utils.parseEther("1"));
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const priceBeforeDeposit = await votiumStrategy.cvxPerVotium();
     expect(priceBeforeDeposit).eq(ethers.utils.parseEther("1"));
@@ -81,10 +80,6 @@ describe("Test VotiumStrategy", async function () {
     const withdrawId = await requestWithdrawal(
       votiumStrategy,
       await votiumStrategy.balanceOf(accounts[0].address)
-    );
-
-    await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "Can't withdraw from future epoch"
     );
 
     // pass enough epochs so the burned position is fully unlocked
@@ -722,7 +717,9 @@ describe("Test VotiumStrategy", async function () {
     for (let i = 0; i < 16; i++) {
       await incrementVlcvxEpoch();
     }
-
+    await expect(
+      votiumStrategy.connect(accounts[6]).withdraw(withdrawId)
+    ).to.be.revertedWith("Not withdraw request owner");
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
       "Can't withdraw from future epoch"
     );
@@ -786,6 +783,18 @@ describe("Test VotiumStrategy", async function () {
       ethers.constants.AddressZero
     );
   });
+  it("cvxPerVotium should be 1e18 before any deposit", async function () {
+    const votiumStrategyFactory = await ethers.getContractFactory(
+      "VotiumStrategy"
+    );
+    votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
+      accounts[0].address,
+      rewarderAccount.address,
+      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesn't matter right now
+    ])) as VotiumStrategy;
+    const initialPrice = await votiumStrategy.cvxPerVotium();
+    expect(initialPrice).eq(ethers.utils.parseEther("1"));
+  });
   it("Should protect permissioned functions", async function () {
     await expect(
       votiumStrategy.connect(accounts[5]).setRewarder(accounts[6].address)
@@ -794,8 +803,12 @@ describe("Test VotiumStrategy", async function () {
       votiumStrategy.withdrawStuckTokens(ethers.constants.AddressZero)
     ).not.eq("Ownable: caller is not the owner");
     await expect(votiumStrategy.applyRewards([])).not.eq("NotRewarder()");
-    await expect(votiumStrategy.initialize).not.eq(
-      "Initializable: contract is already initialized"
-    );
+    await expect(
+      votiumStrategy.initialize(
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero
+      )
+    ).not.eq("Initializable: contract is already initialized");
   });
 });
