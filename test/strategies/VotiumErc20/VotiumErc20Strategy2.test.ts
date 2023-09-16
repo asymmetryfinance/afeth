@@ -5,13 +5,8 @@ import {
   getCurrentEpoch,
   incrementVlcvxEpoch,
   oracleApplyRewards,
-  readJSONFromFile,
 } from "./VotiumTestHelpers";
-import {
-  within1Percent,
-  within1Pip,
-  within2Percent,
-} from "../../helpers/helpers";
+import { within1Pip } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("Test VotiumErc20Strategy (Part 2)", async function () {
