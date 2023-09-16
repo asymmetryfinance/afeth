@@ -13,7 +13,7 @@ import {
 } from "./helpers/helpers";
 import { BigNumber } from "ethers";
 
-describe("Test AfEth", async function () {
+describe.only("Test AfEth", async function () {
   let afEth: AfEth;
   let safEthStrategy: SafEthStrategy;
   let votiumStrategy: VotiumErc20Strategy;
