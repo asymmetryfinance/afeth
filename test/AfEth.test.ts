@@ -100,6 +100,13 @@ describe("Test AfEth", async function () {
       value: initialStake,
     });
     await tx.wait();
+
+    const chainLinkCvxEthFeedFactory = await ethers.getContractFactory(
+      "ChainLinkCvxEthFeedMock"
+    );
+    const chainLinkCvxEthFeed = await chainLinkCvxEthFeedFactory.deploy();
+    await chainLinkCvxEthFeed.deployed();
+    await votiumStrategy.setChainlinkCvxEthFeed(chainLinkCvxEthFeed.address);
   };
 
   beforeEach(

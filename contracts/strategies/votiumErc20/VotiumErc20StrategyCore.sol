@@ -299,7 +299,9 @@ contract VotiumErc20StrategyCore is
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
-        IAfEth(manager).depositRewards{value: ethReceived}(ethReceived);
+        if (address(manager) != address(0))
+            IAfEth(manager).depositRewards{value: ethReceived}(ethReceived);
+        else depositRewards(ethReceived);
     }
 
     /**
