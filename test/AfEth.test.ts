@@ -926,10 +926,6 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    console.log(afEthPrice1, await afEth.price());
-    console.log(safEthStrategyPrice1, await safEthStrategy.price());
-    console.log(votiumStrategyPrice1, await votiumStrategy.price());
-    console.log(safEthStrategyTotalSupply1, await safEthStrategy.totalSupply());
     // second reward --safEth price unchanged (and supply unchanged), votium goes up, afEth goes up
     expect(await afEth.price()).gt(afEthPrice1);
     expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice1)); // within 1 pip because safEth goes up every block
