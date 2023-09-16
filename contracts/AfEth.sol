@@ -61,21 +61,18 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _disableInitializers();
     }
 
-    function setStrategyAddresses(
-        address _safEthAddress,
-        address _vEthAddress
-    ) external onlyOwner {
-        safEthAddress = _safEthAddress;
-        vEthAddress = _vEthAddress;
-    }
-
     /**
         @notice - Initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
     */
-    function initialize() external initializer {
+    function initialize(
+        address _safEthStrategy,
+        address _vEthStrategy
+    ) external initializer {
         _transferOwnership(msg.sender);
         ratio = 5e17;
+        safEthAddress = _safEthStrategy;
+        vEthAddress = _vEthStrategy;
     }
 
     /**
@@ -304,8 +301,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _amount - amount of eth to sell
      *  */
     function depositRewards(uint256 _amount) public payable {
+        console.log("DEPOSIT", _amount);
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;
+        console.log("FEE", feeAmount);
         if (feeAmount > 0) {
             // solhint-disable-next-line
             (bool sent, ) = feeAddress.call{value: feeAmount}("");
@@ -320,8 +319,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 totalTvl = (safEthTvl + votiumTvl);
         uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
         if (safEthRatio < ratio) {
+            console.log("DEPOSIT TO saf");
             this.applyStrategyReward{value: amount}(safEthAddress);
         } else {
+            console.log("DEPOSIT TO VOTIUM");
             this.applyStrategyReward{value: amount}(vEthAddress);
         }
     }

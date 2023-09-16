@@ -143,10 +143,10 @@ export const oracleApplyRewards = async (
 };
 
 export const requestWithdrawal = async (
-  votiumStrategy: VotiumErc20Strategy,
+  strategy: any,
   amount: BigNumber
 ): Promise<string> => {
-  const tx = await votiumStrategy.requestWithdraw(amount);
+  const tx = await strategy.requestWithdraw(amount);
   const mined = await tx.wait();
   const event = mined?.events?.find((e: any) => e?.event === "WithdrawRequest");
   return event?.args?.withdrawId;

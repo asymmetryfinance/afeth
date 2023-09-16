@@ -48,7 +48,6 @@ contract VotiumErc20StrategyCore is
     uint256 public cvxUnlockObligations;
     address public rewarder;
     address public manager;
-    address public safEthStrategyAddress;
 
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
@@ -93,13 +92,10 @@ contract VotiumErc20StrategyCore is
         @dev - This replaces the constructor for upgradeable contracts
         @param _owner - Address of the owner of the contract (asym multisig)
         @param _rewarder - Address of the rewarder contract (reward oracle)
-        @param _manager - Address of the manager contract (afEth)
     */
     function initialize(
         address _owner,
-        address _rewarder,
-        address _manager,
-        address _safEthStrategyAddress
+        address _rewarder
     ) external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -109,14 +105,20 @@ contract VotiumErc20StrategyCore is
             votiumVoteProxyAddress
         );
         rewarder = _rewarder;
-        manager = _manager;
         __ERC20_init("Votium AfEth Strategy", "vAfEth");
         _transferOwnership(_owner);
         _registerInterface(type(AbstractErc20Strategy).interfaceId);
         chainlinkCvxEthFeed = AggregatorV3Interface(
             0xC9CbF687f43176B302F03f5e58470b77D07c61c6
         );
-        safEthStrategyAddress = _safEthStrategyAddress;
+    }
+
+    /**
+     * @notice - Function to set the address of the manager account
+     * @param _manager - Address of the manager account
+     */
+    function setManager(address _manager) external onlyOwner {
+        manager = _manager;
     }
 
     /**

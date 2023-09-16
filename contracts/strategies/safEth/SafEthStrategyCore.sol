@@ -2,18 +2,12 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
 import "../AbstractErc20Strategy.sol";
 
 /// For private internal functions and anything not exposed via the interface
-contract SafEthStrategyCore is
-    ERC165Storage,
-    Initializable,
-    OwnableUpgradeable,
-    ERC20Upgradeable
-{
+contract SafEthStrategyCore is ERC165Storage, Initializable, ERC20Upgradeable {
     address public constant safEthAddress =
         0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
 
@@ -35,10 +29,8 @@ contract SafEthStrategyCore is
     /**
         @notice - Function to initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
-        @param _manager - Address of the manager contract
     */
-    function initialize(address _manager) external initializer {
-        _transferOwnership(_manager);
+    function initialize() external initializer {
         _registerInterface(type(AbstractErc20Strategy).interfaceId);
     }
 

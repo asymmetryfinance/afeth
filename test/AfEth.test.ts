@@ -3,7 +3,11 @@ import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
-import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
+import {
+  incrementVlcvxEpoch,
+  oracleApplyRewards,
+  requestWithdrawal,
+} from "./strategies/VotiumErc20/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import {
   within1Percent,
@@ -19,6 +23,7 @@ describe("Test AfEth", async function () {
   let safEthStrategy: SafEthStrategy;
   let votiumStrategy: VotiumErc20Strategy;
   let accounts: SignerWithAddress[];
+  let rewarderAccount: SignerWithAddress;
 
   const initialStake = ethers.utils.parseEther(".1");
   const initialStakeAccount = 11;
@@ -36,31 +41,33 @@ describe("Test AfEth", async function () {
       ],
     });
     accounts = await ethers.getSigners();
-    const afEthFactory = await ethers.getContractFactory("AfEth");
-    afEth = (await upgrades.deployProxy(afEthFactory, [])) as AfEth;
-    await afEth.deployed();
 
-    const safEthFactory = await ethers.getContractFactory("SafEthStrategy");
-    safEthStrategy = (await upgrades.deployProxy(safEthFactory, [
-      afEth.address,
-    ])) as SafEthStrategy;
-    await safEthStrategy.deployed();
-
+    rewarderAccount = accounts[9];
     const votiumFactory = await ethers.getContractFactory(
       "VotiumErc20Strategy"
     );
     votiumStrategy = (await upgrades.deployProxy(votiumFactory, [
       accounts[0].address,
-      accounts[0].address,
-      afEth.address,
-      safEthStrategy.address,
+      rewarderAccount.address,
     ])) as VotiumErc20Strategy;
     await votiumStrategy.deployed();
 
-    await afEth.setStrategyAddresses(
+    const safEthFactory = await ethers.getContractFactory("SafEthStrategy");
+    safEthStrategy = (await upgrades.deployProxy(
+      safEthFactory,
+      []
+    )) as SafEthStrategy;
+    await safEthStrategy.deployed();
+
+    const afEthFactory = await ethers.getContractFactory("AfEth");
+    afEth = (await upgrades.deployProxy(afEthFactory, [
       safEthStrategy.address,
-      votiumStrategy.address
-    );
+      votiumStrategy.address,
+    ])) as AfEth;
+    await afEth.deployed();
+
+    await votiumStrategy.setManager(afEth.address);
+
     // mock chainlink feeds so not out of date
     await network.provider.request({
       method: "hardhat_impersonateAccount",
@@ -1050,76 +1057,81 @@ describe("Test AfEth", async function () {
   it("Should show rewards push the ratio towards the target ratio", async function () {
     // TODO
   });
-  it("Should show 2 accounts receive different rewards during different epochs", async function () {
-    // const stakeAmount = ethers.utils.parseEther("10");
-    // const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
-    // const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
-    // // first account mints before rewards are claimed
-    // let tx = await stakerVotiumStrategy1.deposit({
-    //   value: stakeAmount,
-    // });
-    // await tx.wait();
-    // const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
-    // // Claim rewards
-    // await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-    // const priceAfterRewardsBeforeSecondStake =
-    //   await votiumStrategy.cvxPerVotium();
-    // // second account mints after rewards are claimed
-    // tx = await stakerVotiumStrategy2.deposit({
-    //   value: stakeAmount,
-    // });
-    // await tx.wait();
-    // const priceAfterRewardsAfterSecondStake =
-    //   await votiumStrategy.cvxPerVotium();
-    // expect(priceAfterRewardsBeforeSecondStake).eq(
-    //   priceAfterRewardsAfterSecondStake
-    // );
-    // expect(priceAfterRewardsAfterSecondStake).gt(priceBeforeRewards);
-    // // Claim rewards again
-    // await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
-    // const priceAfterAllRewards = await votiumStrategy.cvxPerVotium();
-    // expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
-    // const withdrawId1 = await requestWithdrawal(
-    //   stakerVotiumStrategy1,
-    //   await stakerVotiumStrategy1.balanceOf(accounts[1].address)
-    // );
-    // const withdrawId2 = await requestWithdrawal(
-    //   stakerVotiumStrategy2,
-    //   await stakerVotiumStrategy2.balanceOf(accounts[2].address)
-    // );
-    // // go to next epoch
-    // for (let i = 0; i < 17; i++) {
-    //   await incrementVlcvxEpoch();
-    // }
-    // // withdraw from queue
-    // // pass enough epochs so the burned position is fully unlocked
-    // const ethBalanceBefore1 = await ethers.provider.getBalance(
-    //   accounts[1].address
-    // );
-    // tx = await stakerVotiumStrategy1.withdraw(withdrawId1);
-    // await tx.wait();
-    // const ethBalanceAfter1 = await ethers.provider.getBalance(
-    //   accounts[1].address
-    // );
-    // // balance after fully withdrawing is higher
-    // expect(ethBalanceAfter1).gt(ethBalanceBefore1);
-    // const rewardAmount1 = ethBalanceAfter1
-    //   .sub(ethBalanceBefore1)
-    //   .sub(stakeAmount);
-    // const ethBalanceBefore2 = await ethers.provider.getBalance(
-    //   accounts[2].address
-    // );
-    // tx = await stakerVotiumStrategy2.withdraw(withdrawId2);
-    // await tx.wait();
-    // const ethBalanceAfter2 = await ethers.provider.getBalance(
-    //   accounts[2].address
-    // );
-    // // balance after fully withdrawing is higher
-    // expect(ethBalanceAfter2).gt(ethBalanceBefore2);
-    // const rewardAmount2 = ethBalanceAfter2
-    //   .sub(ethBalanceBefore2)
-    //   .sub(stakeAmount);
-    // expect(rewardAmount1).gt(rewardAmount2.mul(2));
+  it.only("Should show 2 accounts receive different rewards during different epochs", async function () {
+    const stakeAmount = ethers.utils.parseEther("1");
+    const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
+    const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
+    // first account mints before rewards are claimed
+    let tx = await stakerVotiumStrategy1.deposit({
+      value: stakeAmount,
+    });
+    await tx.wait();
+    console.log(2);
+    const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
+    console.log(3);
+    // Claim rewards
+    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    console.log(4);
+
+    const priceAfterRewardsBeforeSecondStake =
+      await votiumStrategy.cvxPerVotium();
+    // second account mints after rewards are claimed
+    tx = await stakerVotiumStrategy2.deposit({
+      value: stakeAmount,
+    });
+    await tx.wait();
+    const priceAfterRewardsAfterSecondStake =
+      await votiumStrategy.cvxPerVotium();
+    expect(priceAfterRewardsBeforeSecondStake).eq(
+      priceAfterRewardsAfterSecondStake
+    );
+    expect(priceAfterRewardsAfterSecondStake).gt(priceBeforeRewards);
+    // Claim rewards again
+    await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
+    const priceAfterAllRewards = await votiumStrategy.cvxPerVotium();
+    expect(priceAfterAllRewards).gt(priceAfterRewardsAfterSecondStake);
+
+    const withdrawId1 = await requestWithdrawal(
+      afEth,
+      await afEth.balanceOf(accounts[1].address)
+    );
+    const withdrawId2 = await requestWithdrawal(
+      afEth,
+      await afEth.balanceOf(accounts[2].address)
+    );
+    // go to next epoch
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+    // withdraw from queue
+    // pass enough epochs so the burned position is fully unlocked
+    const ethBalanceBefore1 = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    tx = await stakerVotiumStrategy1.withdraw(withdrawId1);
+    await tx.wait();
+    const ethBalanceAfter1 = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    // balance after fully withdrawing is higher
+    expect(ethBalanceAfter1).gt(ethBalanceBefore1);
+    const rewardAmount1 = ethBalanceAfter1
+      .sub(ethBalanceBefore1)
+      .sub(stakeAmount);
+    const ethBalanceBefore2 = await ethers.provider.getBalance(
+      accounts[2].address
+    );
+    tx = await stakerVotiumStrategy2.withdraw(withdrawId2);
+    await tx.wait();
+    const ethBalanceAfter2 = await ethers.provider.getBalance(
+      accounts[2].address
+    );
+    // balance after fully withdrawing is higher
+    expect(ethBalanceAfter2).gt(ethBalanceBefore2);
+    const rewardAmount2 = ethBalanceAfter2
+      .sub(ethBalanceBefore2)
+      .sub(stakeAmount);
+    expect(rewardAmount1).gt(rewardAmount2.mul(2));
   });
   it("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function () {
     // const stakeAmount = ethers.utils.parseEther("10");
