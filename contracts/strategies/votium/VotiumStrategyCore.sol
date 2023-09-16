@@ -167,12 +167,13 @@ contract VotiumStrategyCore is
         }
         // verify chainlink response
         if (
-            (!_validate || (cl.success == true &&
-                cl.roundId != 0 &&
-                cl.answer >= 0 &&
-                cl.updatedAt != 0 &&
-                cl.updatedAt <= block.timestamp &&
-                block.timestamp - cl.updatedAt <= 25 hours))
+            (!_validate ||
+                (cl.success == true &&
+                    cl.roundId != 0 &&
+                    cl.answer >= 0 &&
+                    cl.updatedAt != 0 &&
+                    cl.updatedAt <= block.timestamp &&
+                    block.timestamp - cl.updatedAt <= 25 hours))
         ) {
             return uint256(cl.answer);
         } else {
