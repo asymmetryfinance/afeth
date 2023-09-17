@@ -2,10 +2,10 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "./strategies/votium/VotiumStrategy.sol";
-import "./strategies/safEth/SafEthStrategy.sol";
-import "./external_interfaces/IVotiumStrategy.sol";
-import "./strategies/AbstractStrategy.sol";
+import "contracts/strategies/votium/VotiumStrategy.sol";
+import "contracts/strategies/safEth/SafEthStrategy.sol";
+import "contracts/external_interfaces/IVotiumStrategy.sol";
+import "contracts/strategies/AbstractStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
@@ -63,14 +63,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _disableInitializers();
     }
 
-    function setStrategyAddresses(
-        address _safEthAddress,
-        address _vEthAddress
-    ) external onlyOwner {
-        safEthAddress = _safEthAddress;
-        vEthAddress = _vEthAddress;
-    }
-
     /**
         @notice - Initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
@@ -78,6 +70,19 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function initialize() external initializer {
         _transferOwnership(msg.sender);
         ratio = 5e17;
+    }
+
+    /**
+     * @notice - Sets the strategy addresses for safEth and votium
+     * @param _safEthAddress - safEth strategy address
+     * @param _vEthAddress - vEth strategy address
+     */
+    function setStrategyAddresses(
+        address _safEthAddress,
+        address _vEthAddress
+    ) external onlyOwner {
+        safEthAddress = _safEthAddress;
+        vEthAddress = _vEthAddress;
     }
 
     /**
@@ -309,8 +314,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 safEthTvl = (ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5)
             .approxPrice(false) * IERC20(safEthAddress).totalSupply()) / 1e18;
         uint256 votiumTvl = ((votiumStrategy.cvxPerVotium() *
-            votiumStrategy.ethPerCvx()) * IERC20(vEthAddress).totalSupply()) /
-            1e36;
+            votiumStrategy.ethPerCvx(true)) *
+            IERC20(vEthAddress).totalSupply()) / 1e36;
         uint256 totalTvl = (safEthTvl + votiumTvl);
         uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
         if (safEthRatio < ratio) {

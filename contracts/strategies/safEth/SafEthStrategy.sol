@@ -20,6 +20,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
     );
 
     uint256 latestWithdrawId;
+    error FailedToSend();
 
     mapping(uint256 => uint256) public withdrawIdToAmount;
 
@@ -32,6 +33,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
         payable
         virtual
         override
+        onlyOwner
         returns (uint256 mintAmount)
     {
         mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
@@ -46,7 +48,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
      */
     function requestWithdraw(
         uint256 _amount
-    ) external virtual override returns (uint256 withdrawId) {
+    ) external virtual override onlyOwner returns (uint256 withdrawId) {
         _burn(msg.sender, _amount);
         latestWithdrawId++;
         emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
@@ -58,7 +60,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
      * @notice Withdraw safEth
      * @param _withdrawId Id of the withdraw request
      */
-    function withdraw(uint256 _withdrawId) external virtual override {
+    function withdraw(uint256 _withdrawId) external virtual override onlyOwner {
         uint256 withdrawAmount = withdrawIdToAmount[_withdrawId];
 
         uint256 ethBalanceBefore = address(this).balance;
@@ -72,7 +74,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
 
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
-        require(sent, "Failed to send Ether");
+        if (!sent) revert FailedToSend();
 
         emit Withdraw(msg.sender, withdrawAmount, ethReceived);
     }

@@ -29,7 +29,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @return Price of token in eth
      */
     function price() external view override returns (uint256) {
-        return (cvxPerVotium() * ethPerCvx()) / 1e18;
+        return (cvxPerVotium() * ethPerCvx(false)) / 1e18;
     }
 
     /**
@@ -98,7 +98,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 return latestWithdrawId;
             }
         }
-        revert("Invalid Locked Amount");
+        // should never get here
+        revert InvalidLockedAmount();
     }
 
     /**
@@ -106,19 +107,12 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @param withdrawId Id of withdraw request
      */
     function withdraw(uint256 withdrawId) external override {
-        require(
-            withdrawIdToWithdrawRequestInfo[withdrawId].owner == msg.sender,
-            "Not withdraw request owner"
-        );
-        require(
-            this.canWithdraw(withdrawId),
-            "Can't withdraw from future epoch"
-        );
+        if (withdrawIdToWithdrawRequestInfo[withdrawId].owner != msg.sender)
+            revert NotOwner();
+        if (!this.canWithdraw(withdrawId)) revert WithdrawNotReady();
 
-        require(
-            !withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn,
-            "already withdrawn"
-        );
+        if (withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn)
+            revert AlreadyWithdrawn();
 
         relock();
 
@@ -196,6 +190,6 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 return lockedBalances[i].unlockTime;
             }
         }
-        revert("Invalid Locked Amount");
+        revert InvalidLockedAmount();
     }
 }

@@ -46,7 +46,6 @@ contract VotiumStrategyCore is
     uint256 public cvxUnlockObligations;
     address public rewarder;
     address public manager;
-    address public safEthStrategyAddress;
 
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
@@ -64,6 +63,11 @@ contract VotiumStrategyCore is
 
     error SwapFailed(uint256 index);
     error ChainlinkFailed();
+    error NotRewarder();
+    error InvalidLockedAmount();
+    error NotOwner();
+    error WithdrawNotReady();
+    error AlreadyWithdrawn();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -76,7 +80,7 @@ contract VotiumStrategyCore is
     }
 
     modifier onlyRewarder() {
-        require(msg.sender == rewarder, "not rewarder");
+        if (msg.sender != rewarder) revert NotRewarder();
         _;
     }
 
@@ -96,8 +100,7 @@ contract VotiumStrategyCore is
     function initialize(
         address _owner,
         address _rewarder,
-        address _manager,
-        address _safEthStrategyAddress
+        address _manager
     ) external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -113,7 +116,6 @@ contract VotiumStrategyCore is
         chainlinkCvxEthFeed = AggregatorV3Interface(
             0xC9CbF687f43176B302F03f5e58470b77D07c61c6
         );
-        safEthStrategyAddress = _safEthStrategyAddress;
     }
 
     /**
@@ -141,17 +143,17 @@ contract VotiumStrategyCore is
      */
     function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
-        if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
-        if (totalCvx == 0) return 1e18;
+        if (supply == 0 || totalCvx == 0) return 1e18;
         return ((totalCvx - cvxUnlockObligations) * 1e18) / supply;
     }
 
     /**
         @notice - Eth per cvx (chainlink)
+        @param _validate - Whether or not to validate the chainlink response
         @return - Price of cvx in eth
      */
-    function ethPerCvx() public view returns (uint256) {
+    function ethPerCvx(bool _validate) public view returns (uint256) {
         ChainlinkResponse memory cl;
         try chainlinkCvxEthFeed.latestRoundData() returns (
             uint80 roundId,
@@ -169,12 +171,13 @@ contract VotiumStrategyCore is
         }
         // verify chainlink response
         if (
-            (cl.success == true &&
-                cl.roundId != 0 &&
-                cl.answer >= 0 &&
-                cl.updatedAt != 0 &&
-                cl.updatedAt <= block.timestamp &&
-                block.timestamp - cl.updatedAt <= 25 hours)
+            (!_validate ||
+                (cl.success == true &&
+                    cl.roundId != 0 &&
+                    cl.answer >= 0 &&
+                    cl.updatedAt != 0 &&
+                    cl.updatedAt <= block.timestamp &&
+                    block.timestamp - cl.updatedAt <= 25 hours))
         ) {
             return uint256(cl.answer);
         } else {
@@ -194,7 +197,7 @@ contract VotiumStrategyCore is
     }
 
     /**
-     * @notice - Sells _amount of eth from votium contract
+     * @notice - Sells amount of eth from votium contract
      * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
     function depositRewards(uint256 _amount) public payable {
