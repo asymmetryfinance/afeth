@@ -41,7 +41,7 @@ yarn && yarn compile
 
 `yarn test` to run test suite.
 
-Note integration tests for the votium strategy (VotiumIntegration.test.ts) are skipped by default so CI goes faster.
+`*Note``: *ntegration tests for the votium strategy ([VotiumIntegration.test.ts](https://github.com/asymmetryfinance/afeth/blob/main/test/strategies/VotiumErc20/VotiumIntegration.test.ts)) are skipped by default for faster CI
 
 ## Architecture Diagrams
 
