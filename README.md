@@ -22,7 +22,13 @@ https://etherscan.io/token/0x6732efaf6f39926346bef8b821a04b6361c4f3e5
 
 - There is an unlock period to withdraw because votium strategy tokens are collateralized by vote locked convex. [requestWithdraw()](https://github.com/asymmetryfinance/afeth/blob/main/contracts/strategies/votiumErc20/VotiumErc20Strategy.sol#L54) burns the strategy tokens, calculates how much cvx they is owed based on cvxPerVotium() price, marks this amount to be unlocked on subsequent calls to [processExpiredLocks()](https://github.com/asymmetryfinance/afeth/blob/main/contracts/strategies/votiumErc20/VotiumErc20Strategy.sol#L145C39-L145C48), calculates unlock time and returns withdrawId to later be used in [withdraw()](https://github.com/asymmetryfinance/afeth/blob/main/contracts/strategies/votiumErc20/VotiumErc20Strategy.sol#L108).
 
+### AfEth
 
+- When minting, afEth purchases each underlying strategy token (safEth & votium) according to [ratio](https://github.com/asymmetryfinance/afeth/blob/main/contracts/AfEth.sol#L12).
+
+- `requestWithdraw()` must be called and enough time must pass for the votium to unlock before `withdraw()` can be called
+
+- [depositRewards()](https://github.com/asymmetryfinance/afeth/blob/main/contracts/AfEth.sol#L306C14-L306C23) is used by the votium strategy (or anyone) upon claiming rewards to make the afEth price go up by distributing funds into both strategies according to ratio.
 ## Local Development
 
 To use the correct node version run
