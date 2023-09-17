@@ -2,9 +2,17 @@
 
 ## About
 
-AfEth implementations built using different earning strategy nfts (votium, safEth, etc) and a common interface to combine each strategy in any ratio
+AfEth is an ERC20 token collerateralized by 2 underlying tokens in an adjustable ratio:
 
-AfEth V1 will work by wrapping / managing the underlying votium & safEth strategies into a new nft.
+### Token 1, safEth:
+
+https://etherscan.io/token/0x6732efaf6f39926346bef8b821a04b6361c4f3e5
+
+Safeth is our liquid staking token consisting of 6 underling lsds (Lido, rocketpool, frax, etc...). It is a simple "price go up" token with significant immediate liquidity via its "stake" and "unstake" functions.
+
+### Token 2, votium strategy token :
+
+This is the where most of the complexity in afEth lives.
 
 ## Local Development
 
@@ -22,16 +30,6 @@ yarn && yarn compile
 
 ## Testing
 
-### Hardhat
+`yarn test` to run test suite.
 
-For testing on hardhat simply run:
-
-```
-yarn test
-```
-
-Or for complete coverage:
-
-```
-yarn coverage
-```
+Note integration tests for the votium strategy (VotiumIntegration.test.ts) are skipped by default so CI goes faster.
