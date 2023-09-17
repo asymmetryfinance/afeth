@@ -63,14 +63,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _disableInitializers();
     }
 
-    function setStrategyAddresses(
-        address _safEthAddress,
-        address _vEthAddress
-    ) external onlyOwner {
-        safEthAddress = _safEthAddress;
-        vEthAddress = _vEthAddress;
-    }
-
     /**
         @notice - Initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
@@ -78,6 +70,19 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function initialize() external initializer {
         _transferOwnership(msg.sender);
         ratio = 5e17;
+    }
+
+    /**
+     * @notice - Sets the strategy addresses for safEth and votium
+     * @param _safEthAddress - safEth strategy address
+     * @param _vEthAddress - vEth strategy address
+     */
+    function setStrategyAddresses(
+        address _safEthAddress,
+        address _vEthAddress
+    ) external onlyOwner {
+        safEthAddress = _safEthAddress;
+        vEthAddress = _vEthAddress;
     }
 
     /**

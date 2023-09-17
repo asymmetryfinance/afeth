@@ -63,6 +63,11 @@ contract VotiumStrategyCore is
 
     error SwapFailed(uint256 index);
     error ChainlinkFailed();
+    error NotRewarder();
+    error InvalidLockedAmount();
+    error NotOwner();
+    error WithdrawNotReady();
+    error AlreadyWithdrawn();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -75,7 +80,7 @@ contract VotiumStrategyCore is
     }
 
     modifier onlyRewarder() {
-        require(msg.sender == rewarder, "not rewarder");
+        if (msg.sender != rewarder) revert NotRewarder();
         _;
     }
 
@@ -138,9 +143,8 @@ contract VotiumStrategyCore is
      */
     function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
-        if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
-        if (totalCvx == 0) return 1e18;
+        if (supply == 0 || totalCvx == 0) return 1e18;
         return ((totalCvx - cvxUnlockObligations) * 1e18) / supply;
     }
 
