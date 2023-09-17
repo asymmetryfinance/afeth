@@ -1,4 +1,4 @@
-# [AfEth Strategy Managers](https://www.asymmetry.finance/) • ![solidity](https://img.shields.io/badge/solidity-0.8.19-lightgrey)
+# [AfEth](https://www.asymmetry.finance/) • ![solidity](https://img.shields.io/badge/solidity-0.8.19-lightgrey)
 
 ## About
 
