@@ -42,3 +42,7 @@ yarn && yarn compile
 `yarn test` to run test suite.
 
 Note integration tests for the votium strategy (VotiumIntegration.test.ts) are skipped by default so CI goes faster.
+
+## Architecture Diagrams
+
+Coming soon
