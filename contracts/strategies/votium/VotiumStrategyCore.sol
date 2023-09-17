@@ -12,16 +12,14 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 import "../../external_interfaces/IAfEth.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
-import "../AbstractErc20Strategy.sol";
+import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "hardhat/console.sol";
 import "../../external_interfaces/ISafEth.sol";
+import "hardhat/console.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
-contract VotiumErc20StrategyCore is
-    ERC165Storage,
+contract VotiumStrategyCore is
     Initializable,
     OwnableUpgradeable,
     ERC20Upgradeable
@@ -48,7 +46,6 @@ contract VotiumErc20StrategyCore is
     uint256 public cvxUnlockObligations;
     address public rewarder;
     address public manager;
-    address public safEthStrategyAddress;
 
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
@@ -66,6 +63,11 @@ contract VotiumErc20StrategyCore is
 
     error SwapFailed(uint256 index);
     error ChainlinkFailed();
+    error NotRewarder();
+    error InvalidLockedAmount();
+    error NotOwner();
+    error WithdrawNotReady();
+    error AlreadyWithdrawn();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -78,7 +80,7 @@ contract VotiumErc20StrategyCore is
     }
 
     modifier onlyRewarder() {
-        require(msg.sender == rewarder, "not rewarder");
+        if (msg.sender != rewarder) revert NotRewarder();
         _;
     }
 
@@ -98,8 +100,7 @@ contract VotiumErc20StrategyCore is
     function initialize(
         address _owner,
         address _rewarder,
-        address _manager,
-        address _safEthStrategyAddress
+        address _manager
     ) external initializer {
         bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
         address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -112,11 +113,9 @@ contract VotiumErc20StrategyCore is
         manager = _manager;
         __ERC20_init("Votium AfEth Strategy", "vAfEth");
         _transferOwnership(_owner);
-        _registerInterface(type(AbstractErc20Strategy).interfaceId);
         chainlinkCvxEthFeed = AggregatorV3Interface(
             0xC9CbF687f43176B302F03f5e58470b77D07c61c6
         );
-        safEthStrategyAddress = _safEthStrategyAddress;
     }
 
     /**
@@ -144,17 +143,17 @@ contract VotiumErc20StrategyCore is
      */
     function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
-        if (supply == 0) return 1e18;
         uint256 totalCvx = cvxInSystem();
-        if (totalCvx == 0) return 1e18;
+        if (supply == 0 || totalCvx == 0) return 1e18;
         return ((totalCvx - cvxUnlockObligations) * 1e18) / supply;
     }
 
     /**
         @notice - Eth per cvx (chainlink)
+        @param _validate - Whether or not to validate the chainlink response
         @return - Price of cvx in eth
      */
-    function ethPerCvx() public view returns (uint256) {
+    function ethPerCvx(bool _validate) public view returns (uint256) {
         ChainlinkResponse memory cl;
         try chainlinkCvxEthFeed.latestRoundData() returns (
             uint80 roundId,
@@ -172,12 +171,13 @@ contract VotiumErc20StrategyCore is
         }
         // verify chainlink response
         if (
-            (cl.success == true &&
-                cl.roundId != 0 &&
-                cl.answer >= 0 &&
-                cl.updatedAt != 0 &&
-                cl.updatedAt <= block.timestamp &&
-                block.timestamp - cl.updatedAt <= 25 hours)
+            (!_validate ||
+                (cl.success == true &&
+                    cl.roundId != 0 &&
+                    cl.answer >= 0 &&
+                    cl.updatedAt != 0 &&
+                    cl.updatedAt <= block.timestamp &&
+                    block.timestamp - cl.updatedAt <= 25 hours))
         ) {
             return uint256(cl.answer);
         } else {
@@ -197,7 +197,7 @@ contract VotiumErc20StrategyCore is
     }
 
     /**
-     * @notice - Sells _amount of eth from votium contract
+     * @notice - Sells amount of eth from votium contract
      * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
     function depositRewards(uint256 _amount) public payable {

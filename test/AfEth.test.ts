@@ -1,9 +1,9 @@
-import { AfEth, SafEthStrategy, VotiumErc20Strategy } from "../typechain-types";
+import { AfEth, SafEthStrategy, VotiumStrategy } from "../typechain-types";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
-import { incrementVlcvxEpoch } from "./strategies/VotiumErc20/VotiumTestHelpers";
+import { incrementVlcvxEpoch } from "./strategies/Votium/VotiumTestHelpers";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import {
   within1Percent,
@@ -17,7 +17,7 @@ import { BigNumber } from "ethers";
 describe("Test AfEth", async function () {
   let afEth: AfEth;
   let safEthStrategy: SafEthStrategy;
-  let votiumStrategy: VotiumErc20Strategy;
+  let votiumStrategy: VotiumStrategy;
   let accounts: SignerWithAddress[];
 
   const initialStake = ethers.utils.parseEther(".1");
@@ -46,15 +46,12 @@ describe("Test AfEth", async function () {
     ])) as SafEthStrategy;
     await safEthStrategy.deployed();
 
-    const votiumFactory = await ethers.getContractFactory(
-      "VotiumErc20Strategy"
-    );
+    const votiumFactory = await ethers.getContractFactory("VotiumStrategy");
     votiumStrategy = (await upgrades.deployProxy(votiumFactory, [
       accounts[0].address,
       accounts[0].address,
       afEth.address,
-      safEthStrategy.address,
-    ])) as VotiumErc20Strategy;
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
     await afEth.setStrategyAddresses(
@@ -155,7 +152,7 @@ describe("Test AfEth", async function () {
     expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
   });
 
-  it("Should mint, requestwithdraw, and withdraw afETH with 70/30 (safEth/votium) ratios", async function () {
+  it("Should deposit with the correct ratios", async function () {
     const safEthVotiumRatio = ethers.utils.parseEther(".7");
     await afEth.setRatio(safEthVotiumRatio);
 
@@ -273,6 +270,7 @@ describe("Test AfEth", async function () {
       accounts[2].address
     );
 
+    await expect(user2.withdraw(1, 0)).to.be.revertedWith("NotOwner()");
     const withdrawTx1 = await user1.withdraw(1, 0);
     await withdrawTx1.wait();
     const withdrawTx2 = await user2.withdraw(2, 0);
@@ -1026,6 +1024,11 @@ describe("Test AfEth", async function () {
   });
   it("Should be able to handle protocol fees from rewards", async function () {
     const feeAmount = ethers.utils.parseEther("0.1");
+    // can't set more than 100% fee
+    await expect(
+      afEth.setProtocolFee(ethers.utils.parseEther("2"))
+    ).to.be.revertedWith("InvalidFee()");
+
     await afEth.setProtocolFee(feeAmount);
     await afEth.setFeeAddress(accounts[3].address);
     const feeAddressBalanceBefore = await ethers.provider.getBalance(
@@ -1048,6 +1051,33 @@ describe("Test AfEth", async function () {
       feeAddressBalanceBefore
     );
     expect(feeAmountReceived).eq(feeAmount);
+  });
+  it("Owner functions should be protected", async function () {
+    const notOwner = afEth.connect(accounts[5]);
+    await expect(notOwner.setRatio(0)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+    await expect(
+      notOwner.setStrategyAddresses(
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero
+      )
+    ).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(notOwner.initialize()).to.be.revertedWith(
+      "Initializable: contract is already initialized"
+    );
+    await expect(
+      notOwner.setFeeAddress(ethers.constants.AddressZero)
+    ).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(notOwner.setProtocolFee(0)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+    await expect(notOwner.setPauseDeposit(true)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+    await expect(notOwner.setPauseWithdraw(true)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
   });
   it("Should show rewards push the ratio towards the target ratio", async function () {
     // TODO

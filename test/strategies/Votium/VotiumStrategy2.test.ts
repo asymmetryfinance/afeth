@@ -1,5 +1,5 @@
 import { network, ethers, upgrades } from "hardhat";
-import { VotiumErc20Strategy } from "../../../typechain-types";
+import { VotiumStrategy } from "../../../typechain-types";
 import { expect } from "chai";
 import {
   getCurrentEpoch,
@@ -14,8 +14,8 @@ import {
 } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe("Test VotiumErc20Strategy (Part 2)", async function () {
-  let votiumStrategy: VotiumErc20Strategy;
+describe("Test VotiumStrategy (Part 2)", async function () {
+  let votiumStrategy: VotiumStrategy;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
   let userAccount: SignerWithAddress;
@@ -39,14 +39,13 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     ownerAccount = accounts[2];
 
     const votiumStrategyFactory = await ethers.getContractFactory(
-      "VotiumErc20Strategy"
+      "VotiumStrategy"
     );
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
       "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
-      "0x0000000000000000000000000000000000000000",
-    ])) as VotiumErc20Strategy;
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
@@ -122,13 +121,9 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     await oracleApplyRewards(rewarderAccount, votiumStrategy.address);
 
     // this should throw
-    try {
-      await oracleApplyRewards(userAccount, votiumStrategy.address);
-    } catch (e: any) {
-      expect(e.message).eq(
-        "VM Exception while processing transaction: reverted with reason string 'not rewarder'"
-      );
-    }
+    await expect(
+      oracleApplyRewards(userAccount, votiumStrategy.address)
+    ).to.be.revertedWith("NotRewarder()");
   });
   it("Should not be able to requestWithdraw for more than a users balance", async function () {
     const tx = await votiumStrategy.deposit({
@@ -352,7 +347,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     }
 
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "Can't withdraw from future epoch"
+      "WithdrawNotReady()"
     );
 
     await incrementVlcvxEpoch();
@@ -409,7 +404,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
     expect(ethReceived1).gt(0);
 
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "already withdrawn"
+      "AlreadyWithdrawn()"
     );
     await tx.wait();
   });
@@ -449,7 +444,7 @@ describe("Test VotiumErc20Strategy (Part 2)", async function () {
       (await ethers.provider.getBlock("latest")).timestamp
     );
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "Can't withdraw from future epoch"
+      "WithdrawNotReady()"
     );
 
     await incrementVlcvxEpoch();
