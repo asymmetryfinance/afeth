@@ -2,7 +2,7 @@
 
 ## About
 
-AfEth is an ERC20 token collerateralized by 2 underlying "strategy" tokens in an adjustable ratio. AfEth can be thought of as a "manager" that handles strategy tokens conforming to a common interface (see [AbstractErc20Strategy.sol](https://github.com/asymmetryfinance/afeth/blob/main/contracts/strategies/AbstractErc20Strategy.sol))
+AfEth is an ERC20 token collateralized by 2 underlying "strategy" tokens in an adjustable ratio. AfEth can be thought of as a "manager" that handles strategy tokens conforming to a common interface (see [AbstractErc20Strategy.sol](https://github.com/asymmetryfinance/afeth/blob/main/contracts/strategies/AbstractErc20Strategy.sol))
 
 ### Token 1, safEth strategy:
 
