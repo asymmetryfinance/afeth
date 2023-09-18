@@ -36,7 +36,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Deposit eth to mint this token at current price
      * @return mintAmount Amount of tokens minted
      */
-    function deposit() public payable override returns (uint256 mintAmount) {
+    function deposit() public payable override onlyOwner returns (uint256 mintAmount) {
         uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
@@ -53,7 +53,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      */
     function requestWithdraw(
         uint256 _amount
-    ) public override returns (uint256 withdrawId) {
+    ) public override onlyOwner returns (uint256 withdrawId) {
         latestWithdrawId++;
         uint256 _priceInCvx = cvxPerVotium();
 
@@ -106,7 +106,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Withdraws from requested withdraw if eligible epoch has passed
      * @param withdrawId Id of withdraw request
      */
-    function withdraw(uint256 withdrawId) external override {
+    function withdraw(uint256 withdrawId) onlyOwner external override {
         if (withdrawIdToWithdrawRequestInfo[withdrawId].owner != msg.sender)
             revert NotOwner();
         if (!this.canWithdraw(withdrawId)) revert WithdrawNotReady();
@@ -123,13 +123,14 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
 
-        // TODO: use call to send eth instead
-        payable(msg.sender).transfer(ethReceived);
+        // solhint-disable-next-line
+        (bool sent, ) = msg.sender.call{value: ethReceived}("");
+        if (!sent) revert FailedToSend();
     }
 
     /**
      * @notice Relocks cvx while ensuring there is enough to cover all withdraw requests
-     * @dev This happens automatically on withdraw but will need to be manually called if nowithdraws happen in an epoch where locks are expiring
+     * @dev This happens automatically on withdraw but will need to be manually called if no withdraws happen in an epoch where locks are expiring
      */
     function relock() public {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(

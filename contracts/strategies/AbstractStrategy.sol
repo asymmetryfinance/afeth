@@ -34,4 +34,6 @@ abstract contract AbstractStrategy is
     function withdrawTime(
         uint256 _amount
     ) external view virtual returns (uint256);
+
+    error FailedToSend();
 }

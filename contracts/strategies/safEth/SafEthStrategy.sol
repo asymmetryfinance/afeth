@@ -20,7 +20,6 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
     );
 
     uint256 latestWithdrawId;
-    error FailedToSend();
 
     mapping(uint256 => uint256) public withdrawIdToAmount;
 
