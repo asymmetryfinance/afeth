@@ -123,13 +123,14 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
 
-        // TODO: use call to send eth instead
-        payable(msg.sender).transfer(ethReceived);
+        // solhint-disable-next-line
+        (bool sent, ) = msg.sender.call{value: ethReceived}("");
+        if (!sent) revert FailedToSend();
     }
 
     /**
      * @notice Relocks cvx while ensuring there is enough to cover all withdraw requests
-     * @dev This happens automatically on withdraw but will need to be manually called if nowithdraws happen in an epoch where locks are expiring
+     * @dev This happens automatically on withdraw but will need to be manually called if no withdraws happen in an epoch where locks are expiring
      */
     function relock() public {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
