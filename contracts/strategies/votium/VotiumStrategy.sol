@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "../AbstractErc20Strategy.sol";
+import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "./VotiumErc20StrategyCore.sol";
+import "./VotiumStrategyCore.sol";
 
 /// @title Votium Strategy Token
 /// @author Asymmetry Finance
-contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
+contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
     event WithdrawRequest(
         address indexed user,
         uint256 amount,
@@ -29,7 +29,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
      * @return Price of token in eth
      */
     function price() external view override returns (uint256) {
-        return (cvxPerVotium() * ethPerCvx()) / 1e18;
+        return (cvxPerVotium() * ethPerCvx(false)) / 1e18;
     }
 
     /**
@@ -98,7 +98,8 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 return latestWithdrawId;
             }
         }
-        revert("Invalid Locked Amount");
+        // should never get here
+        revert InvalidLockedAmount();
     }
 
     /**
@@ -106,19 +107,12 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
      * @param withdrawId Id of withdraw request
      */
     function withdraw(uint256 withdrawId) external override {
-        require(
-            withdrawIdToWithdrawRequestInfo[withdrawId].owner == msg.sender,
-            "Not withdraw request owner"
-        );
-        require(
-            this.canWithdraw(withdrawId),
-            "Can't withdraw from future epoch"
-        );
+        if (withdrawIdToWithdrawRequestInfo[withdrawId].owner != msg.sender)
+            revert NotOwner();
+        if (!this.canWithdraw(withdrawId)) revert WithdrawNotReady();
 
-        require(
-            !withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn,
-            "already withdrawn"
-        );
+        if (withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn)
+            revert AlreadyWithdrawn();
 
         relock();
 
@@ -196,6 +190,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 return lockedBalances[i].unlockTime;
             }
         }
-        revert("Invalid Locked Amount");
+        revert InvalidLockedAmount();
     }
 }

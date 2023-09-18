@@ -111,8 +111,23 @@ describe("Test SafEth Strategy Specific Functionality", async function () {
   it("Should fail to call withdraw() if balance is less than amount", async function () {
     await expect(safEthStrategy.withdraw(10)).to.be.reverted;
   });
+  it("Must be owner to call deposit, requestWithdraw, and withdraw", async function () {
+    const notOwner = safEthStrategy.connect(accounts[1]);
+    await expect(notOwner.deposit()).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+    await expect(notOwner.requestWithdraw(10)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+    await expect(notOwner.withdraw(0)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+    await expect(
+      safEthStrategy.initialize(ethers.constants.AddressZero)
+    ).to.be.revertedWith("Initializable: contract is already initialized");
+  });
   it("Should fail to call requestWithdraw() if no balance", async function () {
-    // Hardhat bug is causing this to revert with "rror: Transaction reverted and Hardhat couldn't infer the reason."
+    // Hardhat bug is causing this to revert with "Error: Transaction reverted and Hardhat couldn't infer the reason."
     await expect(safEthStrategy.requestWithdraw(10)).to.be.reverted;
     // await expect(safEthStrategy.requestWithdraw(10)).to.be.revertedWith(
     //   "ERC20: burn amount exceeds balance"

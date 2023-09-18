@@ -1,8 +1,5 @@
 import { network, ethers, upgrades } from "hardhat";
-import {
-  VotiumErc20Strategy,
-  VotiumErc20StrategyCore,
-} from "../../../typechain-types";
+import { VotiumStrategy, VotiumStrategyCore } from "../../../typechain-types";
 import { expect } from "chai";
 import {
   incrementVlcvxEpoch,
@@ -14,8 +11,8 @@ import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 
-describe("Test VotiumErc20Strategy", async function () {
-  let votiumStrategy: VotiumErc20Strategy & VotiumErc20StrategyCore;
+describe("Test VotiumStrategy", async function () {
+  let votiumStrategy: VotiumStrategy & VotiumStrategyCore;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
 
@@ -33,16 +30,16 @@ describe("Test VotiumErc20Strategy", async function () {
     });
     accounts = await ethers.getSigners();
     const votiumStrategyFactory = await ethers.getContractFactory(
-      "VotiumErc20Strategy"
+      "VotiumStrategy"
     );
     rewarderAccount = accounts[9];
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       accounts[0].address,
       rewarderAccount.address,
-      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesnt matter right now
-      "0x0000000000000000000000000000000000000000",
-    ])) as VotiumErc20Strategy;
+      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesn't matter right now
+    ])) as VotiumStrategy;
     await votiumStrategy.deployed();
+
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
     const tx = await votiumStrategy.connect(accounts[11]).deposit({
       value: ethers.utils.parseEther(".0001"),
@@ -54,8 +51,11 @@ describe("Test VotiumErc20Strategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it("Should mint vEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
+    const priceBeforeDeposit = await votiumStrategy.cvxPerVotium();
+    expect(priceBeforeDeposit).eq(ethers.utils.parseEther("1"));
+
     let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
@@ -91,9 +91,15 @@ describe("Test VotiumErc20Strategy", async function () {
       accounts[0].address
     );
 
+    // must be withdraw owner
+
     // withdraw
     tx = await votiumStrategy.withdraw(withdrawId);
     await tx.wait();
+
+    await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
+      "AlreadyWithdrawn"
+    );
 
     const ethBalanceAfter = await ethers.provider.getBalance(
       accounts[0].address
@@ -101,7 +107,7 @@ describe("Test VotiumErc20Strategy", async function () {
     // balance after fully withdrawing is higher
     expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
-  it("Should mint afEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function () {
+  it("Should mint vEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function () {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const stakerAmounts = 2;
 
@@ -150,7 +156,6 @@ describe("Test VotiumErc20Strategy", async function () {
       await incrementVlcvxEpoch();
     }
 
-    // withdraw from queue
     const balancesBefore = [];
     const balancesAfter = [];
     let withdrawIndex = 0;
@@ -328,7 +333,6 @@ describe("Test VotiumErc20Strategy", async function () {
       await incrementVlcvxEpoch();
     }
 
-    // withdraw from queue
     // pass enough epochs so the burned position is fully unlocked
     const ethBalanceBefore1 = await ethers.provider.getBalance(
       accounts[1].address
@@ -408,7 +412,6 @@ describe("Test VotiumErc20Strategy", async function () {
       await incrementVlcvxEpoch();
     }
 
-    // withdraw from queue
     const rewardsGained = [];
     let withdrawIdIndex = 0;
     for (let i = 1; i <= stakerAmounts; i++) {
@@ -488,7 +491,6 @@ describe("Test VotiumErc20Strategy", async function () {
       await incrementVlcvxEpoch();
     }
 
-    // withdraw from queue
     const rewardsGained = [];
     let index = 0;
     for (let i = 1; i <= stakerAmounts; i++) {
@@ -715,9 +717,11 @@ describe("Test VotiumErc20Strategy", async function () {
     for (let i = 0; i < 16; i++) {
       await incrementVlcvxEpoch();
     }
-
+    await expect(
+      votiumStrategy.connect(accounts[6]).withdraw(withdrawId)
+    ).to.be.revertedWith("NotOwner()");
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "Can't withdraw from future epoch"
+      "WithdrawNotReady()"
     );
     await incrementVlcvxEpoch();
 
@@ -755,5 +759,60 @@ describe("Test VotiumErc20Strategy", async function () {
     const priceAfterRewards = await votiumStrategy.cvxPerVotium();
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
+  });
+  it("Should change rewarder with setRewarder", async function () {
+    await expect(
+      oracleApplyRewards(accounts[6], votiumStrategy.address)
+    ).to.be.revertedWith("NotRewarder()");
+
+    await votiumStrategy.setRewarder(accounts[6].address);
+
+    await oracleApplyRewards(accounts[6], votiumStrategy.address);
+  });
+  it("Should be able to change cvxEthFeed", async function () {
+    expect(await votiumStrategy.chainlinkCvxEthFeed()).not.eq(
+      ethers.constants.AddressZero
+    );
+    await expect(
+      votiumStrategy
+        .connect(accounts[4])
+        .setChainlinkCvxEthFeed(ethers.constants.AddressZero)
+    ).to.be.revertedWith("Ownable: caller is not the owner");
+    await votiumStrategy.setChainlinkCvxEthFeed(ethers.constants.AddressZero);
+    expect(await votiumStrategy.chainlinkCvxEthFeed()).eq(
+      ethers.constants.AddressZero
+    );
+  });
+  it("cvxPerVotium should be 1e18 before any deposit", async function () {
+    const votiumStrategyFactory = await ethers.getContractFactory(
+      "VotiumStrategy"
+    );
+    votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
+      accounts[0].address,
+      rewarderAccount.address,
+      "0x0000000000000000000000000000000000000000", // TODO this should be an afEth mock but doesn't matter right now
+    ])) as VotiumStrategy;
+    const initialPrice = await votiumStrategy.cvxPerVotium();
+    expect(initialPrice).eq(ethers.utils.parseEther("1"));
+  });
+  it("Should protect permissioned functions", async function () {
+    await expect(
+      votiumStrategy.connect(accounts[5]).setRewarder(accounts[6].address)
+    ).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(
+      votiumStrategy
+        .connect(accounts[5])
+        .withdrawStuckTokens(ethers.constants.AddressZero)
+    ).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(votiumStrategy.applyRewards([])).to.be.revertedWith(
+      "NotRewarder()"
+    );
+    await expect(
+      votiumStrategy.initialize(
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero
+      )
+    ).to.be.revertedWith("Initializable: contract is already initialized");
   });
 });
