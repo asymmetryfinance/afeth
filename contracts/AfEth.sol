@@ -160,7 +160,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 vValue = (amount * (1e18 - ratio)) / 1e18;
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
         totalValue +=
-            (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(false)) +
+            (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) +
             (vMinted * vStrategy.price());
         if (totalValue == 0) revert FailedToDeposit();
         uint256 amountToMint = totalValue / priceBeforeDeposit;
@@ -278,7 +278,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             if (!sent) revert FailedToSend();
         }
         uint256 amount = _amount - feeAmount;
-        uint256 safEthTvl = (ISafEth(SAF_ETH_ADDRESS).approxPrice(false) *
+        uint256 safEthTvl = (ISafEth(SAF_ETH_ADDRESS).approxPrice(true) *
             safEthBalanceMinusPending()) / 1e18;
         uint256 votiumTvl = ((votiumStrategy.cvxPerVotium() *
             votiumStrategy.ethPerCvx(true)) *
