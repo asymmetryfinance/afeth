@@ -2,13 +2,11 @@
 
 ## About
 
-AfEth is an ERC20 token collateralized by 2 underlying "strategy" tokens in an adjustable ratio. AfEth can be thought of as a "manager" that handles strategy tokens conforming to a common interface (see [AbstractErc20Strategy.sol](https://github.com/asymmetryfinance/afeth/blob/main/contracts/strategies/AbstractErc20Strategy.sol))
+AfEth is an ERC20 token collateralized by 2 underlying "strategy" tokens in an adjustable ratio. AfEth can be thought of as a "manager" that collateralizes the 2 tokens into a new token. (see [AbstractErc20Strategy.sol](https://github.com/asymmetryfinance/afeth/blob/main/contracts/strategies/AbstractErc20Strategy.sol))
 
-### Token 1, safEth strategy:
+### Token 1, safEth:
 
 - [safeth](https://etherscan.io/token/0x6732efaf6f39926346bef8b821a04b6361c4f3e5) is our flagship liquid staking token consisting of 6 underling lsds ([Lido](https://lido.fi/), [rocketpool](https://rocketpool.net/), [staked frax](https://docs.frax.finance/frax-ether/overview), etc...). It is a simple "price go up" token with immediate liquidity via its "stake" and "unstake" functions. 
-
-- safEth strategy token is safEth with some small additions to make it fit the common interface.
 
 ### Token 2, votium strategy:
 
@@ -22,11 +20,11 @@ AfEth is an ERC20 token collateralized by 2 underlying "strategy" tokens in an a
 
 ### AfEth
 
-- When minting, afEth purchases each underlying strategy token (safEth & votium) according to [ratio](https://github.com/asymmetryfinance/afeth/blob/main/contracts/AfEth.sol#L12).
+- When minting, afEth purchases each underlying strategy token (safEth & votium strategy) according to [ratio](https://github.com/asymmetryfinance/afeth/blob/main/contracts/AfEth.sol#L12).
 
-- [depositRewards()](https://github.com/asymmetryfinance/afeth/blob/main/contracts/AfEth.sol#L306C14-L306C23) is used by the votium strategy (or anyone) upon claiming rewards to make the afEth price go up by distributing funds into both strategies according to ratio.
+- [depositRewards()](https://github.com/asymmetryfinance/afeth/blob/main/contracts/AfEth.sol#L306C14-L306C23) is called by the votium strategy upon claiming rewards to make the afEth price go up by distributing funds into both strategies according to ratio.
 
-- `requestWithdraw()` must be called before withdrawing and will calculate how much time must pass before `withdraw()` can be called
+- `requestWithdraw()` is called to calculate how much time is required to unlock all underlying vote locked convex before the user can call `withdraw()`.
 
 ### A note about varying unlock times
 
@@ -55,8 +53,6 @@ yarn && yarn compile
 ## Testing
 
 `yarn test` to run test suite.
-
-`*Note``: *ntegration tests for the votium strategy ([VotiumIntegration.test.ts](https://github.com/asymmetryfinance/afeth/blob/main/test/strategies/VotiumErc20/VotiumIntegration.test.ts)) are skipped by default for faster CI
 
 ## Architecture Diagrams
 
