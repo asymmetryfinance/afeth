@@ -36,7 +36,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Deposit eth to mint this token at current price
      * @return mintAmount Amount of tokens minted
      */
-    function deposit() public payable override onlyOwner returns (uint256 mintAmount) {
+    function deposit() public payable override returns (uint256 mintAmount) {
         uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
@@ -53,7 +53,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      */
     function requestWithdraw(
         uint256 _amount
-    ) public override onlyOwner returns (uint256 withdrawId) {
+    ) public override returns (uint256 withdrawId) {
         latestWithdrawId++;
         uint256 _priceInCvx = cvxPerVotium();
 
@@ -106,7 +106,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Withdraws from requested withdraw if eligible epoch has passed
      * @param withdrawId Id of withdraw request
      */
-    function withdraw(uint256 withdrawId) onlyOwner external override {
+    function withdraw(uint256 withdrawId) external override {
         if (withdrawIdToWithdrawRequestInfo[withdrawId].owner != msg.sender)
             revert NotOwner();
         if (!this.canWithdraw(withdrawId)) revert WithdrawNotReady();
