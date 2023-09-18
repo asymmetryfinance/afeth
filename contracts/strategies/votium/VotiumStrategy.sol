@@ -104,24 +104,24 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
 
     /**
      * @notice Withdraws from requested withdraw if eligible epoch has passed
-     * @param withdrawId Id of withdraw request
+     * @param _withdrawId Id of withdraw request
      */
-    function withdraw(uint256 withdrawId) external override {
-        if (withdrawIdToWithdrawRequestInfo[withdrawId].owner != msg.sender)
+    function withdraw(uint256 _withdrawId) external override {
+        if (withdrawIdToWithdrawRequestInfo[_withdrawId].owner != msg.sender)
             revert NotOwner();
-        if (!this.canWithdraw(withdrawId)) revert WithdrawNotReady();
+        if (!this.canWithdraw(_withdrawId)) revert WithdrawNotReady();
 
-        if (withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn)
+        if (withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn)
             revert AlreadyWithdrawn();
 
         relock();
 
-        uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[withdrawId]
+        uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[_withdrawId]
             .cvxOwed;
 
         uint256 ethReceived = sellCvx(cvxWithdrawAmount);
         cvxUnlockObligations -= cvxWithdrawAmount;
-        withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
+        withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn = true;
 
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
