@@ -11,7 +11,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     uint256 public ratio;
     uint256 public protocolFee;
     address public feeAddress;
-    address public constant safEthAddress =
+    address public constant SAF_ETH_ADDRESS =
         0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
     address public vEthAddress; // Votium Strategy Address
     uint256 public latestWithdrawId;
@@ -76,11 +76,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
      * @notice - Sets the strategy addresses for safEth and votium
-     * @param _safEthAddress - safEth strategy address
      * @param _vEthAddress - vEth strategy address
      */
-    function setStrategyAddresses(
-        address _safEthAddress,
+    function setStrategyAddress(
         address _vEthAddress
     ) external onlyOwner {
         vEthAddress = _vEthAddress;
@@ -137,7 +135,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function price() public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
-        uint256 safEthValueInEth = (ISafEth(safEthAddress).approxPrice(true) *
+        uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(true) *
             safEthBalanceMinusPending()) / 1e18;
         uint256 vEthValueInEth = (vEthStrategy.price() *
             vEthStrategy.balanceOf(address(this))) / 1e18;
@@ -159,12 +157,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
         uint256 sValue = (amount * ratio) / 1e18;
         uint256 sMinted = sValue > 0
-            ? ISafEth(safEthAddress).stake{value: sValue}(0)
+            ? ISafEth(SAF_ETH_ADDRESS).stake{value: sValue}(0)
             : 0;
         uint256 vValue = (amount * (1e18 - ratio)) / 1e18;
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
         totalValue +=
-            (sMinted * ISafEth(safEthAddress).approxPrice(false)) +
+            (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(false)) +
             (vMinted * vStrategy.price());
         if (totalValue == 0) revert FailedToDeposit();
         uint256 amountToMint = totalValue / priceBeforeDeposit;
@@ -253,7 +251,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
 
-        ISafEth(safEthAddress).unstake(withdrawInfo.safEthWithdrawAmount, 0);
+        ISafEth(SAF_ETH_ADDRESS).unstake(withdrawInfo.safEthWithdrawAmount, 0);
         AbstractStrategy(vEthAddress).withdraw(withdrawInfo.vEthWithdrawId);
 
         _burn(address(this), withdrawIdInfo[_withdrawId].amount);
@@ -282,7 +280,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             if (!sent) revert FailedToSend();
         }
         uint256 amount = _amount - feeAmount;
-        uint256 safEthTvl = (ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5)
+        uint256 safEthTvl = (ISafEth(SAF_ETH_ADDRESS)
             .approxPrice(false) * safEthBalanceMinusPending()) / 1e18;
         uint256 votiumTvl = ((votiumStrategy.cvxPerVotium() *
             votiumStrategy.ethPerCvx(true)) *
@@ -290,7 +288,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 totalTvl = (safEthTvl + votiumTvl);
         uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
         if (safEthRatio < ratio) {
-            ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5).stake{
+            ISafEth(SAF_ETH_ADDRESS).stake{
                 value: amount
             }(0);
         } else {
@@ -300,7 +298,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     function safEthBalanceMinusPending() public view returns (uint256) {
         return
-            IERC20(safEthAddress).balanceOf(address(this)) -
+            IERC20(SAF_ETH_ADDRESS).balanceOf(address(this)) -
             pendingSafEthWithdraws;
     }
 

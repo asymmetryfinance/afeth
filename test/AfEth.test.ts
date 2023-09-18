@@ -48,10 +48,7 @@ describe("Test AfEth", async function () {
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
-    await afEth.setStrategyAddresses(
-      accounts[0].address, // TODO remove this
-      votiumStrategy.address
-    );
+    await afEth.setStrategyAddress(votiumStrategy.address);
     // mock chainlink feeds so not out of date
     await network.provider.request({
       method: "hardhat_impersonateAccount",
@@ -1046,10 +1043,7 @@ describe("Test AfEth", async function () {
       "Ownable: caller is not the owner"
     );
     await expect(
-      notOwner.setStrategyAddresses(
-        ethers.constants.AddressZero,
-        ethers.constants.AddressZero
-      )
+      notOwner.setStrategyAddress(ethers.constants.AddressZero)
     ).to.be.revertedWith("Ownable: caller is not the owner");
     await expect(notOwner.initialize()).to.be.revertedWith(
       "Initializable: contract is already initialized"
