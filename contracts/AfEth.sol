@@ -78,9 +78,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @notice - Sets the strategy addresses for safEth and votium
      * @param _vEthAddress - vEth strategy address
      */
-    function setStrategyAddress(
-        address _vEthAddress
-    ) external onlyOwner {
+    function setStrategyAddress(address _vEthAddress) external onlyOwner {
         vEthAddress = _vEthAddress;
     }
 
@@ -280,17 +278,15 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             if (!sent) revert FailedToSend();
         }
         uint256 amount = _amount - feeAmount;
-        uint256 safEthTvl = (ISafEth(SAF_ETH_ADDRESS)
-            .approxPrice(false) * safEthBalanceMinusPending()) / 1e18;
+        uint256 safEthTvl = (ISafEth(SAF_ETH_ADDRESS).approxPrice(false) *
+            safEthBalanceMinusPending()) / 1e18;
         uint256 votiumTvl = ((votiumStrategy.cvxPerVotium() *
             votiumStrategy.ethPerCvx(true)) *
             IERC20(vEthAddress).balanceOf(address(this))) / 1e36;
         uint256 totalTvl = (safEthTvl + votiumTvl);
         uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
         if (safEthRatio < ratio) {
-            ISafEth(SAF_ETH_ADDRESS).stake{
-                value: amount
-            }(0);
+            ISafEth(SAF_ETH_ADDRESS).stake{value: amount}(0);
         } else {
             votiumStrategy.depositRewards{value: amount}(amount);
         }
