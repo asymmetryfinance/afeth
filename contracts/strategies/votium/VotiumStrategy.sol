@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "../AbstractErc20Strategy.sol";
+import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "./VotiumErc20StrategyCore.sol";
+import "./VotiumStrategyCore.sol";
 
 /// @title Votium Strategy Token
 /// @author Asymmetry Finance
-contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
+contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
     event WithdrawRequest(
         address indexed user,
         uint256 amount,
@@ -29,7 +29,7 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
      * @return Price of token in eth
      */
     function price() external view override returns (uint256) {
-        return (cvxPerVotium() * ethPerCvx()) / 1e18;
+        return (cvxPerVotium() * ethPerCvx(false)) / 1e18;
     }
 
     /**
@@ -98,44 +98,39 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 return latestWithdrawId;
             }
         }
-        revert("Invalid Locked Amount");
+        // should never get here
+        revert InvalidLockedAmount();
     }
 
     /**
      * @notice Withdraws from requested withdraw if eligible epoch has passed
-     * @param withdrawId Id of withdraw request
+     * @param _withdrawId Id of withdraw request
      */
-    function withdraw(uint256 withdrawId) external override {
-        require(
-            withdrawIdToWithdrawRequestInfo[withdrawId].owner == msg.sender,
-            "Not withdraw request owner"
-        );
-        require(
-            this.canWithdraw(withdrawId),
-            "Can't withdraw from future epoch"
-        );
+    function withdraw(uint256 _withdrawId) external override {
+        if (withdrawIdToWithdrawRequestInfo[_withdrawId].owner != msg.sender)
+            revert NotOwner();
+        if (!this.canWithdraw(_withdrawId)) revert WithdrawNotReady();
 
-        require(
-            !withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn,
-            "already withdrawn"
-        );
+        if (withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn)
+            revert AlreadyWithdrawn();
 
         relock();
 
-        uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[withdrawId]
+        uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[_withdrawId]
             .cvxOwed;
 
         uint256 ethReceived = sellCvx(cvxWithdrawAmount);
         cvxUnlockObligations -= cvxWithdrawAmount;
-        withdrawIdToWithdrawRequestInfo[withdrawId].withdrawn = true;
+        withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn = true;
 
-        // TODO: use call to send eth instead
-        payable(msg.sender).transfer(ethReceived);
+        // solhint-disable-next-line
+        (bool sent, ) = msg.sender.call{value: ethReceived}("");
+        if (!sent) revert FailedToSend();
     }
 
     /**
      * @notice Relocks cvx while ensuring there is enough to cover all withdraw requests
-     * @dev This happens automatically on withdraw but will need to be manually called if nowithdraws happen in an epoch where locks are expiring
+     * @dev This happens automatically on withdraw but will need to be manually called if no withdraws happen in an epoch where locks are expiring
      */
     function relock() public {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
@@ -196,6 +191,6 @@ contract VotiumErc20Strategy is VotiumErc20StrategyCore, AbstractErc20Strategy {
                 return lockedBalances[i].unlockTime;
             }
         }
-        revert("Invalid Locked Amount");
+        revert InvalidLockedAmount();
     }
 }

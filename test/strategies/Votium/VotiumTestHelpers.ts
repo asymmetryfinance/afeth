@@ -10,7 +10,7 @@ import {
   votiumClaimRewards,
   votiumSellRewards,
 } from "../../../scripts/applyVotiumRewardsHelpers";
-import { VotiumErc20Strategy } from "../../../typechain-types";
+import { VotiumStrategy } from "../../../typechain-types";
 
 export const epochDuration = 60 * 60 * 24 * 7;
 export const vlCvxAddress = "0x72a19342e8F1838460eBFCCEf09F6585e32db86E";
@@ -143,7 +143,7 @@ export const oracleApplyRewards = async (
 };
 
 export const requestWithdrawal = async (
-  votiumStrategy: VotiumErc20Strategy,
+  votiumStrategy: VotiumStrategy,
   amount: BigNumber
 ): Promise<string> => {
   const tx = await votiumStrategy.requestWithdraw(amount);

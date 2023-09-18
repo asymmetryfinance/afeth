@@ -6,7 +6,7 @@ import {
   oracleApplyRewards,
   readJSONFromFile,
 } from "./VotiumTestHelpers";
-import { VotiumErc20Strategy } from "../../../typechain-types";
+import { VotiumStrategy } from "../../../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 type BalancesAtRewardEpochs = Record<number, BigNumber>;
@@ -83,7 +83,7 @@ export const estimatedRewardInfo: Record<UserAddress, BigNumber>[] = [];
 // do everything that would happen on mainnet when time passes by 1 epoch
 // call vlcvx checkpoint(), rewarder account claims rewards every other epoch, etc
 export const increaseTime1Epoch = async (
-  votiumStrategy: VotiumErc20Strategy,
+  votiumStrategy: VotiumStrategy,
   noRewards: boolean = false
 ) => {
   await incrementVlcvxEpoch();
@@ -123,7 +123,7 @@ export const increaseTime1Epoch = async (
 
 export const randomStakeUnstakeWithdraw = async (
   userAcount: SignerWithAddress,
-  votiumStrategy: VotiumErc20Strategy,
+  votiumStrategy: VotiumStrategy,
   maxStakeAmount: BigNumber
 ) => {
   const currentEpoch = await getCurrentEpoch();
@@ -152,14 +152,14 @@ export const randomStakeUnstakeWithdraw = async (
   }
 };
 
-export const getTvl = async (votiumStrategy: VotiumErc20Strategy) => {
+export const getTvl = async (votiumStrategy: VotiumStrategy) => {
   const totalSupply = await votiumStrategy.totalSupply();
   const price = await votiumStrategy.price();
   return totalSupply.mul(price).div(ethers.utils.parseEther("1"));
 };
 
 export const depositForUser = async (
-  votiumStrategy: VotiumErc20Strategy,
+  votiumStrategy: VotiumStrategy,
   userAcount: SignerWithAddress,
   withdrawAmount: BigNumber
 ) => {
@@ -185,7 +185,7 @@ export const depositForUser = async (
 };
 
 export const requestWithdrawForUser = async (
-  votiumStrategy: VotiumErc20Strategy,
+  votiumStrategy: VotiumStrategy,
   userAcount: SignerWithAddress,
   withdrawAmount: BigNumber
 ) => {
@@ -214,7 +214,7 @@ export const requestWithdrawForUser = async (
 };
 
 export const withdrawForUser = async (
-  votiumStrategy: VotiumErc20Strategy,
+  votiumStrategy: VotiumStrategy,
   userAcount: SignerWithAddress,
   withdrawId: number
 ) => {

@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-abstract contract AbstractErc20Strategy is
+abstract contract AbstractStrategy is
     Initializable,
     ReentrancyGuardUpgradeable,
     ERC20Upgradeable
@@ -34,4 +34,6 @@ abstract contract AbstractErc20Strategy is
     function withdrawTime(
         uint256 _amount
     ) external view virtual returns (uint256);
+
+    error FailedToSend();
 }
