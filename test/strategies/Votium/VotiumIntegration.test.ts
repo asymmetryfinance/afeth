@@ -27,6 +27,7 @@ const startingEthBalances: any = [];
 
 describe("Votium integration test", async function () {
   let votiumStrategy: VotiumStrategy;
+
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
       method: "hardhat_reset",
