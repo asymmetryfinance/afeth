@@ -32,7 +32,6 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
         payable
         virtual
         override
-        onlyOwner
         returns (uint256 mintAmount)
     {
         mintAmount = ISafEth(safEthAddress).stake{value: msg.value}(
@@ -47,7 +46,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
      */
     function requestWithdraw(
         uint256 _amount
-    ) external virtual override onlyOwner returns (uint256 withdrawId) {
+    ) external virtual override returns (uint256 withdrawId) {
         _burn(msg.sender, _amount);
         latestWithdrawId++;
         emit WithdrawRequest(msg.sender, _amount, latestWithdrawId);
@@ -59,7 +58,7 @@ contract SafEthStrategy is AbstractStrategy, SafEthStrategyCore {
      * @notice Withdraw safEth
      * @param _withdrawId Id of the withdraw request
      */
-    function withdraw(uint256 _withdrawId) external virtual override onlyOwner {
+    function withdraw(uint256 _withdrawId) external virtual override {
         uint256 withdrawAmount = withdrawIdToAmount[_withdrawId];
 
         uint256 ethBalanceBefore = address(this).balance;
