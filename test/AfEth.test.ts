@@ -1,4 +1,4 @@
-import { AfEth, ISafEth, VotiumStrategy } from "../typechain-types";
+import { AfEth, VotiumStrategy } from "../typechain-types";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
@@ -218,7 +218,7 @@ describe("Test AfEth", async function () {
       "CanNotWithdraw()"
     );
   });
-  it.only("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw", async function () {
+  it("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw", async function () {
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[2]);
 
@@ -882,7 +882,8 @@ describe("Test AfEth", async function () {
     const afEthPrice0 = await afEth.price();
     const votiumStrategyPrice0 = await votiumStrategy.price();
     const safEthStrategyPrice0 = await safEth.approxPrice(true);
-    const safEthStrategyTotalSupply0 = await safEth.totalSupply();
+
+    const safEthStrategyTotalSupply0 = await afEth.safEthBalanceMinusPending();
 
     let tx = await afEth.depositRewards(rewardAmount, {
       value: rewardAmount,
@@ -892,13 +893,17 @@ describe("Test AfEth", async function () {
     // first reward -- votium unchanged, safEth unchanged but in price (but supply goes up), afEth price goes up
     expect(await afEth.price()).gt(afEthPrice0);
     expect(within1Pip(await safEth.approxPrice(true), safEthStrategyPrice0)); // within 1 pip because safEth goes up every block
-    expect(await safEth.totalSupply()).gt(safEthStrategyTotalSupply0);
+
+    expect(await afEth.safEthBalanceMinusPending()).gt(
+      safEthStrategyTotalSupply0
+    );
+
     expect(await votiumStrategy.price()).eq(votiumStrategyPrice0);
 
     const afEthPrice1 = await afEth.price();
     const votiumStrategyPrice1 = await votiumStrategy.price();
     const safEthStrategyPrice1 = await safEth.approxPrice(true);
-    const safEthStrategyTotalSupply1 = await safEth.totalSupply();
+    const safEthStrategyTotalSupply1 = await afEth.safEthBalanceMinusPending();
     const votiumTotalSupply1 = await votiumStrategy.totalSupply();
 
     tx = await afEth.depositRewards(rewardAmount, {
@@ -909,7 +914,9 @@ describe("Test AfEth", async function () {
     // second reward --safEth price unchanged (and supply unchanged), votium price goes up, votium supply stays the same, afEth price goes up
     expect(await afEth.price()).gt(afEthPrice1);
     expect(within1Pip(await safEth.approxPrice(true), safEthStrategyPrice1)); // within 1 pip because safEth goes up every block
-    expect(await safEth.totalSupply()).eq(safEthStrategyTotalSupply1);
+    expect(await await afEth.safEthBalanceMinusPending()).eq(
+      safEthStrategyTotalSupply1
+    );
     expect(await votiumStrategy.totalSupply()).eq(votiumTotalSupply1);
     expect(await votiumStrategy.price()).gt(votiumStrategyPrice1);
   });
