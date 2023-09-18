@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "contracts/strategies/votium/VotiumStrategy.sol";
-import "contracts/strategies/safEth/SafEthStrategy.sol";
 import "contracts/external_interfaces/IVotiumStrategy.sol";
 import "contracts/strategies/AbstractStrategy.sol";
 
@@ -12,14 +11,14 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     uint256 public ratio;
     uint256 public protocolFee;
     address public feeAddress;
-    address public safEthAddress; // SafEth Strategy Address
+    address public constant safEthAddress = 0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
     address public vEthAddress; // Votium Strategy Address
     uint256 public latestWithdrawId;
 
     struct WithdrawInfo {
         address owner;
         uint256 amount;
-        uint256 safEthWithdrawId;
+        uint256 safEthWithdrawAmount;
         uint256 vEthWithdrawId;
         uint256 withdrawTime;
     }
@@ -81,7 +80,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         address _safEthAddress,
         address _vEthAddress
     ) external onlyOwner {
-        safEthAddress = _safEthAddress;
         vEthAddress = _vEthAddress;
     }
 
@@ -135,10 +133,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function price() public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
-        AbstractStrategy safEthStrategy = AbstractStrategy(safEthAddress);
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
-        uint256 safEthValueInEth = (safEthStrategy.price() *
-            safEthStrategy.balanceOf(address(this))) / 1e18;
+        uint256 safEthValueInEth = (ISafEth(safEthAddress).approxPrice(true) *
+            IERC20(safEthAddress).balanceOf(address(this))) / 1e18;
         uint256 vEthValueInEth = (vEthStrategy.price() *
             vEthStrategy.balanceOf(address(this))) / 1e18;
         return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply();
@@ -155,15 +152,14 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 priceBeforeDeposit = price();
         uint256 totalValue;
 
-        AbstractStrategy sStrategy = AbstractStrategy(safEthAddress);
         AbstractStrategy vStrategy = AbstractStrategy(vEthAddress);
 
         uint256 sValue = (amount * ratio) / 1e18;
-        uint256 sMinted = sValue > 0 ? sStrategy.deposit{value: sValue}() : 0;
+        uint256 sMinted = sValue > 0 ? ISafEth(safEthAddress).stake{value: sValue}(0) : 0;
         uint256 vValue = (amount * (1e18 - ratio)) / 1e18;
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
         totalValue +=
-            (sMinted * sStrategy.price()) +
+            (sMinted * ISafEth(safEthAddress).approxPrice(false)) +
             (vMinted * vStrategy.price());
         if (totalValue == 0) revert FailedToDeposit();
         uint256 amountToMint = totalValue / priceBeforeDeposit;
@@ -188,16 +184,23 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             (totalSupply() - afEthBalance);
 
         _transfer(msg.sender, address(this), _amount);
-        uint256 safEthWithdrawId = requestWithdrawFromStrategy(
-            safEthAddress,
-            withdrawRatio
+
+        uint256 votiumBalance = IERC20(vEthAddress).balanceOf(
+            address(this)
         );
-        uint256 vEthWithdrawId = requestWithdrawFromStrategy(
-            vEthAddress,
-            withdrawRatio
+        uint256 votiumWithdrawAmount = (withdrawRatio * votiumBalance) /
+            1e18;
+        uint256 vEthWithdrawId = AbstractStrategy(vEthAddress).requestWithdraw(
+            votiumWithdrawAmount
         );
 
-        withdrawIdInfo[latestWithdrawId].safEthWithdrawId = safEthWithdrawId;
+        uint256 safEthBalance = IERC20(safEthAddress).balanceOf(
+            address(this)
+        );
+        uint256 safEthWithdrawAmount = (withdrawRatio * safEthBalance) /
+            1e18;
+
+        withdrawIdInfo[latestWithdrawId].safEthWithdrawAmount = safEthWithdrawAmount;
         withdrawIdInfo[latestWithdrawId].vEthWithdrawId = vEthWithdrawId;
 
         withdrawIdInfo[latestWithdrawId].owner = msg.sender;
@@ -213,35 +216,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
-        @notice - Private function to request withdraw from strategy
-        @param _strategyAddress - Strategy address to withdraw from
-        @param _withdrawRatio - Ratio of afEth to withdraw
-        @return withdrawId - Withdraw id of the strategy
-    */
-    function requestWithdrawFromStrategy(
-        address _strategyAddress,
-        uint256 _withdrawRatio
-    ) private returns (uint256 withdrawId) {
-        uint256 strategyBalance = ERC20Upgradeable(_strategyAddress).balanceOf(
-            address(this)
-        );
-        uint256 strategyWithdrawAmount = (_withdrawRatio * strategyBalance) /
-            1e18;
-        withdrawId = AbstractStrategy(_strategyAddress).requestWithdraw(
-            strategyWithdrawAmount
-        );
-    }
-
-    /**
         @notice - Checks if withdraw can be executed from withdrawId
         @param _withdrawId - Id of the withdraw request for SafEth
         @return - Bool if withdraw can be executed
     */
     function canWithdraw(uint256 _withdrawId) public view returns (bool) {
         return
-            AbstractStrategy(safEthAddress).canWithdraw(
-                withdrawIdInfo[_withdrawId].safEthWithdrawId
-            ) &&
             AbstractStrategy(vEthAddress).canWithdraw(
                 withdrawIdInfo[_withdrawId].vEthWithdrawId
             );
@@ -253,13 +233,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @return - Highest withdraw time of the strategies
     */
     function withdrawTime(uint256 _amount) public view returns (uint256) {
-        uint256 safEthTime = AbstractStrategy(safEthAddress).withdrawTime(
-            _amount
-        );
-        uint256 vEthTime = AbstractStrategy(vEthAddress).withdrawTime(_amount);
-        uint256 highestTime = safEthTime > vEthTime ? safEthTime : vEthTime;
-
-        return highestTime;
+        return AbstractStrategy(vEthAddress).withdrawTime(_amount);
     }
 
     /**
@@ -276,7 +250,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
 
-        AbstractStrategy(safEthAddress).withdraw(withdrawInfo.safEthWithdrawId);
+        console.log('unstaking from safEth', withdrawInfo.safEthWithdrawAmount, ISafEth(safEthAddress).balanceOf(address(this)));
+        ISafEth(safEthAddress).unstake(withdrawInfo.safEthWithdrawAmount, 0);
         AbstractStrategy(vEthAddress).withdraw(withdrawInfo.vEthWithdrawId);
 
         _burn(address(this), withdrawIdInfo[_withdrawId].amount);

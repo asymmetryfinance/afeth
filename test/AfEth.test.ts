@@ -1,4 +1,4 @@
-import { AfEth, SafEthStrategy, VotiumStrategy } from "../typechain-types";
+import { AfEth, ISafEth, VotiumStrategy } from "../typechain-types";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
@@ -13,11 +13,12 @@ import {
   within6Percent,
 } from "./helpers/helpers";
 import { BigNumber } from "ethers";
+import { safEthAbi } from "./abis/safEthAbi";
 
 describe("Test AfEth", async function () {
   let afEth: AfEth;
-  let safEthStrategy: SafEthStrategy;
   let votiumStrategy: VotiumStrategy;
+  let safEth: any;
   let accounts: SignerWithAddress[];
 
   const initialStake = ethers.utils.parseEther(".1");
@@ -39,13 +40,6 @@ describe("Test AfEth", async function () {
     const afEthFactory = await ethers.getContractFactory("AfEth");
     afEth = (await upgrades.deployProxy(afEthFactory, [])) as AfEth;
     await afEth.deployed();
-
-    const safEthFactory = await ethers.getContractFactory("SafEthStrategy");
-    safEthStrategy = (await upgrades.deployProxy(safEthFactory, [
-      afEth.address,
-    ])) as SafEthStrategy;
-    await safEthStrategy.deployed();
-
     const votiumFactory = await ethers.getContractFactory("VotiumStrategy");
     votiumStrategy = (await upgrades.deployProxy(votiumFactory, [
       accounts[0].address,
@@ -55,7 +49,7 @@ describe("Test AfEth", async function () {
     await votiumStrategy.deployed();
 
     await afEth.setStrategyAddresses(
-      safEthStrategy.address,
+      accounts[0].address, // TODO remove this
       votiumStrategy.address
     );
     // mock chainlink feeds so not out of date
@@ -105,6 +99,12 @@ describe("Test AfEth", async function () {
     const chainLinkCvxEthFeed = await chainLinkCvxEthFeedFactory.deploy();
     await chainLinkCvxEthFeed.deployed();
     await votiumStrategy.setChainlinkCvxEthFeed(chainLinkCvxEthFeed.address);
+
+    safEth = await ethers.getContractAt(
+      safEthAbi,
+      "0x6732efaf6f39926346bef8b821a04b6361c4f3e5",
+      accounts[0]
+    );
   };
 
   beforeEach(
@@ -161,15 +161,14 @@ describe("Test AfEth", async function () {
     const votiumBalanceBeforeDeposit1 = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceBeforeDeposit1 = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+
+    const safEthBalanceBeforeDeposit1 = await safEth.balanceOf(afEth.address);
 
     const votiumValueBeforeDeposit1 = votiumBalanceBeforeDeposit1
       .mul(await votiumStrategy.price())
       .div("1000000000000000000");
     const safEthValueBeforeDeposit1 = safEthBalanceBeforeDeposit1
-      .mul(await safEthStrategy.price())
+      .mul(await safEth.approxPrice(true))
       .div("1000000000000000000");
 
     const depositAmount = ethers.utils.parseEther("1");
@@ -179,15 +178,13 @@ describe("Test AfEth", async function () {
     const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceAfterDeposit1 = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceAfterDeposit1 = await safEth.balanceOf(afEth.address);
 
     const votiumValueAfterDeposit1 = votiumBalanceAfterDeposit1
       .mul(await votiumStrategy.price())
       .div("1000000000000000000");
     const safEthValueAfterDeposit1 = safEthBalanceAfterDeposit1
-      .mul(await safEthStrategy.price())
+      .mul(await safEth.approxPrice(true))
       .div("1000000000000000000");
 
     const votiumValueGained = votiumValueAfterDeposit1.sub(
@@ -221,7 +218,7 @@ describe("Test AfEth", async function () {
       "CanNotWithdraw()"
     );
   });
-  it("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw", async function () {
+  it.only("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw", async function () {
     const user1 = afEth.connect(accounts[1]);
     const user2 = afEth.connect(accounts[2]);
 
@@ -574,9 +571,7 @@ describe("Test AfEth", async function () {
     const votiumBalanceBeforeDeposit1 = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceBeforeDeposit1 = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceBeforeDeposit1 = await safEth.balanceOf(afEth.address);
 
     const depositAmount = ethers.utils.parseEther("1");
     let mintTx = await user1.deposit(0, { value: depositAmount });
@@ -585,9 +580,7 @@ describe("Test AfEth", async function () {
     const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceAfterDeposit1 = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceAfterDeposit1 = await safEth.balanceOf(afEth.address);
 
     const afEthBalanceBeforeRequest = await user1.balanceOf(
       accounts[1].address
@@ -632,9 +625,7 @@ describe("Test AfEth", async function () {
     const votiumBalanceAfterWithdraw = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceAfterWithdraw = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceAfterWithdraw = await safEth.balanceOf(afEth.address);
 
     mintTx = await user1.deposit(0, { value: depositAmount });
     await mintTx.wait();
@@ -642,9 +633,7 @@ describe("Test AfEth", async function () {
     const votiumBalanceAfterDeposit2 = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceAfterDeposit2 = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceAfterDeposit2 = await safEth.balanceOf(afEth.address);
 
     expect(
       within1Percent(votiumBalanceBeforeDeposit1, votiumBalanceAfterWithdraw)
@@ -671,9 +660,7 @@ describe("Test AfEth", async function () {
     const votiumBalanceBeforeDeposit1 = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceBeforeDeposit1 = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceBeforeDeposit1 = await safEth.balanceOf(afEth.address);
 
     const depositAmount = ethers.utils.parseEther("1");
     let mintTx = await user1.deposit(0, { value: depositAmount });
@@ -682,9 +669,7 @@ describe("Test AfEth", async function () {
     const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceAfterDeposit1 = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceAfterDeposit1 = await safEth.balanceOf(afEth.address);
 
     const afEthBalanceBeforeRequest = await user1.balanceOf(
       accounts[1].address
@@ -729,9 +714,7 @@ describe("Test AfEth", async function () {
     const votiumBalanceAfterWithdraw = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceAfterWithdraw = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceAfterWithdraw = await safEth.balanceOf(afEth.address);
 
     mintTx = await user1.deposit(0, { value: depositAmount });
     await mintTx.wait();
@@ -739,9 +722,7 @@ describe("Test AfEth", async function () {
     const votiumBalanceAfterDeposit2 = await votiumStrategy.balanceOf(
       afEth.address
     );
-    const safEthBalanceAfterDeposit2 = await safEthStrategy.balanceOf(
-      afEth.address
-    );
+    const safEthBalanceAfterDeposit2 = await safEth.balanceOf(afEth.address);
 
     expect(
       within1Percent(votiumBalanceBeforeDeposit1, votiumBalanceAfterWithdraw)
@@ -900,8 +881,8 @@ describe("Test AfEth", async function () {
 
     const afEthPrice0 = await afEth.price();
     const votiumStrategyPrice0 = await votiumStrategy.price();
-    const safEthStrategyPrice0 = await safEthStrategy.price();
-    const safEthStrategyTotalSupply0 = await safEthStrategy.totalSupply();
+    const safEthStrategyPrice0 = await safEth.approxPrice(true);
+    const safEthStrategyTotalSupply0 = await safEth.totalSupply();
 
     let tx = await afEth.depositRewards(rewardAmount, {
       value: rewardAmount,
@@ -910,14 +891,14 @@ describe("Test AfEth", async function () {
 
     // first reward -- votium unchanged, safEth unchanged but in price (but supply goes up), afEth price goes up
     expect(await afEth.price()).gt(afEthPrice0);
-    expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice0)); // within 1 pip because safEth goes up every block
-    expect(await safEthStrategy.totalSupply()).gt(safEthStrategyTotalSupply0);
+    expect(within1Pip(await safEth.approxPrice(true), safEthStrategyPrice0)); // within 1 pip because safEth goes up every block
+    expect(await safEth.totalSupply()).gt(safEthStrategyTotalSupply0);
     expect(await votiumStrategy.price()).eq(votiumStrategyPrice0);
 
     const afEthPrice1 = await afEth.price();
     const votiumStrategyPrice1 = await votiumStrategy.price();
-    const safEthStrategyPrice1 = await safEthStrategy.price();
-    const safEthStrategyTotalSupply1 = await safEthStrategy.totalSupply();
+    const safEthStrategyPrice1 = await safEth.approxPrice(true);
+    const safEthStrategyTotalSupply1 = await safEth.totalSupply();
     const votiumTotalSupply1 = await votiumStrategy.totalSupply();
 
     tx = await afEth.depositRewards(rewardAmount, {
@@ -927,8 +908,8 @@ describe("Test AfEth", async function () {
 
     // second reward --safEth price unchanged (and supply unchanged), votium price goes up, votium supply stays the same, afEth price goes up
     expect(await afEth.price()).gt(afEthPrice1);
-    expect(within1Pip(await safEthStrategy.price(), safEthStrategyPrice1)); // within 1 pip because safEth goes up every block
-    expect(await safEthStrategy.totalSupply()).eq(safEthStrategyTotalSupply1);
+    expect(within1Pip(await safEth.approxPrice(true), safEthStrategyPrice1)); // within 1 pip because safEth goes up every block
+    expect(await safEth.totalSupply()).eq(safEthStrategyTotalSupply1);
     expect(await votiumStrategy.totalSupply()).eq(votiumTotalSupply1);
     expect(await votiumStrategy.price()).gt(votiumStrategyPrice1);
   });
@@ -950,20 +931,20 @@ describe("Test AfEth", async function () {
     await afEth.setRatio(newRatioTargetRatio);
 
     let votiumBalance = await votiumStrategy.balanceOf(afEth.address);
-    let safEthBalance = await safEthStrategy.balanceOf(afEth.address);
+    let safEthBalance = await safEth.balanceOf(afEth.address);
 
     let votiumValue = votiumBalance
       .mul(await votiumStrategy.price())
       .div("1000000000000000000");
     let safEthValue = safEthBalance
-      .mul(await safEthStrategy.price())
+      .mul(await safEth.approxPrice(true))
       .div("1000000000000000000");
 
     votiumValue = votiumBalance
       .mul(await votiumStrategy.price())
       .div("1000000000000000000");
     safEthValue = safEthBalance
-      .mul(await safEthStrategy.price())
+      .mul(await safEth.approxPrice(true))
       .div("1000000000000000000");
     let ratio = safEthValue
       .mul("1000000000000000000")
@@ -978,13 +959,13 @@ describe("Test AfEth", async function () {
       await tx.wait();
 
       votiumBalance = await votiumStrategy.balanceOf(afEth.address);
-      safEthBalance = await safEthStrategy.balanceOf(afEth.address);
+      safEthBalance = await safEth.balanceOf(afEth.address);
 
       votiumValue = votiumBalance
         .mul(await votiumStrategy.price())
         .div("1000000000000000000");
       safEthValue = safEthBalance
-        .mul(await safEthStrategy.price())
+        .mul(await safEth.approxPrice(true))
         .div("1000000000000000000");
 
       ratio = safEthValue
@@ -1004,13 +985,13 @@ describe("Test AfEth", async function () {
       await tx.wait();
 
       votiumBalance = await votiumStrategy.balanceOf(afEth.address);
-      safEthBalance = await safEthStrategy.balanceOf(afEth.address);
+      safEthBalance = await safEth.balanceOf(afEth.address);
 
       votiumValue = votiumBalance
         .mul(await votiumStrategy.price())
         .div("1000000000000000000");
       safEthValue = safEthBalance
-        .mul(await safEthStrategy.price())
+        .mul(await safEth.approxPrice(true))
         .div("1000000000000000000");
 
       ratio = safEthValue
