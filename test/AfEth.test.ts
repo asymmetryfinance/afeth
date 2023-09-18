@@ -111,7 +111,7 @@ describe("Test AfEth", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should mint, requestwithdraw, and withdraw afETH", async function () {
+  it("Should mint, requestwithdraw, and withdraw afETH", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit(0, { value: depositAmount });
     await mintTx.wait();
