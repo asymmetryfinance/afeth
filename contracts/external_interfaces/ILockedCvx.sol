@@ -6,6 +6,7 @@ interface ILockedCvx {
         uint112 amount;
         uint112 boosted;
         uint32 unlockTime;
+        bool isShutdown;
     }
 
     function lock(
