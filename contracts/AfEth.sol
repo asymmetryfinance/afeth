@@ -173,7 +173,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @param _amount - Amount of afEth to withdraw
     */
     function requestWithdraw(uint256 _amount) external virtual {
-        uint256 withdrawTimeBefore = withdrawTime(_amount);
         if (pauseWithdraw) revert Paused();
         latestWithdrawId++;
 
@@ -188,6 +187,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
         uint256 votiumBalance = IERC20(vEthAddress).balanceOf(address(this));
         uint256 votiumWithdrawAmount = (withdrawRatio * votiumBalance) / 1e18;
+        uint256 withdrawTimeBefore = withdrawTime(votiumWithdrawAmount);
         uint256 vEthWithdrawId = AbstractStrategy(vEthAddress).requestWithdraw(
             votiumWithdrawAmount
         );
