@@ -6,7 +6,6 @@ interface ILockedCvx {
         uint112 amount;
         uint112 boosted;
         uint32 unlockTime;
-        bool isShutdown;
     }
 
     function lock(
@@ -94,4 +93,7 @@ interface ILockedCvx {
     function recoverERC20(address _tokenAddress, uint256 _tokenAmount) external;
 
     function rewardsDuration() external view returns (uint256);
+
+    function isShutdown() external view returns (bool);
+
 }

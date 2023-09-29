@@ -142,7 +142,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxAmountToRelock = cvxBalance > cvxUnlockObligations
             ? cvxBalance - cvxUnlockObligations
             : 0;
-        if (cvxAmountToRelock > 0 && !ILockedCvx(VLCVX_ADDRESS).isShutdown) {
+        if (cvxAmountToRelock > 0 && !(ILockedCvx(VLCVX_ADDRESS).isShutdown())) {
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
         }
