@@ -184,7 +184,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 withdrawRatio = (_amount * 1e18) /
             (totalSupply() - afEthBalance);
 
-        _transfer(msg.sender, address(this), _amount);
+        _burn(msg.sender, _amount);
 
         uint256 votiumBalance = IERC20(vEthAddress).balanceOf(address(this));
         uint256 votiumWithdrawAmount = (withdrawRatio * votiumBalance) / 1e18;
@@ -252,7 +252,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         ISafEth(SAF_ETH_ADDRESS).unstake(withdrawInfo.safEthWithdrawAmount, 0);
         AbstractStrategy(vEthAddress).withdraw(withdrawInfo.vEthWithdrawId);
 
-        _burn(address(this), withdrawIdInfo[_withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
