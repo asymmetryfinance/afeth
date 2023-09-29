@@ -249,7 +249,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
 
-        ISafEth(SAF_ETH_ADDRESS).unstake(withdrawInfo.safEthWithdrawAmount, 0);
+        if (withdrawInfo.safEthWithdrawAmount > 0) {
+            ISafEth(SAF_ETH_ADDRESS).unstake(withdrawInfo.safEthWithdrawAmount, 0);
+        }
         AbstractStrategy(vEthAddress).withdraw(withdrawInfo.vEthWithdrawId);
 
         _burn(address(this), withdrawIdInfo[_withdrawId].amount);

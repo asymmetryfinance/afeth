@@ -119,7 +119,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[_withdrawId]
             .cvxOwed;
 
-        uint256 ethReceived = sellCvx(cvxWithdrawAmount);
+        uint256 ethReceived = cvxWithdrawAmount > 0 ? sellCvx(cvxWithdrawAmount) : 0;
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn = true;
 
