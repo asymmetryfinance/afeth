@@ -270,6 +270,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _amount - amount of eth to sell
      */
     function depositRewards(uint256 _amount) public payable {
+        require(!pauseDeposit, "paused");
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;
         if (feeAmount > 0) {
