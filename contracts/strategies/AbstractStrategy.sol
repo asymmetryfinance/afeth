@@ -12,7 +12,7 @@ abstract contract AbstractStrategy is
 {
     // used to add storage variables in the future
     uint256[20] private __gap;
-    
+
     /// mint tokens with eth
     function deposit() external payable virtual returns (uint256);
 
