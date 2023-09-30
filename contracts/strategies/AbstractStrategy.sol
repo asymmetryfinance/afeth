@@ -28,7 +28,7 @@ abstract contract AbstractStrategy is
     ) external view virtual returns (bool);
 
     /// price in eth
-    function price() external view virtual returns (uint256);
+    function price(bool _validate) external view virtual returns (uint256);
 
     /// how long would it take to withdraw _amount if requesting withdraw now
     function withdrawTime(
