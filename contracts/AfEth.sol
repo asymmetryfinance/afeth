@@ -70,6 +70,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @dev - This replaces the constructor for upgradeable contracts
     */
     function initialize() external initializer {
+        __ERC20_init("Asymmetry Finance AfEth", "AfEth");
         _transferOwnership(msg.sender);
         ratio = 5e17;
     }
