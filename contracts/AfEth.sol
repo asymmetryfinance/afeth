@@ -131,12 +131,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @dev - Checks each strategy and calculates the total value in ETH divided by supply of afETH tokens
         @return - Price of afEth
     */
-    function price() public view returns (uint256) {
+    function price(bool _validate) public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
         uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(true) *
             safEthBalanceMinusPending()) / 1e18;
-        uint256 vEthValueInEth = (vEthStrategy.price() *
+        uint256 vEthValueInEth = (vEthStrategy.price(true) *
             vEthStrategy.balanceOf(address(this))) / 1e18;
         return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply();
     }
@@ -149,7 +149,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function deposit(uint256 _minout) external payable virtual {
         if (pauseDeposit) revert Paused();
         uint256 amount = msg.value;
-        uint256 priceBeforeDeposit = price();
+        uint256 priceBeforeDeposit = price(true);
         uint256 totalValue;
 
         AbstractStrategy vStrategy = AbstractStrategy(vEthAddress);
@@ -162,7 +162,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
         totalValue +=
             (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) +
-            (vMinted * vStrategy.price());
+            (vMinted * vStrategy.price(true));
         if (totalValue == 0) revert FailedToDeposit();
         uint256 amountToMint = totalValue / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();

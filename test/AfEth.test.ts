@@ -162,7 +162,7 @@ describe("Test AfEth", async function () {
     const safEthBalanceBeforeDeposit1 = await safEth.balanceOf(afEth.address);
 
     const votiumValueBeforeDeposit1 = votiumBalanceBeforeDeposit1
-      .mul(await votiumStrategy.price())
+      .mul(await votiumStrategy.price(true))
       .div("1000000000000000000");
     const safEthValueBeforeDeposit1 = safEthBalanceBeforeDeposit1
       .mul(await safEth.approxPrice(true))
@@ -178,7 +178,7 @@ describe("Test AfEth", async function () {
     const safEthBalanceAfterDeposit1 = await safEth.balanceOf(afEth.address);
 
     const votiumValueAfterDeposit1 = votiumBalanceAfterDeposit1
-      .mul(await votiumStrategy.price())
+      .mul(await votiumStrategy.price(true))
       .div("1000000000000000000");
     const safEthValueAfterDeposit1 = safEthBalanceAfterDeposit1
       .mul(await safEth.approxPrice(true))
@@ -876,8 +876,8 @@ describe("Test AfEth", async function () {
     const mintTx = await afEth.deposit(0, { value: depositAmount });
     await mintTx.wait();
 
-    const afEthPrice0 = await afEth.price();
-    const votiumStrategyPrice0 = await votiumStrategy.price();
+    const afEthPrice0 = await afEth.price(true);
+    const votiumStrategyPrice0 = await votiumStrategy.price(true);
     const safEthStrategyPrice0 = await safEth.approxPrice(true);
 
     const safEthStrategyTotalSupply0 = await afEth.safEthBalanceMinusPending();
@@ -888,17 +888,17 @@ describe("Test AfEth", async function () {
     await tx.wait();
 
     // first reward -- votium unchanged, safEth unchanged but in price (but supply goes up), afEth price goes up
-    expect(await afEth.price()).gt(afEthPrice0);
+    expect(await afEth.price(true)).gt(afEthPrice0);
     expect(within1Pip(await safEth.approxPrice(true), safEthStrategyPrice0)); // within 1 pip because safEth goes up every block
 
     expect(await afEth.safEthBalanceMinusPending()).gt(
       safEthStrategyTotalSupply0
     );
 
-    expect(await votiumStrategy.price()).eq(votiumStrategyPrice0);
+    expect(await votiumStrategy.price(true)).eq(votiumStrategyPrice0);
 
-    const afEthPrice1 = await afEth.price();
-    const votiumStrategyPrice1 = await votiumStrategy.price();
+    const afEthPrice1 = await afEth.price(true);
+    const votiumStrategyPrice1 = await votiumStrategy.price(true);
     const safEthStrategyPrice1 = await safEth.approxPrice(true);
     const safEthStrategyTotalSupply1 = await afEth.safEthBalanceMinusPending();
     const votiumTotalSupply1 = await votiumStrategy.totalSupply();
@@ -909,13 +909,13 @@ describe("Test AfEth", async function () {
     await tx.wait();
 
     // second reward --safEth price unchanged (and supply unchanged), votium price goes up, votium supply stays the same, afEth price goes up
-    expect(await afEth.price()).gt(afEthPrice1);
+    expect(await afEth.price(true)).gt(afEthPrice1);
     expect(within1Pip(await safEth.approxPrice(true), safEthStrategyPrice1)); // within 1 pip because safEth goes up every block
     expect(await await afEth.safEthBalanceMinusPending()).eq(
       safEthStrategyTotalSupply1
     );
     expect(await votiumStrategy.totalSupply()).eq(votiumTotalSupply1);
-    expect(await votiumStrategy.price()).gt(votiumStrategyPrice1);
+    expect(await votiumStrategy.price(true)).gt(votiumStrategyPrice1);
   });
   it("Should show rewards push the ratio towards the target ratio", async function () {
     // user1 gets both rewards while user2 only gets the second
@@ -938,14 +938,14 @@ describe("Test AfEth", async function () {
     let safEthBalance = await safEth.balanceOf(afEth.address);
 
     let votiumValue = votiumBalance
-      .mul(await votiumStrategy.price())
+      .mul(await votiumStrategy.price(true))
       .div("1000000000000000000");
     let safEthValue = safEthBalance
       .mul(await safEth.approxPrice(true))
       .div("1000000000000000000");
 
     votiumValue = votiumBalance
-      .mul(await votiumStrategy.price())
+      .mul(await votiumStrategy.price(true))
       .div("1000000000000000000");
     safEthValue = safEthBalance
       .mul(await safEth.approxPrice(true))
@@ -966,7 +966,7 @@ describe("Test AfEth", async function () {
       safEthBalance = await safEth.balanceOf(afEth.address);
 
       votiumValue = votiumBalance
-        .mul(await votiumStrategy.price())
+        .mul(await votiumStrategy.price(true))
         .div("1000000000000000000");
       safEthValue = safEthBalance
         .mul(await safEth.approxPrice(true))
@@ -992,7 +992,7 @@ describe("Test AfEth", async function () {
       safEthBalance = await safEth.balanceOf(afEth.address);
 
       votiumValue = votiumBalance
-        .mul(await votiumStrategy.price())
+        .mul(await votiumStrategy.price(true))
         .div("1000000000000000000");
       safEthValue = safEthBalance
         .mul(await safEth.approxPrice(true))

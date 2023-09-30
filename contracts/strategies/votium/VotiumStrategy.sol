@@ -28,8 +28,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Gets price in eth
      * @return Price of token in eth
      */
-    function price() external view override returns (uint256) {
-        return (cvxPerVotium() * ethPerCvx(false)) / 1e18;
+    function price(bool _validate) external view override returns (uint256) {
+        return (cvxPerVotium() * ethPerCvx(_validate)) / 1e18;
     }
 
     /**

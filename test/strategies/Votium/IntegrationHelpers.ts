@@ -154,7 +154,7 @@ export const randomStakeUnstakeWithdraw = async (
 
 export const getTvl = async (votiumStrategy: VotiumStrategy) => {
   const totalSupply = await votiumStrategy.totalSupply();
-  const price = await votiumStrategy.price();
+  const price = await votiumStrategy.price(true);
   return totalSupply.mul(price).div(ethers.utils.parseEther("1"));
 };
 

@@ -203,21 +203,21 @@ describe("Test VotiumStrategy (Part 2)", async function () {
     expect(within1Percent(cvxOut2, expectedCvxOut2)).eq(true);
   });
   it("Should not change the price when minting, requesting withdraw or withdrawing", async function () {
-    const price0 = await votiumStrategy.price();
+    const price0 = await votiumStrategy.price(true);
 
     let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
     await tx.wait();
 
-    const price1 = await votiumStrategy.price();
+    const price1 = await votiumStrategy.price(true);
 
     tx = await votiumStrategy.requestWithdraw(
       await votiumStrategy.balanceOf(accounts[0].address)
     );
     const mined = await tx.wait();
 
-    const price2 = await votiumStrategy.price();
+    const price2 = await votiumStrategy.price(true);
 
     const event = mined?.events?.find((e) => e?.event === "WithdrawRequest");
 
@@ -231,7 +231,7 @@ describe("Test VotiumStrategy (Part 2)", async function () {
     tx = await votiumStrategy.withdraw(withdrawId);
     await tx.wait();
 
-    const price3 = await votiumStrategy.price();
+    const price3 = await votiumStrategy.price(true);
 
     expect(price0).eq(price1).eq(price2).eq(price3);
   });
