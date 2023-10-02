@@ -71,6 +71,7 @@ contract VotiumStrategyCore is
     error NotOwner();
     error WithdrawNotReady();
     error AlreadyWithdrawn();
+    error NotManager();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -84,6 +85,11 @@ contract VotiumStrategyCore is
 
     modifier onlyRewarder() {
         if (msg.sender != rewarder) revert NotRewarder();
+        _;
+    }
+
+    modifier onlyManager() {
+        if (address(manager) != address(0) && msg.sender != manager) revert NotManager();
         _;
     }
 
@@ -203,7 +209,7 @@ contract VotiumStrategyCore is
      * @notice - Sells amount of eth from votium contract
      * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
-    function depositRewards(uint256 _amount) public payable {
+    function depositRewards(uint256 _amount) public payable onlyManager {
         uint256 cvxAmount = buyCvx(_amount);
         IERC20(CVX_ADDRESS).safeApprove(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
