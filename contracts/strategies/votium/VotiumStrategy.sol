@@ -80,10 +80,12 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
            ] = WithdrawRequestInfo({
                cvxOwed: cvxAmount,
                withdrawn: false,
-               epoch: currentEpoch,
+               epoch: currentEpoch + 1,
                owner: msg.sender
            });
            emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
+
+           console.log('returning early from requestWithdraw', totalLockedBalancePlusUnlockable);
            return latestWithdrawId;
        }
 
