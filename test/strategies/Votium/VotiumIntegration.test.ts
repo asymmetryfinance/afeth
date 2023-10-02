@@ -47,11 +47,10 @@ describe("Votium integration test", async function () {
 
     const ownerAccount = await getAdminAccount();
     const rewarderAccount = await getRewarderAccount();
-    const userAccounts = await getUserAccounts();
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
-      ownerAccount.address,
+      ethers.constants.AddressZero, // for these tests to work manager needs to be set to 0
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
@@ -63,6 +62,7 @@ describe("Votium integration test", async function () {
       .connect(ownerAccount)
       .setChainlinkCvxEthFeed(chainLinkCvxEthFeed.address);
 
+    const userAccounts = await getUserAccounts();
     for (let i = 0; i < userAccounts.length; i++) {
       const balance = await ethers.provider.getBalance(userAccounts[i].address);
       startingEthBalances.push(balance);
@@ -85,7 +85,6 @@ describe("Votium integration test", async function () {
           ethers.utils.parseEther("1")
         );
       }
-
       await increaseTime1Epoch(votiumStrategy);
     }
   });

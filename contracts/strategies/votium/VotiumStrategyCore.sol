@@ -89,7 +89,7 @@ contract VotiumStrategyCore is
     }
 
     modifier onlyManager() {
-        if (msg.sender != manager) revert NotManager();
+        if (address(manager) != address(0) && msg.sender != manager) revert NotManager();
         _;
     }
 
