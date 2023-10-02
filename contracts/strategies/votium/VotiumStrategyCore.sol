@@ -71,6 +71,7 @@ contract VotiumStrategyCore is
     error NotOwner();
     error WithdrawNotReady();
     error AlreadyWithdrawn();
+    error NotManager();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -84,6 +85,11 @@ contract VotiumStrategyCore is
 
     modifier onlyRewarder() {
         if (msg.sender != rewarder) revert NotRewarder();
+        _;
+    }
+
+    modifier onlyManager() {
+        if (msg.sender != manager) revert NotManager();
         _;
     }
 
