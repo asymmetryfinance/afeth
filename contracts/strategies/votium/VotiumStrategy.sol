@@ -28,8 +28,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Gets price in eth
      * @return Price of token in eth
      */
-    function price() external view override returns (uint256) {
-        return (cvxPerVotium() * ethPerCvx(false)) / 1e18;
+    function price(bool _validate) external view override returns (uint256) {
+        return (cvxPerVotium() * ethPerCvx(_validate)) / 1e18;
     }
 
     /**
@@ -132,7 +132,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[_withdrawId]
             .cvxOwed;
 
-        uint256 ethReceived = sellCvx(cvxWithdrawAmount);
+        uint256 ethReceived = cvxWithdrawAmount > 0 ? sellCvx(cvxWithdrawAmount) : 0;
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn = true;
 
@@ -155,7 +155,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxAmountToRelock = cvxBalance > cvxUnlockObligations
             ? cvxBalance - cvxUnlockObligations
             : 0;
-        if (cvxAmountToRelock > 0) {
+        if (cvxAmountToRelock > 0 && !(ILockedCvx(VLCVX_ADDRESS).isShutdown())) {
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
         }

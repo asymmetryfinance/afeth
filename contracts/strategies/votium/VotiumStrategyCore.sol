@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../../external_interfaces/IWETH.sol";
@@ -24,6 +25,8 @@ contract VotiumStrategyCore is
     OwnableUpgradeable,
     ERC20Upgradeable
 {
+    using SafeERC20 for IERC20;
+
     address public constant SNAPSHOT_DELEGATE_REGISTRY =
         0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
@@ -143,9 +146,9 @@ contract VotiumStrategyCore is
      */
     function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
-        uint256 totalCvx = cvxInSystem();
+        uint256 totalCvx = cvxInSystem() - cvxUnlockObligations;
         if (supply == 0 || totalCvx == 0) return 1e18;
-        return ((totalCvx - cvxUnlockObligations) * 1e18) / supply;
+        return totalCvx * 1e18 / supply;
     }
 
     /**
@@ -174,7 +177,7 @@ contract VotiumStrategyCore is
             (!_validate ||
                 (cl.success == true &&
                     cl.roundId != 0 &&
-                    cl.answer >= 0 &&
+                    cl.answer > 0 &&
                     cl.updatedAt != 0 &&
                     cl.updatedAt <= block.timestamp &&
                     block.timestamp - cl.updatedAt <= 25 hours))
@@ -202,7 +205,7 @@ contract VotiumStrategyCore is
      *  */
     function depositRewards(uint256 _amount) public payable {
         uint256 cvxAmount = buyCvx(_amount);
-        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
+        IERC20(CVX_ADDRESS).safeApprove(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
     }
@@ -213,7 +216,7 @@ contract VotiumStrategyCore is
      * @param _token - Address of the token to withdraw
      */
     function withdrawStuckTokens(address _token) public onlyOwner {
-        IERC20(_token).transfer(
+        IERC20(_token).safeTransfer(
             msg.sender,
             IERC20(_token).balanceOf(address(this))
         );
@@ -253,7 +256,7 @@ contract VotiumStrategyCore is
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
         uint256 ethBalanceBefore = address(this).balance;
-        IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
+        IERC20(CVX_ADDRESS).safeApprove(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
         ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
@@ -279,12 +282,12 @@ contract VotiumStrategyCore is
             );
             if (allowance != type(uint256).max) {
                 if (allowance > 0) {
-                    IERC20(_swapsData[i].sellToken).approve(
+                    IERC20(_swapsData[i].sellToken).safeApprove(
                         address(_swapsData[i].spender),
                         0
                     );
                 }
-                IERC20(_swapsData[i].sellToken).approve(
+                IERC20(_swapsData[i].sellToken).safeApprove(
                     address(_swapsData[i].spender),
                     type(uint256).max
                 );

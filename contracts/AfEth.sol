@@ -70,6 +70,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @dev - This replaces the constructor for upgradeable contracts
     */
     function initialize() external initializer {
+        __ERC20_init("Asymmetry Finance AfEth", "AfEth");
         _transferOwnership(msg.sender);
         ratio = 5e17;
     }
@@ -130,12 +131,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @dev - Checks each strategy and calculates the total value in ETH divided by supply of afETH tokens
         @return - Price of afEth
     */
-    function price() public view returns (uint256) {
+    function price(bool _validate) public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
         uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(true) *
             safEthBalanceMinusPending()) / 1e18;
-        uint256 vEthValueInEth = (vEthStrategy.price() *
+        uint256 vEthValueInEth = (vEthStrategy.price(true) *
             vEthStrategy.balanceOf(address(this))) / 1e18;
         return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply();
     }
@@ -148,7 +149,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function deposit(uint256 _minout) external payable virtual {
         if (pauseDeposit) revert Paused();
         uint256 amount = msg.value;
-        uint256 priceBeforeDeposit = price();
+        uint256 priceBeforeDeposit = price(true);
         uint256 totalValue;
 
         AbstractStrategy vStrategy = AbstractStrategy(vEthAddress);
@@ -161,7 +162,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
         totalValue +=
             (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) +
-            (vMinted * vStrategy.price());
+            (vMinted * vStrategy.price(true));
         if (totalValue == 0) revert FailedToDeposit();
         uint256 amountToMint = totalValue / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
@@ -173,7 +174,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @param _amount - Amount of afEth to withdraw
     */
     function requestWithdraw(uint256 _amount) external virtual {
-        uint256 withdrawTimeBefore = withdrawTime(_amount);
         if (pauseWithdraw) revert Paused();
         latestWithdrawId++;
 
@@ -184,10 +184,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 withdrawRatio = (_amount * 1e18) /
             (totalSupply() - afEthBalance);
 
-        _transfer(msg.sender, address(this), _amount);
+        _burn(msg.sender, _amount);
 
         uint256 votiumBalance = IERC20(vEthAddress).balanceOf(address(this));
         uint256 votiumWithdrawAmount = (withdrawRatio * votiumBalance) / 1e18;
+        uint256 withdrawTimeBefore = withdrawTime(votiumWithdrawAmount);
         uint256 vEthWithdrawId = AbstractStrategy(vEthAddress).requestWithdraw(
             votiumWithdrawAmount
         );
@@ -249,10 +250,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
 
-        ISafEth(SAF_ETH_ADDRESS).unstake(withdrawInfo.safEthWithdrawAmount, 0);
+        if (withdrawInfo.safEthWithdrawAmount > 0) {
+            ISafEth(SAF_ETH_ADDRESS).unstake(withdrawInfo.safEthWithdrawAmount, 0);
+        }
         AbstractStrategy(vEthAddress).withdraw(withdrawInfo.vEthWithdrawId);
 
-        _burn(address(this), withdrawIdInfo[_withdrawId].amount);
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
@@ -270,6 +272,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _amount - amount of eth to sell
      */
     function depositRewards(uint256 _amount) public payable {
+        require(!pauseDeposit, "paused");
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;
         if (feeAmount > 0) {

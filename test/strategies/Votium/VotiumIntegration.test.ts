@@ -92,7 +92,7 @@ describe.only("Votium integration test", async function () {
 
   it("Should have tvl be equal to sum of all users tvl", async function () {
     const userAccounts = await getUserAccounts();
-    const price = await votiumStrategy.price();
+    const price = await votiumStrategy.price(true);
     const tvl = await getTvl(votiumStrategy);
 
     let totalUserBalances = ethers.BigNumber.from(0);
