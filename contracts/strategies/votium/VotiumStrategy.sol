@@ -74,6 +74,19 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             IERC20(CVX_ADDRESS).balanceOf(address(this));
 
+       if (totalLockedBalancePlusUnlockable >= _amount) {
+           withdrawIdToWithdrawRequestInfo[
+               latestWithdrawId
+           ] = WithdrawRequestInfo({
+               cvxOwed: cvxAmount,
+               withdrawn: false,
+               epoch: currentEpoch,
+               owner: msg.sender
+           });
+           emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
+           return latestWithdrawId;
+       }
+
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
