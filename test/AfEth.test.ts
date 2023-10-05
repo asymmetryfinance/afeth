@@ -24,6 +24,9 @@ describe("Test AfEth", async function () {
   const initialStake = ethers.utils.parseEther(".1");
   const initialStakeAccount = 11;
 
+  const nowPlusOneMinute = async () =>
+    (await ethers.provider.getBlock("latest")).timestamp + 60;
+
   const resetToBlock = async (blockNumber: number) => {
     await network.provider.request({
       method: "hardhat_reset",
@@ -85,9 +88,11 @@ describe("Test AfEth", async function () {
     const multiSigWst = wstEthDerivative.connect(multiSigSigner);
     await multiSigWst.setChainlinkFeed(chainLinkWstFeed.address);
     // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await afEth.connect(accounts[initialStakeAccount]).deposit(0, {
-      value: initialStake,
-    });
+    const tx = await afEth
+      .connect(accounts[initialStakeAccount])
+      .deposit(0, await nowPlusOneMinute(), {
+        value: initialStake,
+      });
     await tx.wait();
 
     const chainLinkCvxEthFeedFactory = await ethers.getContractFactory(
@@ -110,7 +115,9 @@ describe("Test AfEth", async function () {
 
   it("Should mint, requestwithdraw, and withdraw afETH", async function () {
     const depositAmount = ethers.utils.parseEther("1");
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const afEthBalanceBeforeRequest = await afEth.balanceOf(
@@ -139,7 +146,11 @@ describe("Test AfEth", async function () {
       accounts[0].address
     );
 
-    const withdrawTx = await afEth.withdraw(withdrawId, 0);
+    const withdrawTx = await afEth.withdraw(
+      withdrawId,
+      0,
+      await nowPlusOneMinute()
+    );
     await withdrawTx.wait();
 
     const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
@@ -169,7 +180,9 @@ describe("Test AfEth", async function () {
       .div("1000000000000000000");
 
     const depositAmount = ethers.utils.parseEther("1");
-    const mintTx = await user1.deposit(0, { value: depositAmount });
+    const mintTx = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
@@ -202,7 +215,9 @@ describe("Test AfEth", async function () {
   });
   it("Should fail to withdraw if epoch for votium hasn't been reached", async function () {
     const depositAmount = ethers.utils.parseEther("1");
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const requestWithdrawTx = await afEth.requestWithdraw(
@@ -211,9 +226,9 @@ describe("Test AfEth", async function () {
     await requestWithdrawTx.wait();
     const withdrawId = await afEth.latestWithdrawId();
 
-    await expect(afEth.withdraw(withdrawId, 0)).to.be.revertedWith(
-      "CanNotWithdraw()"
-    );
+    await expect(
+      afEth.withdraw(withdrawId, 0, await nowPlusOneMinute())
+    ).to.be.revertedWith("CanNotWithdraw()");
   });
   it("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw", async function () {
     const user1 = afEth.connect(accounts[1]);
@@ -221,9 +236,13 @@ describe("Test AfEth", async function () {
 
     const depositAmount = ethers.utils.parseEther("1");
 
-    const mintTx1 = await user1.deposit(0, { value: depositAmount });
+    const mintTx1 = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx1.wait();
-    const mintTx2 = await user2.deposit(0, { value: depositAmount });
+    const mintTx2 = await user2.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx2.wait();
 
     const afEthBalanceBeforeRequest1 = await user1.balanceOf(
@@ -264,10 +283,12 @@ describe("Test AfEth", async function () {
       accounts[2].address
     );
 
-    await expect(user2.withdraw(1, 0)).to.be.revertedWith("NotOwner()");
-    const withdrawTx1 = await user1.withdraw(1, 0);
+    await expect(
+      user2.withdraw(1, 0, await nowPlusOneMinute())
+    ).to.be.revertedWith("NotOwner()");
+    const withdrawTx1 = await user1.withdraw(1, 0, await nowPlusOneMinute());
     await withdrawTx1.wait();
-    const withdrawTx2 = await user2.withdraw(2, 0);
+    const withdrawTx2 = await user2.withdraw(2, 0, await nowPlusOneMinute());
     await withdrawTx2.wait();
 
     const ethBalanceAfterWithdraw1 = await ethers.provider.getBalance(
@@ -295,9 +316,13 @@ describe("Test AfEth", async function () {
 
     const depositAmount = ethers.utils.parseEther("1");
 
-    const mintTx1 = await user1.deposit(0, { value: depositAmount });
+    const mintTx1 = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx1.wait();
-    const mintTx2 = await user2.deposit(0, { value: depositAmount });
+    const mintTx2 = await user2.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx2.wait();
 
     const afEthBalanceBeforeRequest1 = await user1.balanceOf(
@@ -343,9 +368,9 @@ describe("Test AfEth", async function () {
       accounts[2].address
     );
 
-    const withdrawTx1 = await user1.withdraw(1, 0);
+    const withdrawTx1 = await user1.withdraw(1, 0, await nowPlusOneMinute());
     await withdrawTx1.wait();
-    const withdrawTx2 = await user2.withdraw(2, 0);
+    const withdrawTx2 = await user2.withdraw(2, 0, await nowPlusOneMinute());
     await withdrawTx2.wait();
 
     const ethBalanceAfterWithdraw1 = await ethers.provider.getBalance(
@@ -380,7 +405,9 @@ describe("Test AfEth", async function () {
 
     const rewardAmount = ethers.utils.parseEther("1");
 
-    const mintTx1 = await user1.deposit(0, { value: depositAmount });
+    const mintTx1 = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx1.wait();
 
     let user1BalanceRatio = (await afEth.balanceOf(accounts[1].address))
@@ -396,7 +423,9 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    tx = await user2.deposit(0, { value: depositAmount });
+    tx = await user2.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await tx.wait();
 
     user1BalanceRatio = (await afEth.balanceOf(accounts[1].address))
@@ -435,7 +464,7 @@ describe("Test AfEth", async function () {
     const ethBalanceBeforeWithdraw1 = await ethers.provider.getBalance(
       accounts[1].address
     );
-    const withdrawTx1 = await user1.withdraw(1, 0);
+    const withdrawTx1 = await user1.withdraw(1, 0, await nowPlusOneMinute());
     await withdrawTx1.wait();
 
     const ethReceived1 = (
@@ -445,7 +474,7 @@ describe("Test AfEth", async function () {
     const ethBalanceBeforeWithdraw2 = await ethers.provider.getBalance(
       accounts[2].address
     );
-    const withdrawTx2 = await user2.withdraw(2, 0);
+    const withdrawTx2 = await user2.withdraw(2, 0, await nowPlusOneMinute());
     await withdrawTx2.wait();
 
     const ethReceived2 = (
@@ -470,7 +499,9 @@ describe("Test AfEth", async function () {
 
     const depositAmount = ethers.utils.parseEther("1");
 
-    const mintTx1 = await user1.deposit(0, { value: depositAmount });
+    const mintTx1 = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx1.wait();
 
     const tx = await afEth.depositRewards(depositAmount, {
@@ -478,7 +509,9 @@ describe("Test AfEth", async function () {
     });
     await tx.wait();
 
-    const mintTx2 = await user2.deposit(0, { value: depositAmount });
+    const mintTx2 = await user2.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     let mined = await mintTx2.wait();
 
     const afEthBalanceBeforeRequest1 = await afEth.balanceOf(
@@ -522,9 +555,9 @@ describe("Test AfEth", async function () {
       accounts[2].address
     );
 
-    const withdrawTx1 = await user1.withdraw(1, 0);
+    const withdrawTx1 = await user1.withdraw(1, 0, await nowPlusOneMinute());
     await withdrawTx1.wait();
-    const withdrawTx2 = await user2.withdraw(2, 0);
+    const withdrawTx2 = await user2.withdraw(2, 0, await nowPlusOneMinute());
     mined = await withdrawTx2.wait();
     const withdrawGasUsed2 = mined.gasUsed.mul(mined.effectiveGasPrice);
 
@@ -571,7 +604,9 @@ describe("Test AfEth", async function () {
     const safEthBalanceBeforeDeposit1 = await safEth.balanceOf(afEth.address);
 
     const depositAmount = ethers.utils.parseEther("1");
-    let mintTx = await user1.deposit(0, { value: depositAmount });
+    let mintTx = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
@@ -608,7 +643,11 @@ describe("Test AfEth", async function () {
       accounts[1].address
     );
 
-    const withdrawTx = await user1.withdraw(withdrawId, 0);
+    const withdrawTx = await user1.withdraw(
+      withdrawId,
+      0,
+      await nowPlusOneMinute()
+    );
     await withdrawTx.wait();
 
     const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
@@ -624,7 +663,9 @@ describe("Test AfEth", async function () {
     );
     const safEthBalanceAfterWithdraw = await safEth.balanceOf(afEth.address);
 
-    mintTx = await user1.deposit(0, { value: depositAmount });
+    mintTx = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const votiumBalanceAfterDeposit2 = await votiumStrategy.balanceOf(
@@ -660,7 +701,9 @@ describe("Test AfEth", async function () {
     const safEthBalanceBeforeDeposit1 = await safEth.balanceOf(afEth.address);
 
     const depositAmount = ethers.utils.parseEther("1");
-    let mintTx = await user1.deposit(0, { value: depositAmount });
+    let mintTx = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const votiumBalanceAfterDeposit1 = await votiumStrategy.balanceOf(
@@ -697,7 +740,11 @@ describe("Test AfEth", async function () {
       accounts[1].address
     );
 
-    const withdrawTx = await user1.withdraw(withdrawId, 0);
+    const withdrawTx = await user1.withdraw(
+      withdrawId,
+      0,
+      await nowPlusOneMinute()
+    );
     await withdrawTx.wait();
 
     const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
@@ -713,7 +760,9 @@ describe("Test AfEth", async function () {
     );
     const safEthBalanceAfterWithdraw = await safEth.balanceOf(afEth.address);
 
-    mintTx = await user1.deposit(0, { value: depositAmount });
+    mintTx = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const votiumBalanceAfterDeposit2 = await votiumStrategy.balanceOf(
@@ -743,11 +792,13 @@ describe("Test AfEth", async function () {
   it("Should be able to pause deposit & withdraw", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     await afEth.setPauseDeposit(true);
-    await expect(afEth.deposit(0, { value: depositAmount })).to.be.revertedWith(
-      "Paused()"
-    );
+    await expect(
+      afEth.deposit(0, await nowPlusOneMinute(), { value: depositAmount })
+    ).to.be.revertedWith("Paused()");
     await afEth.setPauseDeposit(false);
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const afEthBalanceBeforeRequest = await afEth.balanceOf(
@@ -783,9 +834,15 @@ describe("Test AfEth", async function () {
     );
 
     await afEth.setPauseWithdraw(true);
-    await expect(afEth.withdraw(withdrawId, 0)).to.be.revertedWith("Paused()");
+    await expect(
+      afEth.withdraw(withdrawId, 0, await nowPlusOneMinute())
+    ).to.be.revertedWith("Paused()");
     await afEth.setPauseWithdraw(false);
-    const withdrawTx = await afEth.withdraw(withdrawId, 0);
+    const withdrawTx = await afEth.withdraw(
+      withdrawId,
+      0,
+      await nowPlusOneMinute()
+    );
     await withdrawTx.wait();
 
     const ethBalanceAfterWithdraw = await ethers.provider.getBalance(
@@ -796,7 +853,9 @@ describe("Test AfEth", async function () {
   });
   it("Should test withdrawTime() and canWithdraw()", async function () {
     const depositAmount = ethers.utils.parseEther("1");
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const afEthBalanceBeforeRequest = await afEth.balanceOf(
@@ -829,7 +888,9 @@ describe("Test AfEth", async function () {
     const depositAmount = ethers.utils.parseEther("1");
 
     // mint once to sdee how much afEth is received for depositAmount
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const afEthBalance1 = await afEth.balanceOf(accounts[0].address);
@@ -837,7 +898,7 @@ describe("Test AfEth", async function () {
     // mint again with a minout high enough to to revert
 
     await expect(
-      afEth.deposit(afEthBalance1.mul(2), {
+      afEth.deposit(afEthBalance1.mul(2), await nowPlusOneMinute(), {
         value: depositAmount,
       })
     ).to.be.revertedWith("BelowMinOut()");
@@ -846,7 +907,9 @@ describe("Test AfEth", async function () {
 
   it("Should not withdraw if withdrawing less than minout", async function () {
     const depositAmount = ethers.utils.parseEther("1");
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const afEthBalanceBeforeRequest = await afEth.balanceOf(
@@ -866,14 +929,16 @@ describe("Test AfEth", async function () {
     const withdrawId = await afEth.latestWithdrawId();
 
     await expect(
-      afEth.withdraw(withdrawId, depositAmount.mul(2))
+      afEth.withdraw(withdrawId, depositAmount.mul(2), await nowPlusOneMinute())
     ).to.be.revertedWith("BelowMinOut()");
   });
 
   it("Should be able to deposit rewards to all strategies", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const rewardAmount = ethers.utils.parseEther("1");
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const afEthPrice0 = await afEth.price(true);
@@ -925,7 +990,9 @@ describe("Test AfEth", async function () {
 
     const rewardAmount = ethers.utils.parseEther("0.05");
 
-    const mintTx1 = await user1.deposit(0, { value: initialDepositAmount });
+    const mintTx1 = await user1.deposit(0, await nowPlusOneMinute(), {
+      value: initialDepositAmount,
+    });
     await mintTx1.wait();
 
     const startingTargetRatio = await afEth.ratio();
@@ -1021,7 +1088,9 @@ describe("Test AfEth", async function () {
     );
     const depositAmount = ethers.utils.parseEther("1");
     const rewardAmount = ethers.utils.parseEther("1");
-    const mintTx = await afEth.deposit(0, { value: depositAmount });
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
     await mintTx.wait();
 
     const tx = await afEth.depositRewards(rewardAmount, {
@@ -1063,5 +1132,30 @@ describe("Test AfEth", async function () {
   });
   it("Should show rewards push the ratio towards the target ratio", async function () {
     // TODO
+  });
+  it("Should fail to withdraw if deadline has passed", async function () {
+    const depositAmount = ethers.utils.parseEther("1");
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
+    await mintTx.wait();
+
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
+    await requestWithdrawTx.wait();
+    const withdrawId = await afEth.latestWithdrawId();
+
+    await expect(afEth.withdraw(withdrawId, 0, 0)).to.be.revertedWith(
+      "StaleAction()"
+    );
+  });
+  it("Should fail to deposit if deadline has passed", async function () {
+    const depositAmount = ethers.utils.parseEther("1");
+    await expect(
+      afEth.deposit(0, 0, {
+        value: depositAmount,
+      })
+    ).to.be.revertedWith("StaleAction()");
   });
 });
