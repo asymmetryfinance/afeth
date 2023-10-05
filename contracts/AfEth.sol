@@ -177,12 +177,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (pauseWithdraw) revert Paused();
         latestWithdrawId++;
 
-        // ratio of afEth being withdrawn to totalSupply
-        // we are transfering the afEth to the contract when we requestWithdraw
-        // we shouldn't include that in the withdrawRatio
-        uint256 afEthBalance = balanceOf(address(this));
-        uint256 withdrawRatio = (_amount * 1e18) /
-            (totalSupply() - afEthBalance);
+        uint256 withdrawRatio = (_amount * 1e18) / totalSupply();
 
         _burn(msg.sender, _amount);
 
