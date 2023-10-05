@@ -39,6 +39,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error FailedToDeposit();
     error Paused();
     error BelowMinOut();
+    error StaleAction();
 
     event WithdrawRequest(
         address indexed account,
@@ -146,8 +147,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @dev - This is the entry into the protocol
         @param _minout - Minimum amount of afEth to mint
     */
-    function deposit(uint256 _minout) external payable virtual {
+    function deposit(uint256 _minout, uint256 _deadline) external payable virtual {
         if (pauseDeposit) revert Paused();
+        if (block.timestamp > _deadline) revert StaleAction();
         uint256 amount = msg.value;
         uint256 priceBeforeDeposit = price(true);
         uint256 totalValue;
@@ -238,9 +240,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function withdraw(
         uint256 _withdrawId,
-        uint256 _minout
+        uint256 _minout,
+        uint256 _deadline
     ) external virtual onlyWithdrawIdOwner(_withdrawId) {
         if (pauseWithdraw) revert Paused();
+        if (block.timestamp > _deadline) revert StaleAction();
         uint256 ethBalanceBefore = address(this).balance;
         WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
