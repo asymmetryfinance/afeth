@@ -336,7 +336,7 @@ describe("Test AfEth", async function () {
       within1Percent(afEthBalanceBeforeRequest1, afEthBalanceBeforeRequest2)
     );
 
-    const tx = await afEth.depositRewards(depositAmount, 0, {
+    const tx = await afEth.depositRewards(depositAmount, 0, 0, {
       value: depositAmount,
     });
     await tx.wait();
@@ -418,7 +418,7 @@ describe("Test AfEth", async function () {
       .mul(user1BalanceRatio)
       .div(ethers.utils.parseEther("1"));
 
-    let tx = await afEth.depositRewards(depositAmount, 0, {
+    let tx = await afEth.depositRewards(depositAmount, 0, 0, {
       value: rewardAmount,
     });
     await tx.wait();
@@ -442,7 +442,7 @@ describe("Test AfEth", async function () {
       .mul(user2BalanceRatio)
       .div(ethers.utils.parseEther("1"));
 
-    tx = await afEth.depositRewards(depositAmount, 0, {
+    tx = await afEth.depositRewards(depositAmount, 0, 0, {
       value: rewardAmount,
     });
     await tx.wait();
@@ -504,7 +504,7 @@ describe("Test AfEth", async function () {
     });
     await mintTx1.wait();
 
-    const tx = await afEth.depositRewards(depositAmount, 0, {
+    const tx = await afEth.depositRewards(depositAmount, 0, 0, {
       value: depositAmount,
     });
     await tx.wait();
@@ -947,7 +947,7 @@ describe("Test AfEth", async function () {
 
     const safEthStrategyTotalSupply0 = await afEth.safEthBalanceMinusPending();
 
-    let tx = await afEth.depositRewards(rewardAmount, 0, {
+    let tx = await afEth.depositRewards(rewardAmount, 0, 0, {
       value: rewardAmount,
     });
     await tx.wait();
@@ -968,7 +968,7 @@ describe("Test AfEth", async function () {
     const safEthStrategyTotalSupply1 = await afEth.safEthBalanceMinusPending();
     const votiumTotalSupply1 = await votiumStrategy.totalSupply();
 
-    tx = await afEth.depositRewards(rewardAmount, 0, {
+    tx = await afEth.depositRewards(rewardAmount, 0, 0, {
       value: rewardAmount,
     });
     await tx.wait();
@@ -1024,7 +1024,7 @@ describe("Test AfEth", async function () {
     expect(within1Percent(ratio, startingTargetRatio)).eq(true);
     // show the true ratio gets to 70%
     for (let i = 0; i < 20; i++) {
-      const tx = await afEth.depositRewards(rewardAmount, 0, {
+      const tx = await afEth.depositRewards(rewardAmount, 0, 0, {
         value: rewardAmount,
       });
       await tx.wait();
@@ -1050,7 +1050,7 @@ describe("Test AfEth", async function () {
 
     // show that the true ratio stays around 70% as more rewards are added
     for (let i = 0; i < 10; i++) {
-      const tx = await afEth.depositRewards(rewardAmount, 0, {
+      const tx = await afEth.depositRewards(rewardAmount, 0, 0, {
         value: rewardAmount,
       });
       await tx.wait();
@@ -1093,7 +1093,7 @@ describe("Test AfEth", async function () {
     });
     await mintTx.wait();
 
-    const tx = await afEth.depositRewards(rewardAmount, 0, {
+    const tx = await afEth.depositRewards(rewardAmount, 0, 0, {
       value: rewardAmount,
     });
     await tx.wait();
@@ -1157,5 +1157,23 @@ describe("Test AfEth", async function () {
         value: depositAmount,
       })
     ).to.be.revertedWith("StaleAction()");
+  });
+  it("Should fail if depositing rewards results in less safEth being created than _safEthMinout", async function () {
+    const rewardAmount = ethers.utils.parseEther("1");
+
+    expect(
+      afEth.depositRewards(rewardAmount, "99999999999999999999999", 0, {
+        value: rewardAmount,
+      })
+    ).to.be.revertedWith("BelowMinOut()");
+  });
+  it("Should fail if depositing rewards results in less safEth being created than _cvxMinout", async function () {
+    const rewardAmount = ethers.utils.parseEther("1");
+
+    expect(
+      afEth.depositRewards(rewardAmount, 0, "99999999999999999999999", {
+        value: rewardAmount,
+      })
+    ).to.be.revertedWith("BelowMinOut()");
   });
 });

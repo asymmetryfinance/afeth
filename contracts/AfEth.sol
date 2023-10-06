@@ -270,7 +270,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @dev - puts it into safEthStrategy or votiumStrategy, whichever is underweight.\
      * @param _amount - amount of eth to sell
      */
-    function depositRewards(uint256 _amount, uint256 _cvxMinout) public payable {
+    function depositRewards(uint256 _amount, uint256 _safEthMinout, uint256 _cvxMinout) public payable {
         require(!pauseDeposit, "paused");
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;
@@ -288,7 +288,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 totalTvl = (safEthTvl + votiumTvl);
         uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
         if (safEthRatio < ratio) {
-            ISafEth(SAF_ETH_ADDRESS).stake{value: amount}(0);
+            ISafEth(SAF_ETH_ADDRESS).stake{value: amount}(_safEthMinout);
         } else {
             votiumStrategy.depositRewards{value: amount}(amount, _cvxMinout);
         }
