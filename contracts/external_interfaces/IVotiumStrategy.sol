@@ -6,5 +6,5 @@ interface IVotiumStrategy {
 
     function ethPerCvx(bool validate) external view returns (uint256);
 
-    function depositRewards(uint256 amount, uint256 _cvxMinout) external payable;
+    function depositRewards(uint256 amount) external payable;
 }
