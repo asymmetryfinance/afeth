@@ -135,9 +135,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function price(bool _validate) public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
-        uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(true) *
+        uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(_validate) *
             safEthBalanceMinusPending()) / 1e18;
-        uint256 vEthValueInEth = (vEthStrategy.price(true) *
+        uint256 vEthValueInEth = (vEthStrategy.price(_validate) *
             vEthStrategy.balanceOf(address(this))) / 1e18;
         return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply();
     }
