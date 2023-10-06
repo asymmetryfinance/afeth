@@ -53,6 +53,8 @@ contract VotiumStrategyCore is
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
 
+    uint256 trackedCvxBalance;
+
     // used to add storage variables in the future
     uint256[20] private __gap;
 
@@ -144,7 +146,7 @@ contract VotiumStrategyCore is
         (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
+        return total + trackedCvxBalance;
     }
 
     /**
@@ -224,10 +226,12 @@ contract VotiumStrategyCore is
      * @param _token - Address of the token to withdraw
      */
     function withdrawStuckTokens(address _token) public onlyOwner {
+        uint256 tokenBalance = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(
             msg.sender,
-            IERC20(_token).balanceOf(address(this))
+            tokenBalance
         );
+        if(_token == CVX_ADDRESS) trackedCvxBalance -= tokenBalance;
     }
 
     /**
@@ -251,6 +255,7 @@ contract VotiumStrategyCore is
         );
         uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
         cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;
+        trackedCvxBalance += cvxAmountOut;
     }
 
     /**
@@ -273,6 +278,7 @@ contract VotiumStrategyCore is
             0 // this is handled at the afEth level
         );
         ethAmountOut = address(this).balance - ethBalanceBefore;
+        trackedCvxBalance -= _cvxAmountIn;
     }
 
     /**
