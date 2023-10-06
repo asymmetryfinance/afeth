@@ -72,6 +72,7 @@ contract VotiumStrategyCore is
     error WithdrawNotReady();
     error AlreadyWithdrawn();
     error NotManager();
+    error MinOut();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -209,8 +210,9 @@ contract VotiumStrategyCore is
      * @notice - Sells amount of eth from votium contract
      * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
-    function depositRewards(uint256 _amount) public payable onlyManager {
+    function depositRewards(uint256 _amount, uint256 _cvxMinout) public payable onlyManager {
         uint256 cvxAmount = buyCvx(_amount);
+        if (cvxAmount < _cvxMinout) revert MinOut();
         IERC20(CVX_ADDRESS).safeApprove(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
@@ -278,7 +280,7 @@ contract VotiumStrategyCore is
      * @dev - Causes price to go up
      * @param _swapsData - Array of SwapData for 0x swaps
      */
-    function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
+    function applyRewards(SwapData[] calldata _swapsData, uint256 _cvxMinout) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
@@ -310,7 +312,7 @@ contract VotiumStrategyCore is
 
         if (address(manager) != address(0))
             IAfEth(manager).depositRewards{value: ethReceived}(ethReceived);
-        else depositRewards(ethReceived);
+        else depositRewards(ethReceived, _cvxMinout);
     }
 
     /**
