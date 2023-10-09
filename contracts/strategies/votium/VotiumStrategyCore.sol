@@ -217,6 +217,7 @@ contract VotiumStrategyCore is
         if (cvxAmount < _cvxMinout) revert MinOut();
         IERC20(CVX_ADDRESS).safeApprove(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        trackedCvxBalance -= cvxAmount;
         emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
     }
 
