@@ -179,7 +179,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         uint256 totalLockedBalancePlusUnlockable = unlockable +
-            IERC20(CVX_ADDRESS).balanceOf(address(this));
+            trackedCvxBalance;
 
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
