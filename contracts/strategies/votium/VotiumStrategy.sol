@@ -135,9 +135,16 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        if (unlockable > 0)
+        if (unlockable > 0) {
+            uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(
+                address(this)
+            );
             ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-        trackedCvxBalance += unlockable;
+            uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(
+                address(this)
+            );
+            trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
+        }
         uint256 cvxAmountToRelock = trackedCvxBalance > cvxUnlockObligations
             ? trackedCvxBalance - cvxUnlockObligations
             : 0;
