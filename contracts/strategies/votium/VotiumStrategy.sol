@@ -43,6 +43,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         mintAmount = ((cvxAmount * 1e18) / priceBefore);
         _mint(msg.sender, mintAmount);
+        trackedCvxBalance -= cvxAmount;
     }
 
     /**
@@ -71,8 +72,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         cvxUnlockObligations += cvxAmount;
 
-        uint256 totalLockedBalancePlusUnlockable = unlockable +
-            IERC20(CVX_ADDRESS).balanceOf(address(this));
+        uint256 totalLockedBalancePlusUnlockable = unlockable + trackedCvxBalance;
 
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
@@ -122,7 +122,6 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 ethReceived = cvxWithdrawAmount > 0 ? sellCvx(cvxWithdrawAmount) : 0;
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn = true;
-
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         if (!sent) revert FailedToSend();
@@ -136,15 +135,23 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        if (unlockable > 0)
+        if (unlockable > 0) {
+            uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(
+                address(this)
+            );
             ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-        uint256 cvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        uint256 cvxAmountToRelock = cvxBalance > cvxUnlockObligations
-            ? cvxBalance - cvxUnlockObligations
+            uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(
+                address(this)
+            );
+            trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
+        }
+        uint256 cvxAmountToRelock = trackedCvxBalance > cvxUnlockObligations
+            ? trackedCvxBalance - cvxUnlockObligations
             : 0;
         if (cvxAmountToRelock > 0 && !(ILockedCvx(VLCVX_ADDRESS).isShutdown())) {
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
+            trackedCvxBalance -= cvxAmountToRelock;
         }
     }
 
@@ -179,7 +186,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         uint256 totalLockedBalancePlusUnlockable = unlockable +
-            IERC20(CVX_ADDRESS).balanceOf(address(this));
+            trackedCvxBalance;
 
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
