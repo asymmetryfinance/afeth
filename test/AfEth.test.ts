@@ -20,6 +20,7 @@ describe("Test AfEth", async function () {
   let votiumStrategy: VotiumStrategy;
   let safEth: any;
   let accounts: SignerWithAddress[];
+  let chainLinkCvxEthFeed: any;
 
   const initialStake = ethers.utils.parseEther(".1");
   const initialStakeAccount = 11;
@@ -98,7 +99,7 @@ describe("Test AfEth", async function () {
     const chainLinkCvxEthFeedFactory = await ethers.getContractFactory(
       "ChainLinkCvxEthFeedMock"
     );
-    const chainLinkCvxEthFeed = await chainLinkCvxEthFeedFactory.deploy();
+    chainLinkCvxEthFeed = await chainLinkCvxEthFeedFactory.deploy();
     await chainLinkCvxEthFeed.deployed();
     await votiumStrategy.setChainlinkCvxEthFeed(chainLinkCvxEthFeed.address);
 
@@ -112,6 +113,47 @@ describe("Test AfEth", async function () {
   beforeEach(
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
+
+  it.only("Should show how bad 2% chainlink variance could be", async function () {
+    await afEth.setRatio(ethers.utils.parseEther("0"));
+
+    // TODO this should be breaking things. why isnt it?
+    await chainLinkCvxEthFeed.setLatestRoundData(
+      "1844674407370955166",
+      "169646397995984999999"
+    );
+
+    // TODO finish logic below for testing it at 1.999999% variance and show that 2.00001 will fail
+
+    const depositAmount = ethers.utils.parseEther("1");
+    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
+    await mintTx.wait();
+
+    const afEthBalanceBeforeRequest = await afEth.balanceOf(
+      accounts[0].address
+    );
+    expect(afEthBalanceBeforeRequest).gt(0);
+
+    const requestWithdrawTx = await afEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
+    await requestWithdrawTx.wait();
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const withdrawId = await afEth.latestWithdrawId();
+
+    const withdrawTx = await afEth.withdraw(
+      withdrawId,
+      0,
+      await nowPlusOneMinute()
+    );
+    await withdrawTx.wait();
+  });
 
   it("Should mint, requestwithdraw, and withdraw afETH", async function () {
     const depositAmount = ethers.utils.parseEther("1");
