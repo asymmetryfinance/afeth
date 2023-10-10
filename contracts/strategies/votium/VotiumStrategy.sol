@@ -74,20 +74,19 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             IERC20(CVX_ADDRESS).balanceOf(address(this));
 
-       if (totalLockedBalancePlusUnlockable >= _amount) {
-           withdrawIdToWithdrawRequestInfo[
-               latestWithdrawId
-           ] = WithdrawRequestInfo({
-               cvxOwed: cvxAmount,
-               withdrawn: false,
-               epoch: currentEpoch + 1,
-               owner: msg.sender
-           });
-           emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
+        if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations) {
+            withdrawIdToWithdrawRequestInfo[
+                latestWithdrawId
+            ] = WithdrawRequestInfo({
+                cvxOwed: cvxAmount,
+                withdrawn: false,
+                epoch: currentEpoch + 1,
+                owner: msg.sender
+            });
+            emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
 
-           console.log('returning early from requestWithdraw', totalLockedBalancePlusUnlockable);
-           return latestWithdrawId;
-       }
+            return latestWithdrawId;
+        }
 
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
@@ -134,7 +133,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[_withdrawId]
             .cvxOwed;
 
-        uint256 ethReceived = cvxWithdrawAmount > 0 ? sellCvx(cvxWithdrawAmount) : 0;
+        uint256 ethReceived = cvxWithdrawAmount > 0
+            ? sellCvx(cvxWithdrawAmount)
+            : 0;
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn = true;
 
@@ -157,7 +158,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxAmountToRelock = cvxBalance > cvxUnlockObligations
             ? cvxBalance - cvxUnlockObligations
             : 0;
-        if (cvxAmountToRelock > 0 && !(ILockedCvx(VLCVX_ADDRESS).isShutdown())) {
+        if (
+            cvxAmountToRelock > 0 && !(ILockedCvx(VLCVX_ADDRESS).isShutdown())
+        ) {
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
         }
@@ -195,7 +198,18 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             IERC20(CVX_ADDRESS).balanceOf(address(this));
-
+        if (
+            totalLockedBalancePlusUnlockable >= cvxUnlockObligations + cvxAmount
+        ) {
+            uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+                block.timestamp
+            );
+            ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
+            (, uint32 date) = ILockedCvx(VLCVX_ADDRESS).epochs(
+                currentEpoch + 1
+            );
+            return date;
+        }
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
