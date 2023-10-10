@@ -115,44 +115,30 @@ describe("Test AfEth", async function () {
   );
 
   it.only("Should show how bad 2% chainlink variance could be", async function () {
+    const depositAmount = ethers.utils.parseEther("1");
+
     await afEth.setRatio(ethers.utils.parseEther("0"));
 
-    // TODO this should be breaking things. why isnt it?
-    await chainLinkCvxEthFeed.setLatestRoundData(
+    let tx = await chainLinkCvxEthFeed.setLatestRoundData(
       "1844674407370955166",
-      "169646397995984999999"
+      "1000000000000000000" // 1 eth
     );
+    await tx.wait();
 
-    // TODO finish logic below for testing it at 1.999999% variance and show that 2.00001 will fail
-
-    const depositAmount = ethers.utils.parseEther("1");
-    const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
+    tx = await afEth.deposit(0, await nowPlusOneMinute(), {
       value: depositAmount,
     });
-    await mintTx.wait();
-
-    const afEthBalanceBeforeRequest = await afEth.balanceOf(
-      accounts[0].address
+    await tx.wait();
+    tx = await chainLinkCvxEthFeed.setLatestRoundData(
+      "1844674407370955166",
+      "2000000000000000000" // 2 eth
     );
-    expect(afEthBalanceBeforeRequest).gt(0);
+    await tx.wait();
 
-    const requestWithdrawTx = await afEth.requestWithdraw(
-      await afEth.balanceOf(accounts[0].address)
-    );
-    await requestWithdrawTx.wait();
-
-    for (let i = 0; i < 17; i++) {
-      await incrementVlcvxEpoch();
-    }
-
-    const withdrawId = await afEth.latestWithdrawId();
-
-    const withdrawTx = await afEth.withdraw(
-      withdrawId,
-      0,
-      await nowPlusOneMinute()
-    );
-    await withdrawTx.wait();
+    tx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
+    await tx.wait();
   });
 
   it("Should mint, requestwithdraw, and withdraw afETH", async function () {
