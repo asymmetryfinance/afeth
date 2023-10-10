@@ -219,7 +219,6 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
             uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
                 block.timestamp
             );
-            ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
             (, uint32 date) = ILockedCvx(VLCVX_ADDRESS).epochs(
                 currentEpoch + 1
             );
