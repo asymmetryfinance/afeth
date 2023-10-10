@@ -807,7 +807,7 @@ describe("Test VotiumStrategy", async function () {
     const depositAmount = ethers.utils.parseEther("100");
     const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
+    const tx = await votiumStrategy.depositRewards(depositAmount, 0, {
       value: depositAmount,
     });
     await tx.wait();
@@ -860,7 +860,7 @@ describe("Test VotiumStrategy", async function () {
         .connect(accounts[5])
         .withdrawStuckTokens(ethers.constants.AddressZero)
     ).to.be.revertedWith("Ownable: caller is not the owner");
-    await expect(votiumStrategy.applyRewards([])).to.be.revertedWith(
+    await expect(votiumStrategy.applyRewards([], 0)).to.be.revertedWith(
       "NotRewarder()"
     );
     await expect(

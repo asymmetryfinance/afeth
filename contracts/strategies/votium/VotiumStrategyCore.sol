@@ -53,6 +53,8 @@ contract VotiumStrategyCore is
     AggregatorV3Interface public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
 
+    uint256 trackedCvxBalance;
+
     // used to add storage variables in the future
     uint256[20] private __gap;
 
@@ -71,6 +73,8 @@ contract VotiumStrategyCore is
     error NotOwner();
     error WithdrawNotReady();
     error AlreadyWithdrawn();
+    error NotManager();
+    error MinOut();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -84,6 +88,11 @@ contract VotiumStrategyCore is
 
     modifier onlyRewarder() {
         if (msg.sender != rewarder) revert NotRewarder();
+        _;
+    }
+
+    modifier onlyManager() {
+        if (address(manager) != address(0) && msg.sender != manager) revert NotManager();
         _;
     }
 
@@ -137,7 +146,7 @@ contract VotiumStrategyCore is
         (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
-        return total + IERC20(CVX_ADDRESS).balanceOf(address(this));
+        return total + trackedCvxBalance;
     }
 
     /**
@@ -203,10 +212,12 @@ contract VotiumStrategyCore is
      * @notice - Sells amount of eth from votium contract
      * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
-    function depositRewards(uint256 _amount) public payable {
+    function depositRewards(uint256 _amount, uint256 _cvxMinout) public payable onlyManager {
         uint256 cvxAmount = buyCvx(_amount);
+        if (cvxAmount < _cvxMinout) revert MinOut();
         IERC20(CVX_ADDRESS).safeApprove(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
+        trackedCvxBalance -= cvxAmount;
         emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
     }
 
@@ -216,10 +227,12 @@ contract VotiumStrategyCore is
      * @param _token - Address of the token to withdraw
      */
     function withdrawStuckTokens(address _token) public onlyOwner {
+        uint256 tokenBalance = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(
             msg.sender,
-            IERC20(_token).balanceOf(address(this))
+            tokenBalance
         );
+        if(_token == CVX_ADDRESS) trackedCvxBalance -= tokenBalance;
     }
 
     /**
@@ -243,6 +256,7 @@ contract VotiumStrategyCore is
         );
         uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
         cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;
+        trackedCvxBalance += cvxAmountOut;
     }
 
     /**
@@ -265,6 +279,7 @@ contract VotiumStrategyCore is
             0 // this is handled at the afEth level
         );
         ethAmountOut = address(this).balance - ethBalanceBefore;
+        trackedCvxBalance -= _cvxAmountIn;
     }
 
     /**
@@ -272,7 +287,7 @@ contract VotiumStrategyCore is
      * @dev - Causes price to go up
      * @param _swapsData - Array of SwapData for 0x swaps
      */
-    function applyRewards(SwapData[] calldata _swapsData) public onlyRewarder {
+    function applyRewards(SwapData[] calldata _swapsData, uint256 _cvxMinout) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
@@ -304,7 +319,7 @@ contract VotiumStrategyCore is
 
         if (address(manager) != address(0))
             IAfEth(manager).depositRewards{value: ethReceived}(ethReceived);
-        else depositRewards(ethReceived);
+        else depositRewards(ethReceived, _cvxMinout);
     }
 
     /**
