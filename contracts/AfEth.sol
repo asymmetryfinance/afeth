@@ -178,7 +178,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         console.log('totalValue', totalValue);
         console.log('msg.value', msg.value);
 
-        uint256 amountToMint = msg.value / priceBeforeDeposit;
+        uint256 amountToMint = (msg.value * 1e18) / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
         console.log('deposit', amountToMint);
