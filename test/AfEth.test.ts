@@ -92,13 +92,6 @@ describe("Test AfEth", async function () {
 
     const multiSigWst = wstEthDerivative.connect(multiSigSigner);
     await multiSigWst.setChainlinkFeed(chainLinkWstFeed.address);
-    // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await afEth
-      .connect(accounts[initialStakeAccount])
-      .deposit(0, await nowPlusOneMinute(), {
-        value: initialStake,
-      });
-    await tx.wait();
 
     const chainLinkCvxEthFeedFactory = await ethers.getContractFactory(
       "ChainLinkCvxEthFeedMock"
@@ -213,21 +206,96 @@ describe("Test AfEth", async function () {
 
   it.only("Should show how bad 2% chainlink variance could be", async function () {
     let tx;
-    const startingPrice = BigNumber.from(ethers.utils.parseEther("0.0015"));
+
+    const user0AfEth = afEth.connect(accounts[0]);
+    const user1AfEth = afEth.connect(accounts[1]);
+
+    const startingPrice = BigNumber.from(ethers.utils.parseEther("0.00165"));
+
     await setCvxAmmPrice(startingPrice);
     tx = await chainLinkCvxEthFeed.setLatestRoundData(
       "1844674407370955166",
-      startingPrice
+      BigNumber.from(ethers.utils.parseEther("0.1"))
     );
     await tx.wait();
 
     const depositAmount = ethers.utils.parseEther("1");
 
-    await afEth.setRatio(ethers.utils.parseEther("0"));
+    await afEth.setRatio(ethers.utils.parseEther("0.5"));
 
-    tx = await afEth.deposit(0, await nowPlusOneMinute(), {
+    tx = await user0AfEth.deposit(0, await nowPlusOneMinute(), {
       value: depositAmount,
     });
+    await tx.wait();
+
+    const newPrice = BigNumber.from(ethers.utils.parseEther("0.000001"));
+    tx = await chainLinkCvxEthFeed.setLatestRoundData(
+      "1844674407370955166",
+      newPrice
+    );
+    await tx.wait();
+
+    tx = await user1AfEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
+    await tx.wait();
+
+    let requestWithdrawTx = await user0AfEth.requestWithdraw(
+      await afEth.balanceOf(accounts[0].address)
+    );
+    await requestWithdrawTx.wait();
+    const user0WithdrawId = await user0AfEth.latestWithdrawId();
+
+    requestWithdrawTx = await user1AfEth.requestWithdraw(
+      await afEth.balanceOf(accounts[1].address)
+    );
+    await requestWithdrawTx.wait();
+    const user1WithdrawId = await user1AfEth.latestWithdrawId();
+
+    for (let i = 0; i < 17; i++) {
+      await incrementVlcvxEpoch();
+    }
+
+    const user0EthBalanceBefore = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+    const user1EthBalanceBefore = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+
+    let withdrawTx = await user0AfEth.withdraw(
+      user0WithdrawId,
+      0,
+      await nowPlusOneMinute()
+    );
+    await withdrawTx.wait();
+    console.log('about to set price again')
+    await setCvxAmmPrice(BigNumber.from(ethers.utils.parseEther("0.00165")));
+    tx = await chainLinkCvxEthFeed.setLatestRoundData(
+      "1844674407370955166",
+      BigNumber.from(ethers.utils.parseEther("0.00165"))
+    );
+    await tx.wait();
+
+    withdrawTx = await user1AfEth.withdraw(
+      user1WithdrawId,
+      0,
+      await nowPlusOneMinute()
+    );
+    await withdrawTx.wait();
+
+    const user0EthBalanceAfter = await ethers.provider.getBalance(
+      accounts[0].address
+    );
+    const user1EthBalanceAfter = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+
+    const ethReceived0 = user0EthBalanceAfter.sub(user0EthBalanceBefore);
+    const ethReceived1 = user1EthBalanceAfter.sub(user1EthBalanceBefore);
+
+    console.log("ethReceived0", ethReceived0.toString());
+    console.log("ethReceived1", ethReceived1.toString());
   });
 
   it("Should mint, requestwithdraw, and withdraw afETH", async function () {

@@ -166,17 +166,22 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             : 0;
         uint256 vValue = (amount * (1e18 - ratio)) / 1e18;
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
+
         totalValue +=
             (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) +
             (vMinted * vStrategy.price(true));
+
         trackedvStrategyBalance += vMinted;
         trackedsafEthBalance += sMinted;
         if (totalValue == 0) revert FailedToDeposit();
+        
+        // console.log('totalValue', totalValue);
+        // console.log('msg.value', msg.value);
+
         uint256 amountToMint = totalValue / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
         console.log('deposit', amountToMint);
-
     }
 
     /**
