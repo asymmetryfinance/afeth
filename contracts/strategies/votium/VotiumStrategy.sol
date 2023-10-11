@@ -42,6 +42,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         mintAmount = ((cvxAmount * 1e18) / priceBefore);
+
+        uint256 cvxBuyRate = ((msg.value * 1e18) / cvxAmount);
+        console.log('cvxBuyRate:', cvxBuyRate);
         _mint(msg.sender, mintAmount);
         trackedCvxBalance -= cvxAmount;
     }

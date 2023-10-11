@@ -14,6 +14,8 @@ import {
 } from "./helpers/helpers";
 import { BigNumber } from "ethers";
 import { safEthAbi } from "./abis/safEthAbi";
+import { crvPoolAbi } from "./abis/crvPoolAbi";
+import { erc20Abi } from "./abis/erc20Abi";
 
 describe("Test AfEth", async function () {
   let afEth: AfEth;
@@ -21,6 +23,8 @@ describe("Test AfEth", async function () {
   let safEth: any;
   let accounts: SignerWithAddress[];
   let chainLinkCvxEthFeed: any;
+  let cvxCrvPool: any;
+  let cvxToken: any;
 
   const initialStake = ethers.utils.parseEther(".1");
   const initialStakeAccount = 11;
@@ -108,6 +112,39 @@ describe("Test AfEth", async function () {
       "0x6732efaf6f39926346bef8b821a04b6361c4f3e5",
       accounts[0]
     );
+    cvxCrvPool = await ethers.getContractAt(
+      crvPoolAbi,
+      "0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4",
+      accounts[0]
+    );
+    cvxToken = await ethers.getContractAt(
+      erc20Abi,
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b",
+      accounts[0]
+    );
+  };
+
+  const setCvxAmmPrice = async (newPrice: BigNumber) => {
+    // small trade to get initial pool price
+    const tinyTradeAmount = ethers.utils.parseEther("0.0001");
+
+    console.log("setCvxAmmPrice");
+
+    const cvxBalanceBefore = await cvxToken.balanceOf(accounts[0].address);
+    const tx = await cvxCrvPool.exchange_underlying(0, 1, tinyTradeAmount, 0, {
+      value: tinyTradeAmount,
+    });
+    await tx.wait();
+    const cvxBalanceAfter = await cvxToken.balanceOf(accounts[0].address);
+
+    const cvxReceived = cvxBalanceAfter.sub(cvxBalanceBefore);
+
+    console.log("cvxReceived", cvxReceived.toString());
+    const ethPerCvxBuyRate = tinyTradeAmount
+      .mul("1000000000000000000")
+      .div(cvxReceived);
+
+    console.log("tests ethPerCvxBuyRate", ethPerCvxBuyRate.toString());
   };
 
   beforeEach(
@@ -115,30 +152,28 @@ describe("Test AfEth", async function () {
   );
 
   it.only("Should show how bad 2% chainlink variance could be", async function () {
+    let tx;
+    await setCvxAmmPrice("10000000");
+
     const depositAmount = ethers.utils.parseEther("1");
 
     await afEth.setRatio(ethers.utils.parseEther("0"));
 
-    let tx = await chainLinkCvxEthFeed.setLatestRoundData(
-      "1844674407370955166",
-      "1000000000000000000" // 1 eth
-    );
-    await tx.wait();
-
     tx = await afEth.deposit(0, await nowPlusOneMinute(), {
       value: depositAmount,
     });
-    await tx.wait();
-    tx = await chainLinkCvxEthFeed.setLatestRoundData(
-      "1844674407370955166",
-      "2000000000000000000" // 2 eth
-    );
-    await tx.wait();
 
-    tx = await afEth.deposit(0, await nowPlusOneMinute(), {
-      value: depositAmount,
-    });
-    await tx.wait();
+    // await tx.wait();
+    // tx = await chainLinkCvxEthFeed.setLatestRoundData(
+    //   "1844674407370955166",
+    //   "2000000000000000000" // 2 eth
+    // );
+    // await tx.wait();
+
+    // tx = await afEth.deposit(0, await nowPlusOneMinute(), {
+    //   value: depositAmount,
+    // });
+    // await tx.wait();
   });
 
   it("Should mint, requestwithdraw, and withdraw afETH", async function () {
