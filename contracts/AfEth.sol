@@ -175,10 +175,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         trackedsafEthBalance += sMinted;
         if (totalValue == 0) revert FailedToDeposit();
         
-        // console.log('totalValue', totalValue);
-        // console.log('msg.value', msg.value);
+        console.log('totalValue', totalValue);
+        console.log('msg.value', msg.value);
 
-        uint256 amountToMint = totalValue / priceBeforeDeposit;
+        uint256 amountToMint = msg.value / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
         console.log('deposit', amountToMint);
