@@ -125,13 +125,41 @@ describe("Test AfEth", async function () {
   };
 
   const setCvxAmmPrice = async (newPrice: BigNumber) => {
+    let tx;
+    const cvxWhaleAddress = "0xf977814e90da44bfa03b6295a0616a897441acec";
+
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [cvxWhaleAddress],
+    });
+    const whaleSigner = cvxToken.connect(
+      await ethers.getSigner(cvxWhaleAddress)
+    );
+
+    // send whale 1 eth
+    tx = await accounts[0].sendTransaction({
+      to: cvxWhaleAddress,
+      value: "1000000000000000000",
+    });
+
+    console.log(
+      "about to transfer cvx",
+      await cvxToken.balanceOf(cvxWhaleAddress)
+    );
+    tx = await whaleSigner.transfer(
+      accounts[0].address,
+      await cvxToken.balanceOf(cvxWhaleAddress)
+    );
+    await tx.wait();
+    console.log("cvx sent");
+
     // small trade to get initial pool price
     const tinyTradeAmount = ethers.utils.parseEther("0.0001");
 
     console.log("setCvxAmmPrice");
 
     const cvxBalanceBefore = await cvxToken.balanceOf(accounts[0].address);
-    const tx = await cvxCrvPool.exchange_underlying(0, 1, tinyTradeAmount, 0, {
+    tx = await cvxCrvPool.exchange_underlying(0, 1, tinyTradeAmount, 0, {
       value: tinyTradeAmount,
     });
     await tx.wait();
@@ -140,11 +168,63 @@ describe("Test AfEth", async function () {
     const cvxReceived = cvxBalanceAfter.sub(cvxBalanceBefore);
 
     console.log("cvxReceived", cvxReceived.toString());
-    const ethPerCvxBuyRate = tinyTradeAmount
+    const startingPrice = tinyTradeAmount
       .mul("1000000000000000000")
       .div(cvxReceived);
 
-    console.log("tests ethPerCvxBuyRate", ethPerCvxBuyRate.toString());
+    console.log("tests ethPerCvxBuyRate", startingPrice.toString());
+
+    const tradePriceUp = newPrice.gt(startingPrice);
+
+    console.log("tradePriceUp", tradePriceUp);
+
+    const ethSellAmount = ethers.utils.parseEther("10");
+    const cvxSellAmount = ethers.utils.parseEther("10000");
+
+    await cvxToken.approve(cvxCrvPool.address, "999999999999999999999999");
+
+    let currentPrice;
+    while (true) {
+      console.log("trading");
+      if (tradePriceUp) {
+        const cvxBalanceBefore = await cvxToken.balanceOf(accounts[0].address);
+        tx = await cvxCrvPool.exchange_underlying(0, 1, ethSellAmount, 0, {
+          value: ethSellAmount,
+        });
+        await tx.wait();
+        const cvxBalanceAfter = await cvxToken.balanceOf(accounts[0].address);
+        const cvxReceived = cvxBalanceAfter.sub(cvxBalanceBefore);
+        currentPrice = ethSellAmount
+          .mul("1000000000000000000")
+          .div(cvxReceived);
+      } else {
+        console.log("trading down 1");
+        const ethBalanceBefore = await ethers.provider.getBalance(
+          accounts[0].address
+        );
+        tx = await cvxCrvPool.exchange_underlying(1, 0, cvxSellAmount, 0);
+        await tx.wait();
+        const ethBalanceAfter = await ethers.provider.getBalance(
+          accounts[0].address
+        );
+        console.log("trading down 3");
+        const ethReceived = ethBalanceAfter.sub(ethBalanceBefore);
+        currentPrice = ethReceived
+          .mul("1000000000000000000")
+          .div(cvxSellAmount);
+      }
+
+      console.log(
+        "currentPrice",
+        currentPrice.toString(),
+        "newPrice",
+        newPrice.toString()
+      );
+
+      // check if done
+      if (tradePriceUp && currentPrice.gte(newPrice)) break;
+      if (!tradePriceUp && currentPrice.lte(newPrice)) break;
+    }
   };
 
   beforeEach(
@@ -153,7 +233,7 @@ describe("Test AfEth", async function () {
 
   it.only("Should show how bad 2% chainlink variance could be", async function () {
     let tx;
-    await setCvxAmmPrice("10000000");
+    await setCvxAmmPrice(BigNumber.from("1674834828893404"));
 
     const depositAmount = ethers.utils.parseEther("1");
 
