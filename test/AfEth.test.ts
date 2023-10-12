@@ -107,6 +107,7 @@ describe("Test AfEth", async function () {
       "0x6732efaf6f39926346bef8b821a04b6361c4f3e5",
       accounts[0]
     );
+    await afEth.setRewarderAddress(accounts[0].address);
   };
 
   beforeEach(

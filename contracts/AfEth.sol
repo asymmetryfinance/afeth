@@ -41,6 +41,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error Paused();
     error BelowMinOut();
     error StaleAction();
+    error NotManagerOrRewarder();
 
     event WithdrawRequest(
         address indexed account,
@@ -53,6 +54,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address private constant VLCVX_ADDRESS =
         0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
+    address rewarder;
 
     uint256 public pendingSafEthWithdraws;
 
@@ -61,6 +63,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
+        _;
+    }
+
+    modifier onlyVotiumOrRewarder() {
+        if (msg.sender != rewarder && msg.sender != vEthAddress)
+            revert NotManagerOrRewarder();
         _;
     }
 
@@ -86,6 +94,14 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      */
     function setStrategyAddress(address _vEthAddress) external onlyOwner {
         vEthAddress = _vEthAddress;
+    }
+
+    /**
+     * @notice - Sets the rewarder address
+     * @param _rewarder - rewarder address
+     */
+    function setRewarderAddress(address _rewarder) external onlyOwner {
+        rewarder = _rewarder;
     }
 
     /**
@@ -295,7 +311,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 _amount,
         uint256 _safEthMinout,
         uint256 _cvxMinout
-    ) public payable {
+    ) public payable onlyVotiumOrRewarder {
         require(!pauseDeposit, "paused");
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;
