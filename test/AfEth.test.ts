@@ -204,6 +204,18 @@ describe("Test AfEth", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
+  it.only("Should show that an incorrect cvx price is ok if trueRatio ~= ratio", async function () {
+
+  });
+
+  it.only("Should show the problem occuring with ratios very far apart and a very incorrect cvx price", async function () {
+
+  });
+
+  it.only("Should show that a 2% cvx price difference with a very far apart ratio is ok", async function () {
+
+  });
+
   it.only("Should show how bad 2% chainlink variance could be", async function () {
     let tx;
 
