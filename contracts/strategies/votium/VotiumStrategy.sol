@@ -146,8 +146,10 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn = true;
         // solhint-disable-next-line
-        (bool sent, ) = msg.sender.call{value: ethReceived}("");
-        if (!sent) revert FailedToSend();
+        if (ethReceived > 0) {
+            (bool sent, ) = msg.sender.call{value: ethReceived}("");
+            if (!sent) revert FailedToSend();
+        }
     }
 
     /**

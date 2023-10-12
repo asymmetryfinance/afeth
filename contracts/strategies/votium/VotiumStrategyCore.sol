@@ -213,7 +213,9 @@ contract VotiumStrategyCore is
     /**
      * @notice - Sells amount of eth from votium contract
      * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
-     *  */
+     * @param _amount - Amount of eth to sell for cvx
+     * @param _cvxMinout - Minimum amount of cvx to receive
+     * */
     function depositRewards(
         uint256 _amount,
         uint256 _cvxMinout

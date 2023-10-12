@@ -134,6 +134,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
         @notice - Get's the price of afEth
         @dev - Checks each strategy and calculates the total value in ETH divided by supply of afETH tokens
+        @param _validate - Validates the chainlink oracle price
         @return - Price of afEth
     */
     function price(bool _validate) public view returns (uint256) {
@@ -150,6 +151,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - Deposits into each strategy
         @dev - This is the entry into the protocol
         @param _minout - Minimum amount of afEth to mint
+        @param _deadline - Sets a deadline for the deposit
     */
     function deposit(uint256 _minout, uint256 _deadline) external payable virtual {
         if (pauseDeposit) revert Paused();
@@ -245,6 +247,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - Withdraw from each strategy
         @param _withdrawId - Id of the withdraw request
         @param _minout - Minimum amount of ETH to receive
+        @param _deadline - Sets a deadline for the deposit
     */
     function withdraw(
         uint256 _withdrawId,
@@ -277,6 +280,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @notice - sells _amount of eth from votium contract
      * @dev - puts it into safEthStrategy or votiumStrategy, whichever is underweight.\
      * @param _amount - amount of eth to sell
+     * @param _safEthMinout - Minimum amount of safEth to receive from rewards when buying safEth
+     * @param _cvxMinout - Minimum amount of cvx to receive from rewards when buying vAfEth
      */
     function depositRewards(uint256 _amount, uint256 _safEthMinout, uint256 _cvxMinout) public payable {
         require(!pauseDeposit, "paused");
