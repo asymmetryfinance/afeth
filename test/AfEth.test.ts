@@ -117,6 +117,7 @@ describe("Test AfEth", async function () {
     );
   };
 
+  // utility for setting the cvx price on the curve amm to whatever we want
   const setCvxAmmPrice = async (newPrice: BigNumber) => {
     let tx;
     const cvxWhaleAddress = "0xf977814e90da44bfa03b6295a0616a897441acec";
@@ -222,13 +223,14 @@ describe("Test AfEth", async function () {
     // trade cvx price on curve amm down to startingCvxPrice
     await setCvxAmmPrice(startingCvxPrice);
 
-    // set price on the mock chainlink oracle to be roughly the same as curve amm price
+    // set chainlink oracle price to be roughly equal to curve amm price
     tx = await chainLinkCvxEthFeed.setLatestRoundData(
       "1844674407370955166",
       startingCvxPrice
     );
     await tx.wait();
 
+    // deposit for user 1 and see how much afEth they receive
     const user1AfEthBalanceBefore = await afEth.balanceOf(accounts[1].address);
     tx = await user1AfEth.deposit(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("1"),
@@ -239,14 +241,14 @@ describe("Test AfEth", async function () {
       user1AfEthBalanceBefore
     );
 
-    console.log("user1AfEthReceived", user1AfEthReceived);
-
+    // set chainlink oracle price to be different from the amm price
     tx = await chainLinkCvxEthFeed.setLatestRoundData(
       "1844674407370955166",
       incorrectCvxChainlinkPrice
     );
     await tx.wait();
 
+    // deposit for user 2 and see how much afEth they receive
     const user2AfEthBalanceBefore = await afEth.balanceOf(accounts[2].address);
     tx = await user2AfEth.deposit(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("1"),
@@ -257,7 +259,9 @@ describe("Test AfEth", async function () {
       user2AfEthBalanceBefore
     );
 
-    console.log("user2AfEthReceived", user2AfEthReceived);
+    // both users receive the same amount of afEth even though the cvx oracle price is very different from the amm price
+    expect(user1AfEthReceived).eq("994503838354382793");
+    expect(user2AfEthReceived).eq("994365556263853647");
   });
 
   it("Should show the problem occuring with ratios very far apart and a very incorrect cvx price", async function () {});
