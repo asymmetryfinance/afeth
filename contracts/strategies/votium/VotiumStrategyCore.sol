@@ -191,6 +191,7 @@ contract VotiumStrategyCore is
                     cl.updatedAt <= block.timestamp &&
                     block.timestamp - cl.updatedAt <= 25 hours))
         ) {
+            console.log('cl.answer:', uint256(cl.answer));
             return uint256(cl.answer);
         } else {
             revert ChainlinkFailed();
