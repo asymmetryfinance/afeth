@@ -16,7 +16,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../../external_interfaces/ISafEth.sol";
-import "hardhat/console.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
@@ -191,7 +190,6 @@ contract VotiumStrategyCore is
                     cl.updatedAt <= block.timestamp &&
                     block.timestamp - cl.updatedAt <= 25 hours))
         ) {
-            console.log('cl.answer:', uint256(cl.answer));
             return uint256(cl.answer);
         } else {
             revert ChainlinkFailed();

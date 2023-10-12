@@ -137,20 +137,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @return - Price of afEth
     */
     function price(bool _validate) public view returns (uint256) {
-        console.log('price');
         if (totalSupply() == 0) return 1e18;
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
         uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(_validate) *
             safEthBalanceMinusPending()) / 1e18;
         uint256 vEthValueInEth = (vEthStrategy.price(_validate) *
             trackedvStrategyBalance) / 1e18;
-            console.log('----price----');
-            console.log('vEthStrategy.price(_validate) ', vEthStrategy.price(_validate) );
-            console.log('trackedvStrategyBalance', trackedvStrategyBalance);
-            console.log('safEth approxPrice', ISafEth(SAF_ETH_ADDRESS).approxPrice(_validate));
-            console.log('safEthBalanceMinusPending, safEthBalanceMinusPending', safEthBalanceMinusPending());
-            console.log('totalSupply()', totalSupply());
-            console.log('-----------');
         return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply();
     }
 
@@ -163,7 +155,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (pauseDeposit) revert Paused();
         if (block.timestamp > _deadline) revert StaleAction();
         uint256 amount = msg.value;
-        uint256 totalValueMinted;
+        uint256 priceBeforeDeposit = price(true);
+        uint256 totalValue;
 
         AbstractStrategy vStrategy = AbstractStrategy(vEthAddress);
 
@@ -173,33 +166,15 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             : 0;
         uint256 vValue = (amount * (1e18 - ratio)) / 1e18;
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
-        console.log('----top----');
-        console.log('sMinted', sMinted);
-        console.log('vMinted', vMinted);
-        console.log('ISafEth(SAF_ETH_ADDRESS).approxPrice(true)', ISafEth(SAF_ETH_ADDRESS).approxPrice(true));
-        console.log('vStrategy.price(true)', vStrategy.price(true));
-        console.log('-----------');
-        uint256 totalSafEthValueMinted = (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) / 1e18;
-        uint256 totalVstrategyValueMinted = (vMinted * vStrategy.price(true)) / 1e18;
-
-        totalValueMinted = totalSafEthValueMinted + totalVstrategyValueMinted;
-
-        if (totalValueMinted == 0) revert FailedToDeposit();
-        
-
-        uint256 amountToMintFromSafEth = (totalSafEthValueMinted * 1e18) / price(true);
-        uint256 amountToMintFromVstrategy = (totalVstrategyValueMinted * 1e18) / price(true);
-
-
-
-
-        uint256 amountToMint = amountToMintFromSafEth + amountToMintFromVstrategy;
-
+        totalValue +=
+            (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) +
+            (vMinted * vStrategy.price(true));
         trackedvStrategyBalance += vMinted;
         trackedsafEthBalance += sMinted;
+        if (totalValue == 0) revert FailedToDeposit();
+        uint256 amountToMint = totalValue / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
-        console.log('amountToMint', amountToMint);
     }
 
     /**
