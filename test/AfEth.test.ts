@@ -264,7 +264,69 @@ describe("Test AfEth", async function () {
     expect(user2AfEthReceived).eq("994365556263853647");
   });
 
-  it("Should show the problem occuring with ratios very far apart and a very incorrect cvx price", async function () {});
+  it.only("Should show the problem occuring with ratios very far apart and a very incorrect cvx price", async function () {
+    const startingCvxPrice = BigNumber.from(ethers.utils.parseEther("0.00165"));
+    const incorrectCvxChainlinkPrice = BigNumber.from(
+      ethers.utils.parseEther("0.00365")
+    );
+    const startingRatio = ethers.utils.parseEther("0.5");
+    const differentRatio = ethers.utils.parseEther("0.1");
+
+    const user1AfEth = afEth.connect(accounts[1]);
+    const user2AfEth = afEth.connect(accounts[2]);
+
+    let tx;
+
+    tx = await afEth.setRatio(startingRatio);
+    await tx.wait();
+
+    // trade cvx price on curve amm down to startingCvxPrice
+    await setCvxAmmPrice(startingCvxPrice);
+
+    // set chainlink oracle price to be roughly equal to curve amm price
+    tx = await chainLinkCvxEthFeed.setLatestRoundData(
+      "1844674407370955166",
+      startingCvxPrice
+    );
+    await tx.wait();
+
+    // deposit for user 1 and see how much afEth they receive
+    const user1AfEthBalanceBefore = await afEth.balanceOf(accounts[1].address);
+    tx = await user1AfEth.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+    const user1AfEthBalanceAfter = await afEth.balanceOf(accounts[1].address);
+    const user1AfEthReceived = user1AfEthBalanceAfter.sub(
+      user1AfEthBalanceBefore
+    );
+
+    // set chainlink oracle price to be different from the amm price
+    tx = await chainLinkCvxEthFeed.setLatestRoundData(
+      "1844674407370955166",
+      incorrectCvxChainlinkPrice
+    );
+    await tx.wait();
+
+    // make the ratio much different from the current true ratio
+    tx = await afEth.setRatio(differentRatio);
+    await tx.wait();
+
+    // deposit for user 2 and see how much afEth they receive
+    const user2AfEthBalanceBefore = await afEth.balanceOf(accounts[2].address);
+    tx = await user2AfEth.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+    const user2AfEthBalanceAfter = await afEth.balanceOf(accounts[2].address);
+    const user2AfEthReceived = user2AfEthBalanceAfter.sub(
+      user2AfEthBalanceBefore
+    );
+
+    // both users receive much different amounts of afEth even though the curve price was the same
+    expect(user1AfEthReceived).eq("994503838354382793");
+    expect(user2AfEthReceived).eq("1293329974781304536");
+  });
 
   it("Should show that a 2% cvx price difference with a very far apart ratio is ok", async function () {});
 
