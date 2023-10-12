@@ -205,7 +205,7 @@ describe("Test AfEth", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it.only("Should show that an incorrect cvx price is ok if trueRatio ~= ratio", async function () {
+  it.only("Should show its ok with to have bad oracle price if trueRatio ~= ratio", async function () {
     const startingCvxPrice = BigNumber.from(ethers.utils.parseEther("0.00165"));
     const incorrectCvxChainlinkPrice = BigNumber.from(
       ethers.utils.parseEther("0.00365")
@@ -328,7 +328,69 @@ describe("Test AfEth", async function () {
     expect(user2AfEthReceived).eq("1293329974781304536");
   });
 
-  it("Should show that a 2% cvx price difference with a very far apart ratio is ok", async function () {});
+  it.only("Should show that a 2% cvx price difference with a very far apart ratio is ok", async function () {
+    const startingCvxPrice = BigNumber.from(ethers.utils.parseEther("0.00165"));
+    const twoPercentHigherPrice = BigNumber.from(
+      ethers.utils.parseEther("0.001683")
+    );
+
+    const startingRatio = ethers.utils.parseEther("0.95");
+    const differentRatio = ethers.utils.parseEther("0.05");
+
+    const user1AfEth = afEth.connect(accounts[1]);
+    const user2AfEth = afEth.connect(accounts[2]);
+
+    let tx;
+
+    tx = await afEth.setRatio(startingRatio);
+    await tx.wait();
+
+    // trade cvx price on curve amm down to startingCvxPrice
+    await setCvxAmmPrice(startingCvxPrice);
+
+    // set chainlink oracle price to be roughly equal to curve amm price
+    tx = await chainLinkCvxEthFeed.setLatestRoundData(
+      "1844674407370955166",
+      startingCvxPrice
+    );
+    await tx.wait();
+
+    // deposit for user 1 and see how much afEth they receive
+    const user1AfEthBalanceBefore = await afEth.balanceOf(accounts[1].address);
+    tx = await user1AfEth.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("2"),
+    });
+    await tx.wait();
+    const user1AfEthBalanceAfter = await afEth.balanceOf(accounts[1].address);
+    const user1AfEthReceived = user1AfEthBalanceAfter.sub(
+      user1AfEthBalanceBefore
+    );
+
+    // set chainlink oracle price to be different from the amm price
+    tx = await chainLinkCvxEthFeed.setLatestRoundData(
+      "1844674407370955166",
+      twoPercentHigherPrice
+    );
+    await tx.wait();
+
+    // make the ratio much different from the current true ratio
+    tx = await afEth.setRatio(differentRatio);
+    await tx.wait();
+
+    // deposit for user 2 and see how much afEth they receive
+    const user2AfEthBalanceBefore = await afEth.balanceOf(accounts[2].address);
+    tx = await user2AfEth.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+    const user2AfEthBalanceAfter = await afEth.balanceOf(accounts[2].address);
+    const user2AfEthReceived = user2AfEthBalanceAfter.sub(
+      user2AfEthBalanceBefore
+    );
+
+    expect(user1AfEthReceived).eq("1991783933387693602");
+    expect(user2AfEthReceived).eq("1010853768253516493"); // this too much differennce?? 1% ?
+  });
 
   it("Should show how bad 2% chainlink variance could be", async function () {
     let tx;
