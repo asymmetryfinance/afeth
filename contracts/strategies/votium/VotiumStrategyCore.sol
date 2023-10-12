@@ -152,8 +152,8 @@ contract VotiumStrategyCore is
     }
 
     /**
-     * @notice - Gets price of afEth in cvx
-     * @return - Price of afEth in cvx
+     * @notice - Gets price of vAfEth in cvx
+     * @return - Price of vAfEth in cvx
      */
     function cvxPerVotium() public view returns (uint256) {
         uint256 supply = totalSupply();
