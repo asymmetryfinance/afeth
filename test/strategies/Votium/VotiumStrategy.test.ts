@@ -11,7 +11,6 @@ import { BigNumber } from "ethers";
 import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
-import exp from "constants";
 
 describe("Test VotiumStrategy", async function () {
   let votiumStrategy: VotiumStrategy & VotiumStrategyCore;

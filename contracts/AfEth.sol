@@ -140,8 +140,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function price(bool _validate) public view returns (uint256) {
         if (totalSupply() == 0) return 1e18;
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
-        uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(_validate) *
-            safEthBalanceMinusPending()) / 1e18;
+        uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(
+            _validate
+        ) * safEthBalanceMinusPending()) / 1e18;
         uint256 vEthValueInEth = (vEthStrategy.price(_validate) *
             trackedvStrategyBalance) / 1e18;
         return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply();
@@ -153,7 +154,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @param _minout - Minimum amount of afEth to mint
         @param _deadline - Sets a deadline for the deposit
     */
-    function deposit(uint256 _minout, uint256 _deadline) external payable virtual {
+    function deposit(
+        uint256 _minout,
+        uint256 _deadline
+    ) external payable virtual {
         if (pauseDeposit) revert Paused();
         if (block.timestamp > _deadline) revert StaleAction();
         uint256 amount = msg.value;
@@ -191,7 +195,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
         _burn(msg.sender, _amount);
 
-        uint256 votiumWithdrawAmount = (withdrawRatio * trackedvStrategyBalance) / 1e18;
+        uint256 votiumWithdrawAmount = (withdrawRatio *
+            trackedvStrategyBalance) / 1e18;
         uint256 withdrawTimeBefore = withdrawTime(votiumWithdrawAmount);
         uint256 vEthWithdrawId = AbstractStrategy(vEthAddress).requestWithdraw(
             votiumWithdrawAmount
@@ -261,7 +266,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
 
         if (withdrawInfo.safEthWithdrawAmount > 0) {
-            ISafEth(SAF_ETH_ADDRESS).unstake(withdrawInfo.safEthWithdrawAmount, 0);
+            ISafEth(SAF_ETH_ADDRESS).unstake(
+                withdrawInfo.safEthWithdrawAmount,
+                0
+            );
             trackedsafEthBalance -= withdrawInfo.safEthWithdrawAmount;
         }
         AbstractStrategy(vEthAddress).withdraw(withdrawInfo.vEthWithdrawId);
@@ -283,7 +291,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _safEthMinout - Minimum amount of safEth to receive from rewards when buying safEth
      * @param _cvxMinout - Minimum amount of cvx to receive from rewards when buying vAfEth
      */
-    function depositRewards(uint256 _amount, uint256 _safEthMinout, uint256 _cvxMinout) public payable {
+    function depositRewards(
+        uint256 _amount,
+        uint256 _safEthMinout,
+        uint256 _cvxMinout
+    ) public payable {
         require(!pauseDeposit, "paused");
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (_amount * protocolFee) / 1e18;
@@ -296,12 +308,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 safEthTvl = (ISafEth(SAF_ETH_ADDRESS).approxPrice(true) *
             safEthBalanceMinusPending()) / 1e18;
         uint256 votiumTvl = ((votiumStrategy.cvxPerVotium() *
-            votiumStrategy.ethPerCvx(true)) *
-            trackedvStrategyBalance) / 1e36;
+            votiumStrategy.ethPerCvx(true)) * trackedvStrategyBalance) / 1e36;
         uint256 totalTvl = (safEthTvl + votiumTvl);
         uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
         if (safEthRatio < ratio) {
-            uint256 safEthReceived = ISafEth(SAF_ETH_ADDRESS).stake{value: amount}(_safEthMinout);
+            uint256 safEthReceived = ISafEth(SAF_ETH_ADDRESS).stake{
+                value: amount
+            }(_safEthMinout);
             trackedsafEthBalance += safEthReceived;
         } else {
             votiumStrategy.depositRewards{value: amount}(amount, _cvxMinout);
@@ -309,9 +322,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     function safEthBalanceMinusPending() public view returns (uint256) {
-        return
-            trackedsafEthBalance -
-            pendingSafEthWithdraws;
+        return trackedsafEthBalance - pendingSafEthWithdraws;
     }
 
     receive() external payable {}

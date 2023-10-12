@@ -95,5 +95,4 @@ interface ILockedCvx {
     function rewardsDuration() external view returns (uint256);
 
     function isShutdown() external view returns (bool);
-
 }
