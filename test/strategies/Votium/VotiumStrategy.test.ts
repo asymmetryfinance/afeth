@@ -731,7 +731,7 @@ describe("Test VotiumStrategy", async function () {
 
     expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
   });
-  it.only("Should allow to withdraw from next epoch if cvx is ready", async function () {
+  it("Should allow to withdraw from next epoch if cvx is ready", async function () {
     const amount = ethers.utils.parseEther("1");
     let tx = await votiumStrategy.deposit({
       value: amount,
