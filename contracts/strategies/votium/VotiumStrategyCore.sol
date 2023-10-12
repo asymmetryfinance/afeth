@@ -235,11 +235,11 @@ contract VotiumStrategyCore is
      */
     function withdrawStuckTokens(address _token) public onlyOwner {
         uint256 tokenBalance = IERC20(_token).balanceOf(address(this));
-        if (_token == CVX_ADDRESS){
-            if(tokenBalance <= trackedCvxBalance) revert InvalidAmount();
+        if (_token == CVX_ADDRESS) {
+            if (tokenBalance <= trackedCvxBalance) revert InvalidAmount();
             tokenBalance -= trackedCvxBalance;
         }
-            
+
         IERC20(_token).safeTransfer(msg.sender, tokenBalance);
         if (_token == CVX_ADDRESS) trackedCvxBalance -= tokenBalance;
     }
@@ -295,9 +295,12 @@ contract VotiumStrategyCore is
      * @notice - Function for rewarder to sell all claimed token rewards and buy & lock more cvx
      * @dev - Causes price to go up
      * @param _swapsData - Array of SwapData for 0x swaps
+     * @param _safEthMinout - Minimum amount of safEth to mint from rewards
+     * @param _cvxMinout - Minimum amount of cvx to mint from rewards
      */
     function applyRewards(
         SwapData[] calldata _swapsData,
+        uint256 _safEthMinout,
         uint256 _cvxMinout
     ) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
@@ -330,7 +333,11 @@ contract VotiumStrategyCore is
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
         if (address(manager) != address(0))
-            IAfEth(manager).depositRewards{value: ethReceived}(ethReceived);
+            IAfEth(manager).depositRewards{value: ethReceived}(
+                ethReceived,
+                _safEthMinout,
+                _cvxMinout
+            );
         else depositRewards(ethReceived, _cvxMinout);
     }
 
