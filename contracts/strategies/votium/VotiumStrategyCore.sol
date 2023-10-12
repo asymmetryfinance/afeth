@@ -70,6 +70,7 @@ contract VotiumStrategyCore is
     error ChainlinkFailed();
     error NotRewarder();
     error InvalidLockedAmount();
+    error InvalidAmount();
     error NotOwner();
     error WithdrawNotReady();
     error AlreadyWithdrawn();
@@ -92,7 +93,8 @@ contract VotiumStrategyCore is
     }
 
     modifier onlyManager() {
-        if (address(manager) != address(0) && msg.sender != manager) revert NotManager();
+        if (address(manager) != address(0) && msg.sender != manager)
+            revert NotManager();
         _;
     }
 
@@ -157,7 +159,7 @@ contract VotiumStrategyCore is
         uint256 supply = totalSupply();
         uint256 totalCvx = cvxInSystem() - cvxUnlockObligations;
         if (supply == 0 || totalCvx == 0) return 1e18;
-        return totalCvx * 1e18 / supply;
+        return (totalCvx * 1e18) / supply;
     }
 
     /**
@@ -212,7 +214,10 @@ contract VotiumStrategyCore is
      * @notice - Sells amount of eth from votium contract
      * @dev - Puts it into safEthStrategy or votiumStrategy, whichever is underweight.
      *  */
-    function depositRewards(uint256 _amount, uint256 _cvxMinout) public payable onlyManager {
+    function depositRewards(
+        uint256 _amount,
+        uint256 _cvxMinout
+    ) public payable onlyManager {
         uint256 cvxAmount = buyCvx(_amount);
         if (cvxAmount < _cvxMinout) revert MinOut();
         IERC20(CVX_ADDRESS).safeApprove(VLCVX_ADDRESS, cvxAmount);
@@ -228,11 +233,13 @@ contract VotiumStrategyCore is
      */
     function withdrawStuckTokens(address _token) public onlyOwner {
         uint256 tokenBalance = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).safeTransfer(
-            msg.sender,
-            tokenBalance
-        );
-        if(_token == CVX_ADDRESS) trackedCvxBalance -= tokenBalance;
+        if (_token == CVX_ADDRESS){
+            if(tokenBalance <= trackedCvxBalance) revert InvalidAmount();
+            tokenBalance -= trackedCvxBalance;
+        }
+            
+        IERC20(_token).safeTransfer(msg.sender, tokenBalance);
+        if (_token == CVX_ADDRESS) trackedCvxBalance -= tokenBalance;
     }
 
     /**
@@ -287,7 +294,10 @@ contract VotiumStrategyCore is
      * @dev - Causes price to go up
      * @param _swapsData - Array of SwapData for 0x swaps
      */
-    function applyRewards(SwapData[] calldata _swapsData, uint256 _cvxMinout) public onlyRewarder {
+    function applyRewards(
+        SwapData[] calldata _swapsData,
+        uint256 _cvxMinout
+    ) public onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
