@@ -186,7 +186,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 sMinted = sValue > 0
             ? ISafEth(SAF_ETH_ADDRESS).stake{value: sValue}(0)
             : 0;
-        uint256 vValue = (amount * (1e18 - ratio)) / 1e18;
+        uint256 vValue = (amount - sValue);
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
         totalValue +=
             (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) +
