@@ -50,7 +50,7 @@ describe("Votium integration test", async function () {
     votiumStrategy = (await upgrades.deployProxy(votiumStrategyFactory, [
       ownerAccount.address,
       rewarderAccount.address,
-      ethers.constants.AddressZero, // TODO this should be an afEth mock but doesnt matter right now
+      ethers.constants.AddressZero, // for these tests to work manager needs to be set to 0
     ])) as VotiumStrategy;
     await votiumStrategy.deployed();
 
@@ -85,14 +85,13 @@ describe("Votium integration test", async function () {
           ethers.utils.parseEther("1")
         );
       }
-
       await increaseTime1Epoch(votiumStrategy);
     }
   });
 
   it("Should have tvl be equal to sum of all users tvl", async function () {
     const userAccounts = await getUserAccounts();
-    const price = await votiumStrategy.price();
+    const price = await votiumStrategy.price(true);
     const tvl = await getTvl(votiumStrategy);
 
     let totalUserBalances = ethers.BigNumber.from(0);

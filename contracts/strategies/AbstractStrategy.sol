@@ -10,6 +10,9 @@ abstract contract AbstractStrategy is
     ReentrancyGuardUpgradeable,
     ERC20Upgradeable
 {
+    // used to add storage variables in the future
+    uint256[20] private __gap;
+
     /// mint tokens with eth
     function deposit() external payable virtual returns (uint256);
 
@@ -28,7 +31,7 @@ abstract contract AbstractStrategy is
     ) external view virtual returns (bool);
 
     /// price in eth
-    function price() external view virtual returns (uint256);
+    function price(bool _validate) external view virtual returns (uint256);
 
     /// how long would it take to withdraw _amount if requesting withdraw now
     function withdrawTime(

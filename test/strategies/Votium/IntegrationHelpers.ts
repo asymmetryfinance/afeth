@@ -131,7 +131,6 @@ export const randomStakeUnstakeWithdraw = async (
   const stakeAmount = ethers.utils.parseEther(
     randomEthAmount(0, parseFloat(ethers.utils.formatEther(maxStakeAmount)))
   );
-
   await depositForUser(votiumStrategy, userAcount, stakeAmount);
 
   const votiumBalance = await votiumStrategy.balanceOf(userAcount.address);
@@ -154,7 +153,7 @@ export const randomStakeUnstakeWithdraw = async (
 
 export const getTvl = async (votiumStrategy: VotiumStrategy) => {
   const totalSupply = await votiumStrategy.totalSupply();
-  const price = await votiumStrategy.price();
+  const price = await votiumStrategy.price(true);
   return totalSupply.mul(price).div(ethers.utils.parseEther("1"));
 };
 

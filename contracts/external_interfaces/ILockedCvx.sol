@@ -93,4 +93,6 @@ interface ILockedCvx {
     function recoverERC20(address _tokenAddress, uint256 _tokenAmount) external;
 
     function rewardsDuration() external view returns (uint256);
+
+    function isShutdown() external view returns (bool);
 }

@@ -2,6 +2,7 @@ import { network, ethers, upgrades } from "hardhat";
 import { VotiumStrategy, VotiumStrategyCore } from "../../../typechain-types";
 import { expect } from "chai";
 import {
+  getCurrentEpoch,
   incrementVlcvxEpoch,
   oracleApplyRewards,
   requestWithdrawal,
@@ -730,6 +731,60 @@ describe("Test VotiumStrategy", async function () {
 
     expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
   });
+  it("Should allow to withdraw from next epoch if cvx is ready", async function () {
+    const amount = ethers.utils.parseEther("1");
+    let tx = await votiumStrategy.deposit({
+      value: amount,
+    });
+    await tx.wait();
+
+    const withdrawTime = await votiumStrategy.withdrawTime(amount);
+    let currentTimeStamp = (
+      await ethers.provider.getBlock(await ethers.provider.getBlockNumber())
+    ).timestamp;
+    expect(withdrawTime).gt(currentTimeStamp);
+    // pass enough epochs so the position is fully unlocked
+    for (let i = 0; i < 16; i++) {
+      await incrementVlcvxEpoch();
+    }
+    // Not enough epoch's should still not be passed time
+    currentTimeStamp = (
+      await ethers.provider.getBlock(await ethers.provider.getBlockNumber())
+    ).timestamp;
+    expect(withdrawTime).gt(currentTimeStamp);
+
+    // Should pass withdrawTime
+    await incrementVlcvxEpoch();
+    currentTimeStamp = (
+      await ethers.provider.getBlock(await ethers.provider.getBlockNumber())
+    ).timestamp;
+    expect(withdrawTime).lt(currentTimeStamp);
+
+    // burn half of balance
+    const withdrawId = await requestWithdrawal(
+      votiumStrategy,
+      await votiumStrategy.balanceOf(accounts[0].address)
+    );
+    let currentEpoch = await getCurrentEpoch();
+    let withdrawEpoch = (
+      await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+    ).epoch;
+    expect(currentEpoch).lt(withdrawEpoch);
+
+    // Should increase a single epoch to withdraw
+    await incrementVlcvxEpoch();
+
+    currentEpoch = await getCurrentEpoch();
+    withdrawEpoch = (
+      await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+    ).epoch;
+    expect(currentEpoch).eq(withdrawEpoch);
+
+    tx = await votiumStrategy.withdraw(withdrawId);
+    await tx.wait();
+
+    expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
+  });
   it("Should allow owner to withdraw stuck tokens with withdrawStuckTokens()", async function () {
     const stuckToken = "0xb620be8a1949aa9532e6a3510132864ef9bc3f82";
     const StuckTokenContract = await ethers.getContractAt(
@@ -751,7 +806,7 @@ describe("Test VotiumStrategy", async function () {
     const depositAmount = ethers.utils.parseEther("100");
     const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
-    const tx = await votiumStrategy.depositRewards(depositAmount, {
+    const tx = await votiumStrategy.depositRewards(depositAmount, 0, {
       value: depositAmount,
     });
     await tx.wait();
@@ -804,7 +859,7 @@ describe("Test VotiumStrategy", async function () {
         .connect(accounts[5])
         .withdrawStuckTokens(ethers.constants.AddressZero)
     ).to.be.revertedWith("Ownable: caller is not the owner");
-    await expect(votiumStrategy.applyRewards([])).to.be.revertedWith(
+    await expect(votiumStrategy.applyRewards([], 0, 0)).to.be.revertedWith(
       "NotRewarder()"
     );
     await expect(
