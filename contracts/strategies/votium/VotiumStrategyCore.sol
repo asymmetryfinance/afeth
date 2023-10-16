@@ -334,7 +334,6 @@ contract VotiumStrategyCore is
 
         if (address(manager) != address(0))
             IAfEth(manager).depositRewards{value: ethReceived}(
-                ethReceived,
                 _safEthMinout,
                 _cvxMinout
             );

@@ -303,24 +303,22 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
      * @notice - sells _amount of eth from votium contract
      * @dev - puts it into safEthStrategy or votiumStrategy, whichever is underweight.\
-     * @param _amount - amount of eth to sell
-     * @param _safEthMinout - Minimum amount of safEth to receive from rewards when buying safEth
+=     * @param _safEthMinout - Minimum amount of safEth to receive from rewards when buying safEth
      * @param _cvxMinout - Minimum amount of cvx to receive from rewards when buying vAfEth
      */
     function depositRewards(
-        uint256 _amount,
         uint256 _safEthMinout,
         uint256 _cvxMinout
     ) public payable onlyVotiumOrRewarder {
         require(!pauseDeposit, "paused");
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
-        uint256 feeAmount = (_amount * protocolFee) / 1e18;
+        uint256 feeAmount = (msg.value * protocolFee) / 1e18;
         if (feeAmount > 0) {
             // solhint-disable-next-line
             (bool sent, ) = feeAddress.call{value: feeAmount}("");
             if (!sent) revert FailedToSend();
         }
-        uint256 amount = _amount - feeAmount;
+        uint256 amount = msg.value - feeAmount;
         uint256 safEthTvl = (ISafEth(SAF_ETH_ADDRESS).approxPrice(true) *
             safEthBalanceMinusPending()) / 1e18;
         uint256 votiumTvl = ((votiumStrategy.cvxPerVotium() *
