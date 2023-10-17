@@ -48,8 +48,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     event SetRatio(uint256 indexed newRatio);
     event SetFeeAddress(address indexed newFeeAddress);
     event SetProtocolFee(uint256 indexed newProtocolFee);
-    event SetPauseDeposit();
-    event SetPauseWithdraw();
+    event SetPauseDeposit(bool indexed paused);
+    event SetPauseWithdraw(bool indexed paused);
     event Deposit(
         address indexed recipient,
         uint256 afEthAmount,
@@ -165,7 +165,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function setPauseDeposit(bool _pauseDeposit) external onlyOwner {
         pauseDeposit = _pauseDeposit;
-        emit SetPauseDeposit();
+        emit SetPauseDeposit(_pauseDeposit);
     }
 
     /**
@@ -174,7 +174,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function setPauseWithdraw(bool _pauseWithdraw) external onlyOwner {
         pauseWithdraw = _pauseWithdraw;
-        emit SetPauseWithdraw();
+        emit SetPauseWithdraw(_pauseWithdraw);
     }
 
     /**
