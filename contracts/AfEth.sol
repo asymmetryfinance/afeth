@@ -223,7 +223,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 amountToMint = totalValue / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
-        emit Deposit(msg.sender, amountToMint, amount);
+        emit Deposit(msg.sender, amountToMint, msg.value);
     }
 
     /**
