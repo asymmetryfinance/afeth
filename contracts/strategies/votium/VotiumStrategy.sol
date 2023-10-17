@@ -37,7 +37,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @return mintAmount Amount of tokens minted
      */
     function deposit()
-        public
+        external
         payable
         override
         onlyManager
@@ -60,9 +60,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      */
     function requestWithdraw(
         uint256 _amount
-    ) public override onlyManager returns (uint256) {
+    ) external override onlyManager returns (uint256) {
         latestWithdrawId++;
-        uint256 withdrawId = latestWithdrawId;
         uint256 _priceInCvx = cvxPerVotium();
 
         _burn(msg.sender, _amount);
@@ -78,37 +77,38 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         cvxUnlockObligations += cvxAmount;
-
+        uint256 unlockObligations = cvxUnlockObligations;
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             trackedCvxBalance;
 
-        if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations) {
+        if (totalLockedBalancePlusUnlockable >= unlockObligations) {
             withdrawIdToWithdrawRequestInfo[
-                withdrawId
+                latestWithdrawId
             ] = WithdrawRequestInfo({
                 cvxOwed: cvxAmount,
                 withdrawn: false,
                 epoch: currentEpoch + 1,
                 owner: msg.sender
             });
-            emit WithdrawRequest(msg.sender, cvxAmount, withdrawId);
+            emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
 
-            return withdrawId;
+            return latestWithdrawId;
         }
 
+        (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(
+            currentEpoch
+        );
+        uint256 duration = ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
-            if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations) {
-                (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS)
-                    .epochs(currentEpoch);
+            if (totalLockedBalancePlusUnlockable >= unlockObligations) {
                 uint256 timeDifference = lockedBalances[i].unlockTime -
                     currentEpochStartingTime;
-                uint256 epochOffset = timeDifference /
-                    ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
+                uint256 epochOffset = timeDifference / duration;
                 uint256 withdrawEpoch = currentEpoch + epochOffset;
                 withdrawIdToWithdrawRequestInfo[
-                    withdrawId
+                    latestWithdrawId
                 ] = WithdrawRequestInfo({
                     cvxOwed: cvxAmount,
                     withdrawn: false,
@@ -116,8 +116,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                     owner: msg.sender
                 });
 
-                emit WithdrawRequest(msg.sender, cvxAmount, withdrawId);
-                return withdrawId;
+                emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
+                return latestWithdrawId;
             }
         }
         // should never get here
@@ -131,7 +131,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
     function withdraw(uint256 _withdrawId) external override onlyManager {
         if (withdrawIdToWithdrawRequestInfo[_withdrawId].owner != msg.sender)
             revert NotOwner();
-        if (!this.canWithdraw(_withdrawId)) revert WithdrawNotReady();
+        if (!canWithdraw(_withdrawId)) revert WithdrawNotReady();
 
         if (withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn)
             revert AlreadyWithdrawn();
@@ -161,6 +161,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
             address(this)
         );
+        uint256 unlockObligations = cvxUnlockObligations;
         if (unlockable > 0) {
             uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(
                 address(this)
@@ -171,9 +172,12 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
             );
             trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
         }
-        uint256 cvxAmountToRelock = trackedCvxBalance > cvxUnlockObligations
-            ? trackedCvxBalance - cvxUnlockObligations
-            : 0;
+        uint256 cvxAmountToRelock;
+        unchecked {
+            cvxAmountToRelock = trackedCvxBalance > unlockObligations
+                ? trackedCvxBalance - unlockObligations
+                : 0;
+        }
         if (
             cvxAmountToRelock > 0 && !(ILockedCvx(VLCVX_ADDRESS).isShutdown())
         ) {
@@ -189,12 +193,16 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      */
     function canWithdraw(
         uint256 _withdrawId
-    ) external view virtual override returns (bool) {
+    ) public view virtual override returns (bool) {
         uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
             block.timestamp
         );
+        WithdrawRequestInfo
+            storage withdrawRequest = withdrawIdToWithdrawRequestInfo[
+                _withdrawId
+            ];
         return
-            withdrawIdToWithdrawRequestInfo[_withdrawId].epoch <= currentEpoch;
+            withdrawRequest.epoch <= currentEpoch && !withdrawRequest.withdrawn;
     }
 
     /**

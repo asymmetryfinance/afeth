@@ -229,7 +229,7 @@ describe("Test AfEth", async function () {
 
     await expect(
       afEth.withdraw(withdrawId, 0, await nowPlusOneMinute())
-    ).to.be.revertedWith("CanNotWithdraw()");
+    ).to.be.revertedWith("WithdrawNotReady()");
   });
   it("Two users should be able to simultaneously deposit the same amount, requestWithdraw, withdraw", async function () {
     const user1 = afEth.connect(accounts[1]);

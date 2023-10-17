@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "contracts/strategies/votium/VotiumStrategy.sol";
 import "contracts/external_interfaces/IVotiumStrategy.sol";
+import "contracts/external_interfaces/ISafEth.sol";
 import "contracts/strategies/AbstractStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
@@ -15,7 +16,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
     address public vEthAddress; // Votium Strategy Address
     uint256 public latestWithdrawId;
-
+    address public rewarder;
+    uint256 public pendingSafEthWithdraws;
+    uint256 private trackedvStrategyBalance;
+    uint256 private trackedsafEthBalance;
+    bool public pauseDeposit;
+    bool public pauseWithdraw;
+    
     struct WithdrawInfo {
         address owner;
         uint256 amount;
@@ -26,8 +33,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
-    bool public pauseDeposit;
-    bool public pauseWithdraw;
 
     error StrategyAlreadyAdded();
     error StrategyNotFound();
@@ -42,6 +47,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error BelowMinOut();
     error StaleAction();
     error NotManagerOrRewarder();
+    error InvalidRatio();
 
     event WithdrawRequest(
         address indexed account,
@@ -49,17 +55,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 withdrawId,
         uint256 withdrawTime
     );
-
-    address private constant CVX_ADDRESS =
-        0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address private constant VLCVX_ADDRESS =
-        0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
-    address rewarder;
-
-    uint256 public pendingSafEthWithdraws;
-
-    uint256 trackedvStrategyBalance;
-    uint256 trackedsafEthBalance;
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
@@ -110,6 +105,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @param _newRatio - New ratio of safEth to votium
     */
     function setRatio(uint256 _newRatio) external onlyOwner {
+        if (_newRatio > 1e18 || _newRatio == 0) revert InvalidRatio();
         ratio = _newRatio;
     }
 
@@ -227,10 +223,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
         pendingSafEthWithdraws += safEthWithdrawAmount;
 
-        withdrawIdInfo[withdrawId]
-            .safEthWithdrawAmount = safEthWithdrawAmount;
-        withdrawIdInfo[withdrawId]
-            .votiumWithdrawAmount = votiumWithdrawAmount;
+        withdrawIdInfo[withdrawId].safEthWithdrawAmount = safEthWithdrawAmount;
+        withdrawIdInfo[withdrawId].votiumWithdrawAmount = votiumWithdrawAmount;
         withdrawIdInfo[withdrawId].vEthWithdrawId = vEthWithdrawId;
 
         withdrawIdInfo[withdrawId].owner = msg.sender;

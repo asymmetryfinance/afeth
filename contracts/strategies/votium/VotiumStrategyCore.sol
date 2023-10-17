@@ -4,8 +4,6 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "../../external_interfaces/IWETH.sol";
-import "../../external_interfaces/ISwapRouter.sol";
 import "../../external_interfaces/IVotiumMerkleStash.sol";
 import "../../external_interfaces/ISnapshotDelegationRegistry.sol";
 import "../../external_interfaces/ILockedCvx.sol";
@@ -13,10 +11,7 @@ import "../../external_interfaces/IClaimZap.sol";
 import "../../external_interfaces/ICrvEthPool.sol";
 import "../../external_interfaces/IAfEth.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "../../external_interfaces/ISafEth.sol";
-import "hardhat/console.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
@@ -83,7 +78,7 @@ contract VotiumStrategyCore is
     */
     function setChainlinkCvxEthFeed(
         address _cvxEthFeedAddress
-    ) public onlyOwner {
+    ) external onlyOwner {
         chainlinkCvxEthFeed = AggregatorV3Interface(_cvxEthFeedAddress);
     }
 
@@ -145,7 +140,7 @@ contract VotiumStrategyCore is
      * @return - Amount of cvx in the entire system
      */
     function cvxInSystem() public view returns (uint256) {
-        (uint256 total, , , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
+        uint256 total = ILockedCvx(VLCVX_ADDRESS).lockedBalanceOf(
             address(this)
         );
         return total + trackedCvxBalance;
@@ -205,7 +200,7 @@ contract VotiumStrategyCore is
      */
     function claimRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
-    ) public onlyRewarder {
+    ) external onlyRewarder {
         claimVotiumRewards(_claimProofs);
         claimVlCvxRewards();
     }
@@ -233,7 +228,7 @@ contract VotiumStrategyCore is
      * @dev - Lets us handle any that were not successfully sold via cvx
      * @param _token - Address of the token to withdraw
      */
-    function withdrawStuckTokens(address _token) public onlyOwner {
+    function withdrawStuckTokens(address _token) external onlyOwner {
         uint256 tokenBalance = IERC20(_token).balanceOf(address(this));
         if (_token == CVX_ADDRESS) {
             if (tokenBalance <= trackedCvxBalance) revert InvalidAmount();
@@ -254,8 +249,7 @@ contract VotiumStrategyCore is
     ) internal returns (uint256 cvxAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
-        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{
+        cvxAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{
             value: _ethAmountIn
         }(
             0,
@@ -263,8 +257,6 @@ contract VotiumStrategyCore is
             _ethAmountIn,
             0 // this is handled at the afEth level
         );
-        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        cvxAmountOut = cvxBalanceAfter - cvxBalanceBefore;
         trackedCvxBalance += cvxAmountOut;
     }
 
@@ -278,16 +270,14 @@ contract VotiumStrategyCore is
     ) internal returns (uint256 ethAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
-        uint256 ethBalanceBefore = address(this).balance;
         IERC20(CVX_ADDRESS).safeApprove(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
-        ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
+        ethAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
             1,
             0,
             _cvxAmountIn,
             0 // this is handled at the afEth level
         );
-        ethAmountOut = address(this).balance - ethBalanceBefore;
         trackedCvxBalance -= _cvxAmountIn;
     }
 
@@ -302,7 +292,7 @@ contract VotiumStrategyCore is
         SwapData[] calldata _swapsData,
         uint256 _safEthMinout,
         uint256 _cvxMinout
-    ) public onlyRewarder {
+    ) external onlyRewarder {
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
@@ -311,12 +301,6 @@ contract VotiumStrategyCore is
                 address(_swapsData[i].spender)
             );
             if (allowance != type(uint256).max) {
-                if (allowance > 0) {
-                    IERC20(_swapsData[i].sellToken).safeApprove(
-                        address(_swapsData[i].spender),
-                        0
-                    );
-                }
                 IERC20(_swapsData[i].sellToken).safeApprove(
                     address(_swapsData[i].spender),
                     type(uint256).max
