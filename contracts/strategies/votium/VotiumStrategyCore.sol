@@ -249,9 +249,8 @@ contract VotiumStrategyCore is
     ) internal returns (uint256 cvxAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
-        cvxAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{
-            value: _ethAmountIn
-        }(
+        cvxAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS)
+            .exchange_underlying{value: _ethAmountIn}(
             0,
             1,
             _ethAmountIn,
@@ -272,12 +271,13 @@ contract VotiumStrategyCore is
         // cvx -> eth
         IERC20(CVX_ADDRESS).safeApprove(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
-        ethAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
-            1,
-            0,
-            _cvxAmountIn,
-            0 // this is handled at the afEth level
-        );
+        ethAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS)
+            .exchange_underlying(
+                1,
+                0,
+                _cvxAmountIn,
+                0 // this is handled at the afEth level
+            );
         trackedCvxBalance -= _cvxAmountIn;
     }
 
@@ -301,6 +301,12 @@ contract VotiumStrategyCore is
                 address(_swapsData[i].spender)
             );
             if (allowance != type(uint256).max) {
+                if (allowance > 0) {
+                    IERC20(_swapsData[i].sellToken).safeApprove(
+                        address(_swapsData[i].spender),
+                        0
+                    );
+                }
                 IERC20(_swapsData[i].sellToken).safeApprove(
                     address(_swapsData[i].spender),
                     type(uint256).max

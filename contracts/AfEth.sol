@@ -22,7 +22,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     uint256 private trackedsafEthBalance;
     bool public pauseDeposit;
     bool public pauseWithdraw;
-    
+
     struct WithdrawInfo {
         address owner;
         uint256 amount;
@@ -105,7 +105,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @param _newRatio - New ratio of safEth to votium
     */
     function setRatio(uint256 _newRatio) external onlyOwner {
-        if (_newRatio > 1e18 || _newRatio == 0) revert InvalidRatio();
+        if (_newRatio > 1e18) revert InvalidRatio();
         ratio = _newRatio;
     }
 
@@ -173,17 +173,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     ) external payable virtual {
         if (pauseDeposit) revert Paused();
         if (block.timestamp > _deadline) revert StaleAction();
-        uint256 amount = msg.value;
         uint256 priceBeforeDeposit = price(true);
         uint256 totalValue;
 
         AbstractStrategy vStrategy = AbstractStrategy(vEthAddress);
 
-        uint256 sValue = (amount * ratio) / 1e18;
+        uint256 sValue = (msg.value * ratio) / 1e18;
         uint256 sMinted = sValue > 0
             ? ISafEth(SAF_ETH_ADDRESS).stake{value: sValue}(0)
             : 0;
-        uint256 vValue = (amount - sValue);
+        uint256 vValue = (msg.value - sValue);
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
         totalValue =
             (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) +

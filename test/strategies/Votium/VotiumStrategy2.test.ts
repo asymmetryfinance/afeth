@@ -404,7 +404,7 @@ describe("Test VotiumStrategy (Part 2)", async function () {
     expect(ethReceived1).gt(0);
 
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "AlreadyWithdrawn()"
+      "WithdrawNotReady()"
     );
     await tx.wait();
   });
