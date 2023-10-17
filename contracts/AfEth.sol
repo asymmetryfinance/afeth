@@ -43,11 +43,34 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error StaleAction();
     error NotManagerOrRewarder();
 
-    event WithdrawRequest(
+    event SetStrategyAddress(address indexed newAddress);
+    event SetRewarderAddress(address indexed newAddress);
+    event SetRatio(uint256 indexed newRatio);
+    event SetFeeAddress(address indexed newFeeAddress);
+    event SetProtocolFee(uint256 indexed newProtocolFee);
+    event SetPauseDeposit(bool indexed paused);
+    event SetPauseWithdraw(bool indexed paused);
+    event Deposit(
+        address indexed recipient,
+        uint256 afEthAmount,
+        uint256 ethAmount
+    );
+    event RequestWithdraw(
         address indexed account,
         uint256 amount,
         uint256 withdrawId,
         uint256 withdrawTime
+    );
+    event Withdraw(
+        address indexed recipient,
+        uint256 afEthAmount,
+        uint256 ethAmount,
+        uint256 withdrawId
+    );
+    event DepositRewards(
+        address indexed recipient,
+        uint256 afEthAmount,
+        uint256 ethAmount
     );
 
     address private constant CVX_ADDRESS =
@@ -94,6 +117,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      */
     function setStrategyAddress(address _vEthAddress) external onlyOwner {
         vEthAddress = _vEthAddress;
+        emit SetStrategyAddress(_vEthAddress);
     }
 
     /**
@@ -102,6 +126,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      */
     function setRewarderAddress(address _rewarder) external onlyOwner {
         rewarder = _rewarder;
+        emit SetRewarderAddress(_rewarder);
     }
 
     /**
@@ -111,6 +136,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function setRatio(uint256 _newRatio) public onlyOwner {
         ratio = _newRatio;
+        emit SetRatio(_newRatio);
     }
 
     /**
@@ -119,6 +145,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function setFeeAddress(address _newFeeAddress) public onlyOwner {
         feeAddress = _newFeeAddress;
+        emit SetFeeAddress(_newFeeAddress);
     }
 
     /**
@@ -128,6 +155,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function setProtocolFee(uint256 _newFee) public onlyOwner {
         if (_newFee > 1e18) revert InvalidFee();
         protocolFee = _newFee;
+        emit SetProtocolFee(_newFee);
     }
 
     /**
@@ -137,6 +165,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function setPauseDeposit(bool _pauseDeposit) external onlyOwner {
         pauseDeposit = _pauseDeposit;
+        emit SetPauseDeposit(_pauseDeposit);
     }
 
     /**
@@ -145,6 +174,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     */
     function setPauseWithdraw(bool _pauseWithdraw) external onlyOwner {
         pauseWithdraw = _pauseWithdraw;
+        emit SetPauseWithdraw(_pauseWithdraw);
     }
 
     /**
@@ -197,6 +227,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 amountToMint = totalValue / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
+        emit Deposit(msg.sender, amountToMint, amount);
     }
 
     /**
@@ -235,7 +266,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         withdrawIdInfo[latestWithdrawId].amount = _amount;
         withdrawIdInfo[latestWithdrawId].withdrawTime = withdrawTimeBefore;
 
-        emit WithdrawRequest(
+        emit RequestWithdraw(
             msg.sender,
             _amount,
             latestWithdrawId,
@@ -298,12 +329,18 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         // solhint-disable-next-line
         (bool sent, ) = msg.sender.call{value: ethReceived}("");
         if (!sent) revert FailedToSend();
+        emit Withdraw(
+            msg.sender,
+            withdrawInfo.amount,
+            ethReceived,
+            _withdrawId
+        );
     }
 
     /**
      * @notice - sells _amount of eth from votium contract
      * @dev - puts it into safEthStrategy or votiumStrategy, whichever is underweight.\
-=     * @param _safEthMinout - Minimum amount of safEth to receive from rewards when buying safEth
+     * @param _safEthMinout - Minimum amount of safEth to receive from rewards when buying safEth
      * @param _cvxMinout - Minimum amount of cvx to receive from rewards when buying vAfEth
      */
     function depositRewards(
@@ -333,6 +370,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         } else {
             votiumStrategy.depositRewards{value: amount}(amount, _cvxMinout);
         }
+        emit DepositRewards(msg.sender, amount, msg.value);
     }
 
     function safEthBalanceMinusPending() public view returns (uint256) {
