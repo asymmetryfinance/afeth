@@ -13,7 +13,7 @@ contract ChainLinkWstFeedMock is IChainlinkFeed {
     {
         return (
             uint80(18446744073709551666),
-            int256(998601010000000000),
+            int256(999408541700000000),
             0,
             block.timestamp,
             0
