@@ -99,7 +99,7 @@ describe("Test VotiumStrategy", async function () {
     await tx.wait();
 
     await expect(votiumStrategy.withdraw(withdrawId)).to.be.revertedWith(
-      "AlreadyWithdrawn"
+      "WithdrawNotReady"
     );
 
     const ethBalanceAfter = await ethers.provider.getBalance(

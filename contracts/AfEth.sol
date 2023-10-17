@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "contracts/strategies/votium/VotiumStrategy.sol";
 import "contracts/external_interfaces/IVotiumStrategy.sol";
+import "contracts/external_interfaces/ISafEth.sol";
 import "contracts/strategies/AbstractStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
@@ -15,6 +16,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
     address public vEthAddress; // Votium Strategy Address
     uint256 public latestWithdrawId;
+    address public rewarder;
+    uint256 public pendingSafEthWithdraws;
+    uint256 private trackedvStrategyBalance;
+    uint256 private trackedsafEthBalance;
+    bool public pauseDeposit;
+    bool public pauseWithdraw;
 
     struct WithdrawInfo {
         address owner;
@@ -26,8 +33,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
-    bool public pauseDeposit;
-    bool public pauseWithdraw;
 
     error StrategyAlreadyAdded();
     error StrategyNotFound();
@@ -42,6 +47,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error BelowMinOut();
     error StaleAction();
     error NotManagerOrRewarder();
+    error InvalidRatio();
 
     event SetStrategyAddress(address indexed newAddress);
     event SetRewarderAddress(address indexed newAddress);
@@ -72,17 +78,6 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 afEthAmount,
         uint256 ethAmount
     );
-
-    address private constant CVX_ADDRESS =
-        0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address private constant VLCVX_ADDRESS =
-        0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
-    address rewarder;
-
-    uint256 public pendingSafEthWithdraws;
-
-    uint256 trackedvStrategyBalance;
-    uint256 trackedsafEthBalance;
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
@@ -134,7 +129,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice target ratio is maintained by directing rewards into either safEth or votium strategy
         @param _newRatio - New ratio of safEth to votium
     */
-    function setRatio(uint256 _newRatio) public onlyOwner {
+    function setRatio(uint256 _newRatio) external onlyOwner {
+        if (_newRatio > 1e18) revert InvalidRatio();
         ratio = _newRatio;
         emit SetRatio(_newRatio);
     }
@@ -143,7 +139,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - Sets the protocol fee address which takes a percentage of the rewards.
         @param _newFeeAddress - New protocol fee address to collect rewards
     */
-    function setFeeAddress(address _newFeeAddress) public onlyOwner {
+    function setFeeAddress(address _newFeeAddress) external onlyOwner {
         feeAddress = _newFeeAddress;
         emit SetFeeAddress(_newFeeAddress);
     }
@@ -152,7 +148,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @notice - Sets the protocol fee which takes a percentage of the rewards.
         @param _newFee - New protocol fee
     */
-    function setProtocolFee(uint256 _newFee) public onlyOwner {
+    function setProtocolFee(uint256 _newFee) external onlyOwner {
         if (_newFee > 1e18) revert InvalidFee();
         protocolFee = _newFee;
         emit SetProtocolFee(_newFee);
@@ -184,14 +180,15 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         @return - Price of afEth
     */
     function price(bool _validate) public view returns (uint256) {
-        if (totalSupply() == 0) return 1e18;
+        uint256 totalSupply = totalSupply();
+        if (totalSupply == 0) return 1e18;
         AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
         uint256 safEthValueInEth = (ISafEth(SAF_ETH_ADDRESS).approxPrice(
             _validate
         ) * safEthBalanceMinusPending()) / 1e18;
         uint256 vEthValueInEth = (vEthStrategy.price(_validate) *
             trackedvStrategyBalance) / 1e18;
-        return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply();
+        return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply;
     }
 
     /**
@@ -206,19 +203,18 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     ) external payable virtual {
         if (pauseDeposit) revert Paused();
         if (block.timestamp > _deadline) revert StaleAction();
-        uint256 amount = msg.value;
         uint256 priceBeforeDeposit = price(true);
         uint256 totalValue;
 
         AbstractStrategy vStrategy = AbstractStrategy(vEthAddress);
 
-        uint256 sValue = (amount * ratio) / 1e18;
+        uint256 sValue = (msg.value * ratio) / 1e18;
         uint256 sMinted = sValue > 0
             ? ISafEth(SAF_ETH_ADDRESS).stake{value: sValue}(0)
             : 0;
-        uint256 vValue = (amount - sValue);
+        uint256 vValue = (msg.value - sValue);
         uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
-        totalValue +=
+        totalValue =
             (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) +
             (vMinted * vStrategy.price(true));
         trackedvStrategyBalance += vMinted;
@@ -227,7 +223,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 amountToMint = totalValue / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
-        emit Deposit(msg.sender, amountToMint, amount);
+        emit Deposit(msg.sender, amountToMint, msg.value);
     }
 
     /**
@@ -237,6 +233,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function requestWithdraw(uint256 _amount) external virtual {
         if (pauseWithdraw) revert Paused();
         latestWithdrawId++;
+        uint256 withdrawId = latestWithdrawId;
 
         uint256 withdrawRatio = (_amount * 1e18) / totalSupply();
 
@@ -256,20 +253,18 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
         pendingSafEthWithdraws += safEthWithdrawAmount;
 
-        withdrawIdInfo[latestWithdrawId]
-            .safEthWithdrawAmount = safEthWithdrawAmount;
-        withdrawIdInfo[latestWithdrawId]
-            .votiumWithdrawAmount = votiumWithdrawAmount;
-        withdrawIdInfo[latestWithdrawId].vEthWithdrawId = vEthWithdrawId;
+        withdrawIdInfo[withdrawId].safEthWithdrawAmount = safEthWithdrawAmount;
+        withdrawIdInfo[withdrawId].votiumWithdrawAmount = votiumWithdrawAmount;
+        withdrawIdInfo[withdrawId].vEthWithdrawId = vEthWithdrawId;
 
-        withdrawIdInfo[latestWithdrawId].owner = msg.sender;
-        withdrawIdInfo[latestWithdrawId].amount = _amount;
-        withdrawIdInfo[latestWithdrawId].withdrawTime = withdrawTimeBefore;
+        withdrawIdInfo[withdrawId].owner = msg.sender;
+        withdrawIdInfo[withdrawId].amount = _amount;
+        withdrawIdInfo[withdrawId].withdrawTime = withdrawTimeBefore;
 
         emit RequestWithdraw(
             msg.sender,
             _amount,
-            latestWithdrawId,
+            withdrawId,
             withdrawTimeBefore
         );
     }
@@ -309,8 +304,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (pauseWithdraw) revert Paused();
         if (block.timestamp > _deadline) revert StaleAction();
         uint256 ethBalanceBefore = address(this).balance;
-        WithdrawInfo memory withdrawInfo = withdrawIdInfo[_withdrawId];
-        if (!canWithdraw(_withdrawId)) revert CanNotWithdraw();
+        WithdrawInfo storage withdrawInfo = withdrawIdInfo[_withdrawId];
 
         if (withdrawInfo.safEthWithdrawAmount > 0) {
             ISafEth(SAF_ETH_ADDRESS).unstake(
