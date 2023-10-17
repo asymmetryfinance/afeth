@@ -50,16 +50,28 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     event SetProtocolFee(uint256 indexed newProtocolFee);
     event SetPauseDeposit();
     event SetPauseWithdraw();
-    event Deposit(address indexed recipient, uint256 afEthAmount, uint256 ethAmount);
+    event Deposit(
+        address indexed recipient,
+        uint256 afEthAmount,
+        uint256 ethAmount
+    );
     event RequestWithdraw(
         address indexed account,
         uint256 amount,
         uint256 withdrawId,
         uint256 withdrawTime
     );
-    event Withdraw(address indexed recipient, uint256 afEthAmount, uint256 ethAmount, uint256 withdrawId);
-    event DepositRewards(address indexed recipient, uint256 afEthAmount, uint256 ethAmount);
-
+    event Withdraw(
+        address indexed recipient,
+        uint256 afEthAmount,
+        uint256 ethAmount,
+        uint256 withdrawId
+    );
+    event DepositRewards(
+        address indexed recipient,
+        uint256 afEthAmount,
+        uint256 ethAmount
+    );
 
     address private constant CVX_ADDRESS =
         0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
