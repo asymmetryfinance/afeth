@@ -3,11 +3,9 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 abstract contract AbstractStrategy is
     Initializable,
-    ReentrancyGuardUpgradeable,
     ERC20Upgradeable
 {
     // used to add storage variables in the future

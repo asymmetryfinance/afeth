@@ -56,12 +56,13 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Request to withdraw from strategy emits event with eligible withdraw epoch
      * @notice Burns afEth tokens and determines equivilent amount of cvx to start unlocking
      * @param _amount Amount to request withdraw
-     * @return withdrawId Id of withdraw request
+     * @return Id of withdraw request
      */
     function requestWithdraw(
         uint256 _amount
-    ) public override onlyManager returns (uint256 withdrawId) {
+    ) public override onlyManager returns (uint256) {
         latestWithdrawId++;
+        uint256 withdrawId = latestWithdrawId;
         uint256 _priceInCvx = cvxPerVotium();
 
         _burn(msg.sender, _amount);
@@ -83,16 +84,16 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
 
         if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations) {
             withdrawIdToWithdrawRequestInfo[
-                latestWithdrawId
+                withdrawId
             ] = WithdrawRequestInfo({
                 cvxOwed: cvxAmount,
                 withdrawn: false,
                 epoch: currentEpoch + 1,
                 owner: msg.sender
             });
-            emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
+            emit WithdrawRequest(msg.sender, cvxAmount, withdrawId);
 
-            return latestWithdrawId;
+            return withdrawId;
         }
 
         for (uint256 i = 0; i < lockedBalances.length; i++) {
@@ -107,7 +108,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                     ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
                 uint256 withdrawEpoch = currentEpoch + epochOffset;
                 withdrawIdToWithdrawRequestInfo[
-                    latestWithdrawId
+                    withdrawId
                 ] = WithdrawRequestInfo({
                     cvxOwed: cvxAmount,
                     withdrawn: false,
@@ -115,8 +116,8 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                     owner: msg.sender
                 });
 
-                emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
-                return latestWithdrawId;
+                emit WithdrawRequest(msg.sender, cvxAmount, withdrawId);
+                return withdrawId;
             }
         }
         // should never get here
