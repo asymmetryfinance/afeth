@@ -18,8 +18,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     uint256 public latestWithdrawId;
     address public rewarder;
     uint256 public pendingSafEthWithdraws;
-    uint256 private trackedvStrategyBalance;
-    uint256 private trackedsafEthBalance;
+    uint256 public trackedvStrategyBalance;
+    uint256 public trackedsafEthBalance;
     bool public pauseDeposit;
     bool public pauseWithdraw;
 
