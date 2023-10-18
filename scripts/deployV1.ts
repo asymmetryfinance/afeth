@@ -17,6 +17,10 @@ async function main() {
   await votium.deployed();
 
   console.log("Votium deployed to:", votium.address);
+
+  // setStrategyAddress
+  // transfer admin to multisig
+  // mint AfEth & burn
 }
 
 main()
