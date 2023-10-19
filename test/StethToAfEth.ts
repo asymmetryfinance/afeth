@@ -112,6 +112,7 @@ describe.only("Test Cow Hooks", async function () {
   );
 
   it("Should permit & swap stEth to Eth, then deposit into AfEth", async function () {
+    console.log("OWNER", accounts[0].address);
     const { chainId } = await ethers.provider.getNetwork();
     const wallet = accounts[0];
     const SETTLEMENT = new ethers.Contract(
@@ -139,7 +140,7 @@ describe.only("Test Cow Hooks", async function () {
     const orderConfig = {
       sellToken: STETH.address,
       buyToken: COW.address,
-      sellAmount: ethers.utils.parseEther("1"),
+      sellAmount: ethers.utils.parseEther("1").toString(),
       kind: "sell",
       partiallyFillable: false,
       sellTokenBalance: "erc20",
@@ -214,76 +215,83 @@ describe.only("Test Cow Hooks", async function () {
         },
       },
     });
+    console.log({
+      from: wallet.address,
+      sellAmountBeforeFee: orderConfig.sellAmount,
+      ...orderConfig,
+    });
 
-    const res = await fetch("https://barn.api.cow.fi/mainnet/api/v1/quote", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        from: wallet.address,
-        sellAmountBeforeFee: orderConfig.sellAmount,
-        ...orderConfig,
-      }),
-    }).then((response) => {
-      console.log("response:", response);
+    const { id: quoteId, quote } = await fetch(
+      "https://barn.api.cow.fi/mainnet/api/v1/quote",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: wallet.address,
+          sellAmountBeforeFee: orderConfig.sellAmount,
+          ...orderConfig,
+        }),
+      }
+    ).then(async (response) => {
       return response.json();
     });
-    console.log("quote:", res); // quoteId, quote);
+    console.log("quote:", quoteId, quote);
 
-    // const orderData = {
-    //   ...orderConfig,
-    //   sellAmount: quote.sellAmount,
-    //   buyAmount: `${ethers.BigNumber.from(quote.buyAmount).mul(99).div(100)}`,
-    //   validTo: quote.validTo,
-    //   appData: ethers.utils.id(orderConfig.appData),
-    //   feeAmount: quote.feeAmount,
-    // };
+    const orderData = {
+      ...orderConfig,
+      sellAmount: quote.sellAmount,
+      buyAmount: `${ethers.BigNumber.from(quote.buyAmount).mul(99).div(100)}`,
+      validTo: quote.validTo,
+      appData: ethers.utils.id(orderConfig.appData),
+      feeAmount: quote.feeAmount,
+    };
 
-    // const orderSignature = await wallet._signTypedData(
-    //   {
-    //     name: "Gnosis Protocol",
-    //     version: "v2",
-    //     chainId,
-    //     verifyingContract: SETTLEMENT.address,
-    //   },
-    //   {
-    //     Order: [
-    //       { name: "sellToken", type: "address" },
-    //       { name: "buyToken", type: "address" },
-    //       { name: "receiver", type: "address" },
-    //       { name: "sellAmount", type: "uint256" },
-    //       { name: "buyAmount", type: "uint256" },
-    //       { name: "validTo", type: "uint32" },
-    //       { name: "appData", type: "bytes32" },
-    //       { name: "feeAmount", type: "uint256" },
-    //       { name: "kind", type: "string" },
-    //       { name: "partiallyFillable", type: "bool" },
-    //       { name: "sellTokenBalance", type: "string" },
-    //       { name: "buyTokenBalance", type: "string" },
-    //     ],
-    //   },
-    //   orderData
-    // );
+    const orderSignature = await wallet._signTypedData(
+      {
+        name: "Gnosis Protocol",
+        version: "v2",
+        chainId,
+        verifyingContract: SETTLEMENT.address,
+      },
+      {
+        Order: [
+          { name: "sellToken", type: "address" },
+          { name: "buyToken", type: "address" },
+          { name: "receiver", type: "address" },
+          { name: "sellAmount", type: "uint256" },
+          { name: "buyAmount", type: "uint256" },
+          { name: "validTo", type: "uint32" },
+          { name: "appData", type: "bytes32" },
+          { name: "feeAmount", type: "uint256" },
+          { name: "kind", type: "string" },
+          { name: "partiallyFillable", type: "bool" },
+          { name: "sellTokenBalance", type: "string" },
+          { name: "buyTokenBalance", type: "string" },
+        ],
+      },
+      orderData
+    );
 
-    // const orderUid = await fetch(
-    //   "https://barn.api.cow.fi/mainnet/api/v1/orders",
-    //   {
-    //     method: "POST",
-    //     headers: {
-    //       "content-type": "application/json",
-    //     },
-    //     body: JSON.stringify({
-    //       ...orderData,
-    //       from: wallet.address,
-    //       appData: orderConfig.appData,
-    //       appDataHash: orderData.appData,
-    //       signingScheme: "eip712",
-    //       signature: orderSignature,
-    //       quoteId,
-    //     }),
-    //   }
-    // ).then((response) => response.json());
-    // console.log("order:", orderUid);
+    const orderUid = await fetch(
+      "https://barn.api.cow.fi/mainnet/api/v1/orders",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          ...orderData,
+          from: wallet.address,
+          appData: orderConfig.appData,
+          appDataHash: orderData.appData,
+          signingScheme: "eip712",
+          signature: orderSignature,
+          quoteId,
+        }),
+      }
+    ).then((response) => response.json());
+    console.log("order:", orderUid);
   });
 });
