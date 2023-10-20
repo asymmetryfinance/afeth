@@ -1,120 +1,15 @@
-import { AfEth, VotiumStrategy } from "../typechain-types";
-import { ethers, network, upgrades } from "hardhat";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
-import { expect } from "chai";
-import { derivativeAbi } from "./abis/derivativeAbi";
+import { ethers } from "hardhat";
 import { stEthAbi } from "./abis/stEthAbi";
 
 describe.only("Test Cow Hooks", async function () {
-  let afEth: AfEth;
-  let votiumStrategy: VotiumStrategy;
-  let accounts: SignerWithAddress[];
   const STETH_ADDRESS = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
 
-  const initialStake = ethers.utils.parseEther(".1");
-  const initialStakeAccount = 11;
-
-  const nowPlusOneMinute = async () =>
-    (await ethers.provider.getBlock("latest")).timestamp + 60;
-
-  const resetToBlock = async (blockNumber: number) => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: process.env.MAINNET_URL,
-            blockNumber,
-          },
-        },
-      ],
-    });
-    accounts = await ethers.getSigners();
-    const afEthFactory = await ethers.getContractFactory("AfEth");
-    afEth = (await upgrades.deployProxy(afEthFactory, [])) as AfEth;
-    await afEth.deployed();
-    const votiumFactory = await ethers.getContractFactory("VotiumStrategy");
-    votiumStrategy = (await upgrades.deployProxy(votiumFactory, [
-      accounts[0].address,
-      accounts[0].address,
-      afEth.address,
-    ])) as VotiumStrategy;
-    await votiumStrategy.deployed();
-
-    await afEth.setStrategyAddress(votiumStrategy.address);
-    // mock chainlink feeds so not out of date
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [MULTI_SIG],
-    });
-
-    const chainLinkRethFeedFactory = await ethers.getContractFactory(
-      "ChainLinkRethFeedMock"
-    );
-    const chainLinkWstFeedFactory = await ethers.getContractFactory(
-      "ChainLinkWstFeedMock"
-    );
-
-    const chainLinkRethFeed = await chainLinkRethFeedFactory.deploy();
-    const chainLinkWstFeed = await chainLinkWstFeedFactory.deploy();
-
-    const multiSigSigner = await ethers.getSigner(MULTI_SIG);
-
-    // mock chainlink feed on derivatives
-    const rEthDerivative = new ethers.Contract(
-      RETH_DERIVATIVE,
-      derivativeAbi,
-      accounts[0]
-    );
-    const multiSigReth = rEthDerivative.connect(multiSigSigner);
-    await multiSigReth.setChainlinkFeed(chainLinkRethFeed.address);
-
-    const wstEthDerivative = new ethers.Contract(
-      WST_DERIVATIVE,
-      derivativeAbi,
-      accounts[0]
-    );
-
-    const multiSigWst = wstEthDerivative.connect(multiSigSigner);
-    await multiSigWst.setChainlinkFeed(chainLinkWstFeed.address);
-    // mint some to seed the system so totalSupply is never 0 (prevent price weirdness on withdraw)
-    const tx = await afEth
-      .connect(accounts[initialStakeAccount])
-      .deposit(0, await nowPlusOneMinute(), {
-        value: initialStake,
-      });
-    await tx.wait();
-
-    const chainLinkCvxEthFeedFactory = await ethers.getContractFactory(
-      "ChainLinkCvxEthFeedMock"
-    );
-    const chainLinkCvxEthFeed = await chainLinkCvxEthFeedFactory.deploy();
-    await chainLinkCvxEthFeed.deployed();
-    await votiumStrategy.setChainlinkCvxEthFeed(chainLinkCvxEthFeed.address);
-
-    await afEth.setRewarderAddress(accounts[0].address);
-
-    const STETH_WHALE = "0x2bf3937b8BcccE4B65650F122Bb3f1976B937B2f";
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [STETH_WHALE],
-    });
-    const impersonatedWhaleSigner = await ethers.getSigner(STETH_WHALE);
-    const stEth = new ethers.Contract(STETH_ADDRESS, stEthAbi, accounts[0]);
-    await stEth
-      .connect(impersonatedWhaleSigner)
-      .transfer(accounts[0].address, ethers.utils.parseEther("100"));
-  };
-
-  beforeEach(
-    async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
-  );
-
   it("Should permit & swap stEth to Eth, then deposit into AfEth", async function () {
-    console.log("OWNER", accounts[0].address);
     const { chainId } = await ethers.provider.getNetwork();
-    const wallet = accounts[0];
+    console.log("Chain ID", chainId);
+    if (!process.env.PRIVATE_KEY) throw new Error("No private key found");
+    const key: any = process.env.PRIVATE_KEY;
+    const wallet = new ethers.Wallet(key, ethers.provider); // accounts[0];
     const SETTLEMENT = new ethers.Contract(
       "0x9008D19f58AAbD9eD0D60971565AA8510560ab41",
       [],
@@ -127,20 +22,21 @@ describe.only("Test Cow Hooks", async function () {
       ethers.provider
     );
 
-    const COW = new ethers.Contract(
-      "0xDEf1CA1fb7FBcDC777520aa7f396b4E015F497aB",
+    const WETH = new ethers.Contract(
+      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
       [],
       ethers.provider
     );
 
     const STETH = new ethers.Contract(STETH_ADDRESS, stEthAbi, ethers.provider);
+    const sellAmount = ethers.utils.parseEther(".15").toString();
 
     /** Order Configuration **/
 
     const orderConfig = {
       sellToken: STETH.address,
-      buyToken: COW.address,
-      sellAmount: ethers.utils.parseEther("1").toString(),
+      buyToken: WETH.address, // withdraw to ETH
+      sellAmount,
       kind: "sell",
       partiallyFillable: false,
       sellTokenBalance: "erc20",
@@ -195,15 +91,17 @@ describe.only("Test Cow Hooks", async function () {
     /** AfEth Deposit **/
 
     orderConfig.receiver = wallet.address;
-    const depositHook = {
-      target: afEth.address,
-      callData: afEth.interface.encodeFunctionData("deposit", [
-        0,
-        ethers.constants.MaxUint256,
-      ]),
-      gasLimit: "2285300", // TODO: set gas limit
-    };
-    console.log("deposit hook:", depositHook);
+
+    // orderConfig.receiver = afEthRelayer.address;
+    // const depositHook = {
+    //   target: afEth.address,
+    //   callData: afEth.interface.encodeFunctionData("depositSafEth", [
+    //     0,
+    //     wallet.address,
+    //   ]),
+    //   gasLimit: "2285300", // TODO: set gas limit
+    // };
+    // console.log("deposit hook:", depositHook);
 
     /** Order Creation **/
 
@@ -211,14 +109,9 @@ describe.only("Test Cow Hooks", async function () {
       metadata: {
         hooks: {
           pre: [permitHook],
-          post: [depositHook],
+          //   post: [depositHook],
         },
       },
-    });
-    console.log({
-      from: wallet.address,
-      sellAmountBeforeFee: orderConfig.sellAmount,
-      ...orderConfig,
     });
 
     const { id: quoteId, quote } = await fetch(
@@ -242,12 +135,15 @@ describe.only("Test Cow Hooks", async function () {
     const orderData = {
       ...orderConfig,
       sellAmount: quote.sellAmount,
-      buyAmount: `${ethers.BigNumber.from(quote.buyAmount).mul(99).div(100)}`,
+      buyAmount: `${ethers.BigNumber.from(quote.buyAmount)
+        .mul(99)
+        .div(100)
+        .toString()}`,
       validTo: quote.validTo,
       appData: ethers.utils.id(orderConfig.appData),
       feeAmount: quote.feeAmount,
     };
-
+    console.log("TRY SIGN");
     const orderSignature = await wallet._signTypedData(
       {
         name: "Gnosis Protocol",
@@ -273,6 +169,8 @@ describe.only("Test Cow Hooks", async function () {
       },
       orderData
     );
+
+    console.log("Signature:", orderSignature);
 
     const orderUid = await fetch(
       "https://barn.api.cow.fi/mainnet/api/v1/orders",
