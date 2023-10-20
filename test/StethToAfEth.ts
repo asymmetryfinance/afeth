@@ -1,8 +1,10 @@
 import { ethers } from "hardhat";
 import { stEthAbi } from "./abis/stEthAbi";
+import { relayerAbi } from "./abis/relayerAbi";
 
 describe.only("Test Cow Hooks", async function () {
   const STETH_ADDRESS = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+  const ETH_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
   it("Should permit & swap stEth to Eth, then deposit into AfEth", async function () {
     const { chainId } = await ethers.provider.getNetwork();
@@ -22,20 +24,26 @@ describe.only("Test Cow Hooks", async function () {
       ethers.provider
     );
 
-    const WETH = new ethers.Contract(
-      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-      [],
+    // const WETH = new ethers.Contract(
+    //   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    //   [],
+    //   ethers.provider
+    // );
+
+    const AFETH_RELAYER = new ethers.Contract(
+      "0x18D49239edC031fEc1747200CD315eca4FBfDC67",
+      relayerAbi,
       ethers.provider
     );
 
     const STETH = new ethers.Contract(STETH_ADDRESS, stEthAbi, ethers.provider);
-    const sellAmount = ethers.utils.parseEther(".15").toString();
+    const sellAmount = ethers.utils.parseEther(".05").toString();
 
     /** Order Configuration **/
 
     const orderConfig = {
       sellToken: STETH.address,
-      buyToken: WETH.address, // withdraw to ETH
+      buyToken: ETH_ADDRESS, // withdraw to ETH
       sellAmount,
       kind: "sell",
       partiallyFillable: false,
@@ -92,16 +100,16 @@ describe.only("Test Cow Hooks", async function () {
 
     orderConfig.receiver = wallet.address;
 
-    // orderConfig.receiver = afEthRelayer.address;
-    // const depositHook = {
-    //   target: afEth.address,
-    //   callData: afEth.interface.encodeFunctionData("depositSafEth", [
-    //     0,
-    //     wallet.address,
-    //   ]),
-    //   gasLimit: "2285300", // TODO: set gas limit
-    // };
-    // console.log("deposit hook:", depositHook);
+    // orderConfig.receiver = AFETH_RELAYER.address;
+    const depositHook = {
+      target: AFETH_RELAYER.address,
+      callData: AFETH_RELAYER.interface.encodeFunctionData("depositSafEth", [
+        0,
+        wallet.address,
+      ]),
+      gasLimit: "2285300", // TODO: set gas limit
+    };
+    console.log("deposit hook:", depositHook);
 
     /** Order Creation **/
 
@@ -109,7 +117,7 @@ describe.only("Test Cow Hooks", async function () {
       metadata: {
         hooks: {
           pre: [permitHook],
-          //   post: [depositHook],
+          post: [depositHook],
         },
       },
     });
