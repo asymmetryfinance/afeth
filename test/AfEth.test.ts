@@ -114,7 +114,7 @@ describe("Test AfEth", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should mint, requestwithdraw, and withdraw afETH", async function () {
+  it.only("Should mint, requestwithdraw, and withdraw afETH", async function () {
     const depositAmount = ethers.utils.parseEther("1");
     const mintTx = await afEth.deposit(0, await nowPlusOneMinute(), {
       value: depositAmount,
@@ -132,7 +132,7 @@ describe("Test AfEth", async function () {
     await requestWithdrawTx.wait();
 
     const afEthBalanceAfterRequest = await afEth.balanceOf(accounts[0].address);
-
+    console.log({ afEthBalanceAfterRequest });
     for (let i = 0; i < 17; i++) {
       await incrementVlcvxEpoch();
     }
