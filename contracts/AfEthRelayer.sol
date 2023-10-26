@@ -36,6 +36,8 @@ contract AfEthRelayer is Initializable {
         // The `buyTokenAddress` field from the API response.
         IERC20 buyToken,
         // The `allowanceTarget` field from the API response.
+        uint256 amount,
+
         address spender,
         // The `to` field from the API response.
         address payable swapTarget,
@@ -45,6 +47,8 @@ contract AfEthRelayer is Initializable {
         // Give `spender` an infinite allowance to spend this contract's `sellToken`.
         // Note that for some tokens (e.g., USDT, KNC), you must first reset any existing
         // allowance to 0 before being able to update it.
+        sellToken.transferFrom(msg.sender, address(this), amount);
+
         require(
             sellToken.approve(spender, type(uint256).max),
             "Approve Failed"
@@ -67,6 +71,7 @@ contract AfEthRelayer is Initializable {
         uint256 _minout,
         address _owner,
         address _sellToken,
+        uint256 _amount,
         address _allowanceTarget,
         address payable _to,
         bytes calldata _swapCallData
@@ -76,13 +81,14 @@ contract AfEthRelayer is Initializable {
         fillQuote(
             IERC20(_sellToken),
             IERC20(WETH_ADDRESS),
+            _amount,
             _allowanceTarget,
             _to,
             _swapCallData
         );
         uint256 balanceAfter = IERC20(WETH_ADDRESS).balanceOf(address(this));
         uint256 amountToStake = balanceAfter - balanceBefore;
-        console.log("AMOUNT TO STAKE", amountToStake);
+        console.log("WETH AMOUNT", amountToStake);
         IWETH(WETH_ADDRESS).withdraw(amountToStake);
 
         uint256 beforeDeposit = IERC20(SAF_ETH_ADDRESS).balanceOf(
@@ -107,6 +113,7 @@ contract AfEthRelayer is Initializable {
         uint256 _deadline,
         address _owner,
         address _sellToken,
+        uint256 _amount,
         address _allowanceTarget,
         address payable _to,
         bytes calldata _swapCallData
@@ -116,6 +123,7 @@ contract AfEthRelayer is Initializable {
         fillQuote(
             IERC20(_sellToken),
             IERC20(WETH_ADDRESS),
+            _amount,
             _allowanceTarget,
             _to,
             _swapCallData

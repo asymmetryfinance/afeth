@@ -35,7 +35,7 @@ describe.only("Test stETH to AF", async function () {
 
   it("Should approve & swap stEth to Eth, then deposit into SafEth", async function () {
     const takerAddress = "0x02eD4a07431Bcc26c5519EbF8473Ee221F26Da8b"; // Lido Whale
-    const sellAmount = ethers.utils.parseEther(".5");
+    const sellAmount = ethers.utils.parseEther("30");
     const STETH = new ethers.Contract(STETH_ADDRESS, stEthAbi, ethers.provider);
 
     const quote = await fetch(
@@ -60,11 +60,6 @@ describe.only("Test stETH to AF", async function () {
     // Get a signer for the account we are impersonating
     const signer = await ethers.getSigner(takerAddress);
 
-    await STETH.connect(signer).transfer(
-      afEthRelayer.address,
-      ethers.utils.parseEther("2")
-    );
-
     await STETH.connect(signer).approve(
       afEthRelayer.address,
       ethers.constants.MaxUint256
@@ -85,6 +80,7 @@ describe.only("Test stETH to AF", async function () {
         0,
         accounts[0].address,
         STETH_ADDRESS,
+        sellAmount,
         quote.allowanceTarget,
         quote.to,
         quote.data
