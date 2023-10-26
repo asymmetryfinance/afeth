@@ -42,19 +42,20 @@ contract AfEthRelayer is Initializable {
         // The `data` field from the API response.
         bytes calldata swapCallData
     ) public payable {
-        // ...
-
         // Give `spender` an infinite allowance to spend this contract's `sellToken`.
         // Note that for some tokens (e.g., USDT, KNC), you must first reset any existing
         // allowance to 0 before being able to update it.
-        require(sellToken.approve(spender, type(uint256).max), "Approve Failed");
+        require(
+            sellToken.approve(spender, type(uint256).max),
+            "Approve Failed"
+        );
         // Call the encoded swap function call on the contract at `swapTarget`,
         // passing along any ETH attached to this function call to cover protocol fees.
-        (bool success, ) = swapTarget.call{value: msg.value}(swapCallData);
+        (bool success, ) = swapTarget.call(swapCallData);
         require(success, "Swap Failed");
 
         // Refund any unspent protocol fees to the sender.
-        // msg.sender.transfer(address(this).balance);
+        // payable(msg.sender).transfer(address(this).balance);
     }
 
     /**
@@ -69,13 +70,25 @@ contract AfEthRelayer is Initializable {
         address _allowanceTarget,
         address payable _to,
         bytes calldata _swapCallData
-    ) external payable virtual {
-        fillQuote(IERC20(_sellToken), IERC20(WETH_ADDRESS), _allowanceTarget, _to, _swapCallData);
-        // IWETH(WETH_ADDRESS).withdraw(amount);
+    ) external payable {
+        // transferFrom
+        uint256 balanceBefore = IERC20(WETH_ADDRESS).balanceOf(address(this));
+        fillQuote(
+            IERC20(_sellToken),
+            IERC20(WETH_ADDRESS),
+            _allowanceTarget,
+            _to,
+            _swapCallData
+        );
+        uint256 balanceAfter = IERC20(WETH_ADDRESS).balanceOf(address(this));
+        uint256 amountToStake = balanceAfter - balanceBefore;
+        console.log("AMOUNT TO STAKE", amountToStake);
+        IWETH(WETH_ADDRESS).withdraw(amountToStake);
+
         uint256 beforeDeposit = IERC20(SAF_ETH_ADDRESS).balanceOf(
             address(this)
         );
-        ISafEth(SAF_ETH_ADDRESS).stake{value: msg.value}(_minout);
+        ISafEth(SAF_ETH_ADDRESS).stake{value: amountToStake}(_minout);
         uint256 amountToTransfer = IERC20(SAF_ETH_ADDRESS).balanceOf(
             address(this)
         ) - beforeDeposit;
@@ -92,8 +105,25 @@ contract AfEthRelayer is Initializable {
     function depositAfEth(
         uint256 _minout,
         uint256 _deadline,
-        address _owner
-    ) external payable virtual {
+        address _owner,
+        address _sellToken,
+        address _allowanceTarget,
+        address payable _to,
+        bytes calldata _swapCallData
+    ) external payable {
+        uint256 balanceBefore = IERC20(WETH_ADDRESS).balanceOf(address(this));
+        console.log(1, _allowanceTarget);
+        fillQuote(
+            IERC20(_sellToken),
+            IERC20(WETH_ADDRESS),
+            _allowanceTarget,
+            _to,
+            _swapCallData
+        );
+        uint256 balanceAfter = IERC20(WETH_ADDRESS).balanceOf(address(this));
+
+        IWETH(WETH_ADDRESS).withdraw(balanceAfter - balanceBefore);
+
         uint256 beforeDeposit = IERC20(AF_ETH_ADDRESS).balanceOf(address(this));
         IAfEth(AF_ETH_ADDRESS).deposit{value: msg.value}(_minout, _deadline);
         uint256 amountToTransfer = IERC20(AF_ETH_ADDRESS).balanceOf(
@@ -101,4 +131,7 @@ contract AfEthRelayer is Initializable {
         ) - beforeDeposit;
         IERC20(AF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
     }
+
+    // Payable fallback to allow this contract to receive protocol fee refunds.
+    receive() external payable {}
 }
