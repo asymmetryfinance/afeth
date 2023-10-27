@@ -1,14 +1,12 @@
 import { ethers, network, upgrades } from "hardhat";
 import { stEthAbi } from "./abis/stEthAbi";
-import { relayerAbi } from "./abis/relayerAbi";
 import { AfEthRelayer } from "../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber } from "ethers";
 
 describe("Test stETH to AF", async function () {
   const STETH_ADDRESS = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
-  const ETH_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-  const WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+
   let accounts: SignerWithAddress[];
   let afEthRelayer: AfEthRelayer;
 
@@ -63,16 +61,7 @@ describe("Test stETH to AF", async function () {
       afEthRelayer.address,
       ethers.constants.MaxUint256
     );
-    // const tx = await afEthRelayer
-    //   .connect(signer)
-    //   .fillQuote(
-    //     quote.sellTokenAddress,
-    //     quote.buyTokenAddress,
-    //     quote.allowanceTarget,
-    //     quote.to,
-    //     quote.data,
-    //     { value: ethers.utils.parseEther("1") }
-    //   );
+
     const tx = await afEthRelayer
       .connect(signer)
       .depositSafEth(
@@ -120,16 +109,7 @@ describe("Test stETH to AF", async function () {
       afEthRelayer.address,
       ethers.constants.MaxUint256
     );
-    // const tx = await afEthRelayer
-    //   .connect(signer)
-    //   .fillQuote(
-    //     quote.sellTokenAddress,
-    //     quote.buyTokenAddress,
-    //     quote.allowanceTarget,
-    //     quote.to,
-    //     quote.data,
-    //     { value: ethers.utils.parseEther("1") }
-    //   );
+
     const tx = await afEthRelayer
       .connect(signer)
       .depositAfEth(
