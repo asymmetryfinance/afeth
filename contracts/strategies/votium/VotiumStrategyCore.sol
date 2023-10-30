@@ -236,7 +236,6 @@ contract VotiumStrategyCore is
         }
 
         IERC20(_token).safeTransfer(msg.sender, tokenBalance);
-        if (_token == CVX_ADDRESS) trackedCvxBalance -= tokenBalance;
     }
 
     /**
