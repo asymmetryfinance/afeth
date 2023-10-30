@@ -218,7 +218,7 @@ contract VotiumStrategyCore is
     ) public payable onlyManager {
         uint256 cvxAmount = buyCvx(_amount);
         if (cvxAmount < _cvxMinout) revert MinOut();
-        IERC20(CVX_ADDRESS).safeApprove(VLCVX_ADDRESS, cvxAmount);
+        IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
         ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmount, 0);
         trackedCvxBalance -= cvxAmount;
         emit DepositReward(cvxPerVotium(), _amount, cvxAmount);
@@ -269,7 +269,7 @@ contract VotiumStrategyCore is
     ) internal returns (uint256 ethAmountOut) {
         address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
-        IERC20(CVX_ADDRESS).safeApprove(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
+        IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
 
         ethAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS)
             .exchange_underlying(
