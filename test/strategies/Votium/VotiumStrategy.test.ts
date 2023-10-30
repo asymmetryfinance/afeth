@@ -11,6 +11,7 @@ import { BigNumber } from "ethers";
 import { within1Percent, within2Percent } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
+import { nowPlusOneMinute } from "../../AfEth.test";
 
 describe("Test VotiumStrategy", async function () {
   let votiumStrategy: VotiumStrategy & VotiumStrategyCore;
@@ -859,9 +860,9 @@ describe("Test VotiumStrategy", async function () {
         .connect(accounts[5])
         .withdrawStuckTokens(ethers.constants.AddressZero)
     ).to.be.revertedWith("Ownable: caller is not the owner");
-    await expect(votiumStrategy.applyRewards([], 0, 0)).to.be.revertedWith(
-      "NotRewarder()"
-    );
+    await expect(
+      votiumStrategy.applyRewards([], 0, 0, await nowPlusOneMinute())
+    ).to.be.revertedWith("NotRewarder()");
     await expect(
       votiumStrategy.initialize(
         ethers.constants.AddressZero,
