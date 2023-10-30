@@ -71,6 +71,7 @@ contract VotiumStrategyCore is
     error AlreadyWithdrawn();
     error NotManager();
     error MinOut();
+    error StaleAction();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -291,8 +292,10 @@ contract VotiumStrategyCore is
     function applyRewards(
         SwapData[] calldata _swapsData,
         uint256 _safEthMinout,
-        uint256 _cvxMinout
+        uint256 _cvxMinout,
+        uint256 _deadline
     ) external onlyRewarder {
+        if (block.timestamp > _deadline) revert StaleAction();
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
             // Some tokens do not allow approval if allowance already exists
