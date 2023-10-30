@@ -6,6 +6,7 @@ import { wethAbi } from "../test/abis/wethAbi";
 import { BigNumber } from "ethers";
 import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { parseBalanceMap } from "../test/helpers/parse-balance-map";
+import { nowPlusOneMinute } from "../test/AfEth.test";
 
 export const generate0xSwapData = async (
   tokenAddresses: string[],
@@ -116,7 +117,12 @@ export async function votiumSellRewards(
     account
   ) as VotiumStrategy;
   if (swapsDataOverride) {
-    const tx = await votiumStrategy.applyRewards(swapsDataOverride, 0, 0);
+    const tx = await votiumStrategy.applyRewards(
+      swapsDataOverride,
+      0,
+      0,
+      await nowPlusOneMinute()
+    );
     const mined1 = await tx.wait();
     return mined1?.events?.find((e) => e?.event === "DepositReward");
   }
@@ -124,7 +130,12 @@ export async function votiumSellRewards(
   const tokenAddresses = proofs.map((p: any) => p[0]);
   const tokenAmounts = proofs.map((p: any[]) => p[2]);
   const swapsData = await generate0xSwapData(tokenAddresses, tokenAmounts);
-  const tx = await votiumStrategy.applyRewards(swapsData, 0, 0);
+  const tx = await votiumStrategy.applyRewards(
+    swapsData,
+    0,
+    0,
+    await nowPlusOneMinute()
+  );
   const mined2 = await tx.wait();
 
   return mined2?.events?.find((e) => e?.event === "DepositReward");
