@@ -339,9 +339,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      */
     function depositRewards(
         uint256 _safEthMinout,
-        uint256 _cvxMinout
+        uint256 _cvxMinout,
+        uint256 _deadline
     ) public payable onlyVotiumOrRewarder {
         require(!pauseDeposit, "paused");
+        if (block.timestamp > _deadline) revert StaleAction();
         IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
         uint256 feeAmount = (msg.value * protocolFee) / 1e18;
         if (feeAmount > 0) {
