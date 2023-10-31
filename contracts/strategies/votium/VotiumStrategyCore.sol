@@ -328,6 +328,11 @@ contract VotiumStrategyCore is
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
+        // Ensure CVX tokens are not removed
+        require(
+            IERC20(CVX_ADDRESS).balanceOf(address(this)) >= trackedCvxBalance
+        );
+
         if (address(manager) != address(0))
             IAfEth(manager).depositRewards{value: ethReceived}(
                 _safEthMinout,
