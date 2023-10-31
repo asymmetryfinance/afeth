@@ -4,7 +4,6 @@ pragma solidity 0.8.19;
 import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./VotiumStrategyCore.sol";
-import "hardhat/console.sol";
 
 /// @title Votium Strategy Token
 /// @author Asymmetry Finance
@@ -228,15 +227,17 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             trackedCvxBalance;
         uint256 duration = ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
+        (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(
+            currentEpoch
+        );
 
         if (
             totalLockedBalancePlusUnlockable >= cvxUnlockObligations + cvxAmount
         ) {
-            uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-                block.timestamp
-            );
-            (, uint32 date) = ILockedCvx(VLCVX_ADDRESS).epochs(currentEpoch);
-            return date + (minEpoch * duration);
+            return currentEpochStartingTime + (minEpoch * duration);
         }
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
@@ -245,9 +246,14 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 totalLockedBalancePlusUnlockable >=
                 cvxUnlockObligations + cvxAmount
             ) {
-                uint256 minEpochOffset = i < minEpoch ? (i + 1) % minEpoch : 0;
-                uint256 timeOffset = minEpochOffset * duration;
-                return lockedBalances[i].unlockTime + timeOffset;
+                uint256 timeDifference = lockedBalances[i].unlockTime -
+                    currentEpochStartingTime;
+                uint256 epochOffset = timeDifference / duration;
+                bool isBeforeMinEpoch = epochOffset < minEpoch;
+                return
+                    isBeforeMinEpoch
+                        ? currentEpochStartingTime + (duration * minEpoch)
+                        : lockedBalances[i].unlockTime;
             }
         }
         revert InvalidLockedAmount();
