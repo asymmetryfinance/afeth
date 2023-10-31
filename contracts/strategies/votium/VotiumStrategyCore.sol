@@ -341,10 +341,7 @@ contract VotiumStrategyCore is
         else depositRewards(ethReceived, _cvxMinout);
 
         uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        trackedCvxBalance =
-            trackedCvxBalance +
-            cvxBalanceAfter -
-            cvxBalanceBefore;
+        trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
     }
 
     /**
