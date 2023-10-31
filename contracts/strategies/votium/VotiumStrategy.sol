@@ -245,7 +245,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 totalLockedBalancePlusUnlockable >=
                 cvxUnlockObligations + cvxAmount
             ) {
-                uint256 minEpochOffset = (i + 1) % minEpoch;
+                uint256 minEpochOffset = i < minEpoch ? (i + 1) % minEpoch : 0;
                 uint256 timeOffset = minEpochOffset * duration;
                 return lockedBalances[i].unlockTime + timeOffset;
             }
