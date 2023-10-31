@@ -49,9 +49,10 @@ contract VotiumStrategyCore is
     uint256 latestWithdrawId;
 
     uint256 trackedCvxBalance;
+    uint256 minEpoch;
 
     // used to add storage variables in the future
-    uint256[20] private __gap;
+    uint256[19] private __gap;
 
     event DepositReward(
         uint256 indexed newPrice,
@@ -60,6 +61,8 @@ contract VotiumStrategyCore is
     );
 
     event FailedToSell(address indexed tokenAddress);
+    event MinEpochSet(uint256 indexed newMinEpoch);
+    event RewarderSet(address indexed newRewarder);
 
     error SwapFailed(uint256 index);
     error ChainlinkFailed();
@@ -121,6 +124,7 @@ contract VotiumStrategyCore is
         );
         rewarder = _rewarder;
         manager = _manager;
+        minEpoch = 2;
         __ERC20_init("Votium AfEth Strategy", "vAfEth");
         _transferOwnership(_owner);
         chainlinkCvxEthFeed = AggregatorV3Interface(
@@ -134,6 +138,16 @@ contract VotiumStrategyCore is
      */
     function setRewarder(address _rewarder) external onlyOwner {
         rewarder = _rewarder;
+        emit RewarderSet(_rewarder);
+    }
+
+    /**
+     * @notice - Function to set the address of the rewarder account that periodically claims rewards
+     * @param _minEpoch - Address of the rewarder account
+     */
+    function setMinEpoch(uint256 _minEpoch) external onlyOwner {
+        minEpoch = _minEpoch;
+        emit MinEpochSet(_minEpoch);
     }
 
     /**

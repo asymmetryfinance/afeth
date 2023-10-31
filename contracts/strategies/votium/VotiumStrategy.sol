@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "../AbstractStrategy.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./VotiumStrategyCore.sol";
+import "hardhat/console.sol";
 
 /// @title Votium Strategy Token
 /// @author Asymmetry Finance
@@ -87,7 +88,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
             ] = WithdrawRequestInfo({
                 cvxOwed: cvxAmount,
                 withdrawn: false,
-                epoch: currentEpoch + 1,
+                epoch: currentEpoch + minEpoch,
                 owner: msg.sender
             });
             emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
@@ -106,6 +107,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 uint256 timeDifference = lockedBalances[i].unlockTime -
                     currentEpochStartingTime;
                 uint256 epochOffset = timeDifference / duration;
+                if (epochOffset < minEpoch) {
+                    epochOffset = minEpoch;
+                }
                 uint256 withdrawEpoch = currentEpoch + epochOffset;
                 withdrawIdToWithdrawRequestInfo[
                     latestWithdrawId
@@ -223,6 +227,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             trackedCvxBalance;
+        uint256 duration = ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
 
         if (
             totalLockedBalancePlusUnlockable >= cvxUnlockObligations + cvxAmount
@@ -230,12 +235,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
             uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
                 block.timestamp
             );
-            (, uint32 date) = ILockedCvx(VLCVX_ADDRESS).epochs(
-                currentEpoch + 1
-            );
-            return date;
+            (, uint32 date) = ILockedCvx(VLCVX_ADDRESS).epochs(currentEpoch);
+            return date + (minEpoch * duration);
         }
-
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
@@ -243,7 +245,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 totalLockedBalancePlusUnlockable >=
                 cvxUnlockObligations + cvxAmount
             ) {
-                return lockedBalances[i].unlockTime;
+                uint256 minEpochOffset = (i + 1) % minEpoch;
+                uint256 timeOffset = minEpochOffset * duration;
+                return lockedBalances[i].unlockTime + timeOffset;
             }
         }
         revert InvalidLockedAmount();
