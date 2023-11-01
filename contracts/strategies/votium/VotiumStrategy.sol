@@ -87,7 +87,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
             ] = WithdrawRequestInfo({
                 cvxOwed: cvxAmount,
                 withdrawn: false,
-                epoch: currentEpoch + 1,
+                epoch: currentEpoch + minEpoch,
                 owner: msg.sender
             });
             emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
@@ -106,6 +106,9 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 uint256 timeDifference = lockedBalances[i].unlockTime -
                     currentEpochStartingTime;
                 uint256 epochOffset = timeDifference / duration;
+                if (epochOffset < minEpoch) {
+                    epochOffset = minEpoch;
+                }
                 uint256 withdrawEpoch = currentEpoch + epochOffset;
                 withdrawIdToWithdrawRequestInfo[
                     latestWithdrawId
@@ -223,19 +226,19 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         uint256 totalLockedBalancePlusUnlockable = unlockable +
             trackedCvxBalance;
+        uint256 duration = ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
+            block.timestamp
+        );
+        (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(
+            currentEpoch
+        );
 
         if (
             totalLockedBalancePlusUnlockable >= cvxUnlockObligations + cvxAmount
         ) {
-            uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-                block.timestamp
-            );
-            (, uint32 date) = ILockedCvx(VLCVX_ADDRESS).epochs(
-                currentEpoch + 1
-            );
-            return date;
+            return currentEpochStartingTime + (minEpoch * duration);
         }
-
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
@@ -243,7 +246,14 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
                 totalLockedBalancePlusUnlockable >=
                 cvxUnlockObligations + cvxAmount
             ) {
-                return lockedBalances[i].unlockTime;
+                uint256 timeDifference = lockedBalances[i].unlockTime -
+                    currentEpochStartingTime;
+                uint256 epochOffset = timeDifference / duration;
+                bool isBeforeMinEpoch = epochOffset < minEpoch;
+                return
+                    isBeforeMinEpoch
+                        ? currentEpochStartingTime + (duration * minEpoch)
+                        : lockedBalances[i].unlockTime;
             }
         }
         revert InvalidLockedAmount();

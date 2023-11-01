@@ -732,7 +732,7 @@ describe("Test VotiumStrategy", async function () {
 
     expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
   });
-  it("Should allow to withdraw from next epoch if cvx is ready", async function () {
+  it("Should allow to withdraw from min epoch if cvx is ready", async function () {
     const amount = ethers.utils.parseEther("1");
     let tx = await votiumStrategy.deposit({
       value: amount,
@@ -772,7 +772,15 @@ describe("Test VotiumStrategy", async function () {
     ).epoch;
     expect(currentEpoch).lt(withdrawEpoch);
 
-    // Should increase a single epoch to withdraw
+    // Should increase a  epoch and can't withdraw because minEpoch == 2
+    await incrementVlcvxEpoch();
+
+    currentEpoch = await getCurrentEpoch();
+    withdrawEpoch = (
+      await votiumStrategy.withdrawIdToWithdrawRequestInfo(withdrawId)
+    ).epoch;
+    expect(currentEpoch).lt(withdrawEpoch);
+
     await incrementVlcvxEpoch();
 
     currentEpoch = await getCurrentEpoch();
