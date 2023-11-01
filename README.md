@@ -61,13 +61,13 @@ Coming soon
 
 1. `yarn claimRewardsData`
 
-
-2. Call `claimRewards()` from the rewarder account using data generated above
+2. Call `claimRewards()` from the rewarder account using data from step 1
 https://etherscan.io/address/0xb5D336912EB99d0eA05F499172F39768afab8D4b#writeProxyContract
 
 3. `yarn applyRewardsData`
 
-4. Call `applyRewards()` from the rewarder account using data generated above
+4. Call `applyRewards()` from the rewarder account using data from step 3
+https://etherscan.io/address/0xb5D336912EB99d0eA05F499172F39768afab8D4b#writeProxyContract
 
 5. Verify that `cvxPerVotium()` went up by reading its value here:
 https://etherscan.io/address/0xb5D336912EB99d0eA05F499172F39768afab8D4b#readProxyContract
