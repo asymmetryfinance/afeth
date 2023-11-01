@@ -325,13 +325,16 @@ contract VotiumStrategyCore is
                 emit FailedToSell(_swapsData[i].sellToken);
             }
         }
-        uint256 ethBalanceAfter = address(this).balance;
-        uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
+        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
+        trackedCvxBalance = trackedCvxBalance + cvxBalanceAfter - cvxBalanceBefore;
         // Ensure CVX tokens are not removed
         require(
             IERC20(CVX_ADDRESS).balanceOf(address(this)) >= trackedCvxBalance
         );
+
+        uint256 ethBalanceAfter = address(this).balance;
+        uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
         if (address(manager) != address(0))
             IAfEth(manager).depositRewards{value: ethReceived}(
@@ -339,9 +342,6 @@ contract VotiumStrategyCore is
                 _cvxMinout
             );
         else depositRewards(ethReceived, _cvxMinout);
-
-        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
     }
 
     /**
