@@ -17,7 +17,7 @@
     "clean": "rm .openzeppelin/unknown-*.json | rm -rf node_modules artifacts cache typechain-types deployments",
     "test": "yarn hardhat test",
     "testData": "yarn hardhat run scripts/generateTestData.ts",
-    "claimRewardsData": "yarn hardhat run scripts/generateClaimRewardsData.ts"
+    "claimRewardsData": "rm -rf ./votium && yarn hardhat run scripts/generateClaimRewardsData.ts && rm -rf ./votium",
     "applyRewardsData": "yarn hardhat run scripts/generateApplyRewardsData.ts"
   },
   "repository": {
@@ -82,7 +82,9 @@
     "@openzeppelin/contracts-upgradeable": "^4.8.1",
     "@openzeppelin/hardhat-defender": "^1.8.2",
     "@openzeppelin/hardhat-upgrades": "^1.17.0",
+    "@supercharge/fs": "^3.4.0",
     "axios": "^1.4.0",
-    "discord.js": "^14.9.0"
+    "discord.js": "^14.9.0",
+    "git-clone": "^0.2.0"
   }
 }
