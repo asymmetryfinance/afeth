@@ -327,7 +327,10 @@ contract VotiumStrategyCore is
         }
 
         uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        trackedCvxBalance = trackedCvxBalance + cvxBalanceAfter - cvxBalanceBefore;
+        trackedCvxBalance =
+            trackedCvxBalance +
+            cvxBalanceAfter -
+            cvxBalanceBefore;
         // Ensure CVX tokens are not removed
         require(
             IERC20(CVX_ADDRESS).balanceOf(address(this)) >= trackedCvxBalance
