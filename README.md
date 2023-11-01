@@ -59,7 +59,7 @@ Coming soon
 
 ## Claiming & applying votium rewards
 
-1. `yarn claimRewardsData`
+1. `yarn && yarn claimRewardsData`
 
 2. Call `claimRewards()` from the rewarder account using data from step 1
 https://etherscan.io/address/0xb5D336912EB99d0eA05F499172F39768afab8D4b#writeProxyContract
