@@ -4,19 +4,89 @@ import BigNumber from "bignumber.js";
 import yesno from "yesno";
 import { ethers } from "hardhat";
 import { votiumMultiMerkleStashAbi } from "../test/abis/votiumMerkleStashAbi";
+import axios from "axios";
+import { wethAbi } from "../test/abis/wethAbi";
 
-// (async function main() {
-//   await clone("https://github.com/oo-00/Votium.git", "./votium");
-//   // console.log("Cloning votium merkle data repo...");
-//   // const proofs = await getProofsFromVotiumGithub();
-//   // console.log("Repo cloned, getting proofs from local data...");
-//   // console.log(JSON.stringify(proofs));
-// })()
-//   .then(() => process.exit(0))
-//   .catch((error) => {
-//     console.error(error);
-//     process.exit(1);
-//   });
+(async function main() {
+  console.log("Cloning votium merkle data repo...");
+  await clone("https://github.com/oo-00/Votium.git", "./votium");
+  const proofs = await getProofsFromVotiumGithub();
+  const swapData = await get0xSwapData(proofs);
+  console.log("merkleProofs:");
+  console.log(JSON.stringify(proofs));
+  console.log("swapData:");
+  console.log(JSON.stringify(swapData));
+})()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+
+export async function get0xSwapData(proofs: any) {
+  const accounts = await ethers.getSigners();
+  const swapsData = [];
+  // swap reward tokens for eth
+  for (let i = 0; i < proofs.length; i++) {
+    // prevent 429s
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const tokenAddress = proofs[i][0];
+    const tokenAmount = proofs[i][2];
+    console.log("generating swapdata for", i, tokenAddress);
+    const sellToken = tokenAddress;
+    const buyToken = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+    // we use weth abi because we sometimes need to call withdraw on weth but its otherwise an erc20 abi
+    const tokenContract = new ethers.Contract(
+      tokenAddress,
+      wethAbi,
+      accounts[0]
+    );
+
+    const sellAmount = new BigNumber(tokenAmount).toString();
+
+    // special case unwrap weth
+    if (
+      sellToken.toLowerCase() ===
+      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".toLowerCase()
+    ) {
+      const data = await tokenContract.populateTransaction.withdraw(sellAmount);
+      const newData = {
+        sellToken,
+        spender: tokenContract.address,
+        swapTarget: tokenContract.address,
+        swapCallData: data.data,
+      };
+      swapsData.push(newData);
+    } else {
+      let result;
+      try {
+        result = await axios.get(
+          `https://api.0x.org/swap/v1/quote?buyToken=${buyToken}&sellToken=${sellToken}&sellAmount=${sellAmount}&slippagePercentage=0.90`,
+          {
+            headers: {
+              "0x-api-key":
+                process.env.API_KEY_0X ||
+                "35aa607c-1e98-4404-ad87-4bed10a538ae",
+            },
+          }
+        );
+
+        const newData = {
+          sellToken,
+          spender: result.data.allowanceTarget,
+          swapTarget: result.data.to,
+          swapCallData: result.data.data,
+        };
+        swapsData.push(newData);
+      } catch (e) {
+        console.log("**********WARNING**********");
+        console.log("0x doesnt support", i, sellToken, buyToken, sellAmount, e);
+      }
+    }
+  }
+  return swapsData;
+}
 
 export async function getProofsFromVotiumGithub() {
   const files = await Fs.files("./votium/merkle"); // use allFiles to recursively search
