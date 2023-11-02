@@ -17,7 +17,7 @@
     "clean": "rm .openzeppelin/unknown-*.json | rm -rf node_modules artifacts cache typechain-types deployments",
     "test": "yarn hardhat test",
     "testData": "yarn hardhat run scripts/generateTestData.ts",
-    "claimRewardsData": "rm -rf ./votium && yarn hardhat run scripts/generateClaimRewardsData.ts && rm -rf ./votium",
+    "claimRewardsData": "yarn hardhat run scripts/generateClaimRewardsData.ts",
     "applyRewardsData": "yarn hardhat run scripts/generateApplyRewardsData.ts"
   },
   "repository": {
