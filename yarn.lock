@@ -1355,6 +1355,24 @@
   dependencies:
     antlr4ts "^0.5.0-alpha.4"
 
+"@supercharge/fs@^3.4.0":
+  version "3.4.0"
+  resolved "https://registry.yarnpkg.com/@supercharge/fs/-/fs-3.4.0.tgz#cb2823a9b8a3c361f086b3554db147191fb63549"
+  integrity sha512-KjrMmnfaDJog/77X+kxaFZaqBCOZX7xjv0obQs3VRXWU62iXMuT1FW2zH8yQZrtDlOIB9UvLSWdENQSeHrtHKA==
+  dependencies:
+    "@supercharge/goodies" "~1.10.0"
+    "@types/fs-extra" "~9.0.12"
+    "@types/proper-lockfile" "~4.1.2"
+    "@types/recursive-readdir" "~2.2.0"
+    fs-extra "~10.0.0"
+    proper-lockfile "~4.1.2"
+    recursive-readdir "~2.2.2"
+
+"@supercharge/goodies@~1.10.0":
+  version "1.10.1"
+  resolved "https://registry.yarnpkg.com/@supercharge/goodies/-/goodies-1.10.1.tgz#969d1732f774027a104f2ea289eeb6372b8e1b87"
+  integrity sha512-v1TRTpFvcVsDnz2QhdY8VS86ht6XgaseZu5+E8ETe04A4Mym8ff+6cC6GL8aPBo6Ii86mtTa+8REoFD31L8A1g==
+
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/@szmarczak/http-timer/-/http-timer-1.1.2.tgz#b1665e2c461a2cd92f4c1bbf50d5454de0d4b421"
@@ -1579,6 +1597,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/fs-extra@~9.0.12":
+  version "9.0.13"
+  resolved "https://registry.yarnpkg.com/@types/fs-extra/-/fs-extra-9.0.13.tgz#7594fbae04fe7f1918ce8b3d213f74ff44ac1f45"
+  integrity sha512-nEnwB++1u5lVDM2UI4c1+5R+FYaKfaAzS4OococimjVm3nQw3TuzH5UNsocrcTBbhnerblyHj4A49qXbIiZdpA==
+  dependencies:
+    "@types/node" "*"
+
 "@types/glob@^7.1.1":
   version "7.2.0"
   resolved "https://registry.yarnpkg.com/@types/glob/-/glob-7.2.0.tgz#bc1b5bf3aa92f25bd5dd39f35c57361bdce5b2eb"
@@ -1676,6 +1701,13 @@
   resolved "https://registry.yarnpkg.com/@types/prettier/-/prettier-2.7.3.tgz#3e51a17e291d01d17d3fc61422015a933af7a08f"
   integrity sha512-+68kP9yzs4LMp7VNh8gdzMSPZFL44MLGqiHWvttYJe+6qnuVr4Ek9wSBQoveqY/r+LwjCcU29kNVkidwim+kYA==
 
+"@types/proper-lockfile@~4.1.2":
+  version "4.1.3"
+  resolved "https://registry.yarnpkg.com/@types/proper-lockfile/-/proper-lockfile-4.1.3.tgz#6c48bb573de5c4342e77c393d1e38417f7d8a963"
+  integrity sha512-10msVdc5q6kkZpJFjyz6T245uB6vN9EcbJx6j2hBD6bls0Z8xEpOvLMOyEVpsT1r4uRhfM0+U1Gvs5eC+k7Zuw==
+  dependencies:
+    "@types/retry" "*"
+
 "@types/qs@^6.2.31", "@types/qs@^6.9.7":
   version "6.9.7"
   resolved "https://registry.yarnpkg.com/@types/qs/-/qs-6.9.7.tgz#63bb7d067db107cc1e457c303bc25d511febf6cb"
@@ -1688,6 +1720,13 @@
   dependencies:
     "@types/node" "*"
     safe-buffer "~5.1.1"
+
+"@types/recursive-readdir@~2.2.0":
+  version "2.2.3"
+  resolved "https://registry.yarnpkg.com/@types/recursive-readdir/-/recursive-readdir-2.2.3.tgz#3c09121084302527ce162f2190584da2caab49ff"
+  integrity sha512-fhOVQ23ki+GB0WGmJJF9OwPBjel2Iv02pmEv58T0DZqIAlKnyhAaC2E9/LuKQLIZF88w7ivXSZXJtvEXGXFgeQ==
+  dependencies:
+    "@types/node" "*"
 
 "@types/resolve@^0.0.8":
   version "0.0.8"
@@ -1702,6 +1741,11 @@
   integrity sha512-85Y2BjiufFzaMIlvJDvTTB8Fxl2xfLo4HgmHzVBz08w4wDePCTjYw66PdrolO0kzli3yam/YCgRufyo1DdQVTA==
   dependencies:
     "@types/node" "*"
+
+"@types/retry@*":
+  version "0.12.4"
+  resolved "https://registry.yarnpkg.com/@types/retry/-/retry-0.12.4.tgz#67d65e2df7a82b0b0ec0ba7fb2711c50c2adf1f4"
+  integrity sha512-l1YzFLj8Y6OhLdt7HKXlz56DoEmksB7qR8KVk+MpFsS4duwnoszLgDlLxJB0vgSqtg/rAS5gmYg5Bjw2sMJ8Ew==
 
 "@types/secp256k1@^4.0.1":
   version "4.0.3"
@@ -3122,6 +3166,11 @@ bignumber.js@^9.0.0, bignumber.js@^9.0.1:
   version "9.1.1"
   resolved "https://registry.yarnpkg.com/bignumber.js/-/bignumber.js-9.1.1.tgz#c4df7dc496bd849d4c9464344c1aa74228b4dac6"
   integrity sha512-pHm4LsMJ6lzgNGVfZHjMoO8sdoRhOzOH4MLmY65Jg70bpxCKu5iOHNJyfF6OyvYw7t8Fpf35RuzUyqnQsj8Vig==
+
+bignumber.js@^9.1.2:
+  version "9.1.2"
+  resolved "https://registry.yarnpkg.com/bignumber.js/-/bignumber.js-9.1.2.tgz#b7c4242259c008903b13707983b5f4bbd31eda0c"
+  integrity sha512-2/mKyZH9K85bzOEfhXDBFZTGd1CTs+5IHpeFQo9luiBG7hghdC851Pj2WAhb6E3R6b9tZj/XKhbg4fum+Kepug==
 
 binary-extensions@^2.0.0:
   version "2.2.0"
@@ -5992,6 +6041,15 @@ fs-extra@^9.0.0, fs-extra@^9.1.0:
     jsonfile "^6.0.1"
     universalify "^2.0.0"
 
+fs-extra@~10.0.0:
+  version "10.0.1"
+  resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-10.0.1.tgz#27de43b4320e833f6867cc044bfce29fdf0ef3b8"
+  integrity sha512-NbdoVMZso2Lsrn/QwLXOy6rm0ufY2zEOKCDzJR/0kBsb0E6qed0P3iYK+Ath3BfvXEeu4JhEtXLgILx5psUfag==
+  dependencies:
+    graceful-fs "^4.2.0"
+    jsonfile "^6.0.1"
+    universalify "^2.0.0"
+
 fs-minipass@^1.2.7:
   version "1.2.7"
   resolved "https://registry.yarnpkg.com/fs-minipass/-/fs-minipass-1.2.7.tgz#ccff8570841e7fe4265693da88936c55aed7f7c7"
@@ -6157,6 +6215,11 @@ ghost-testrpc@^0.0.2:
   dependencies:
     chalk "^2.4.2"
     node-emoji "^1.10.0"
+
+git-clone@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/git-clone/-/git-clone-0.2.0.tgz#9dce00facbab227d2562150052cd4a3a7ec15c41"
+  integrity sha512-1UAkEPIFbyjHaddljUKvPhhLRnrKaImT71T7rdvSvWLXw95nLdhdi6Qmlx0KOWoV1qqvHGLq5lMLJEZM0JXk8A==
 
 glob-parent@^5.1.2, glob-parent@~5.1.0, glob-parent@~5.1.2:
   version "5.1.2"
@@ -9141,7 +9204,7 @@ promise@^8.0.0:
   dependencies:
     asap "~2.0.6"
 
-proper-lockfile@^4.1.1:
+proper-lockfile@^4.1.1, proper-lockfile@~4.1.2:
   version "4.1.2"
   resolved "https://registry.yarnpkg.com/proper-lockfile/-/proper-lockfile-4.1.2.tgz#c8b9de2af6b2f1601067f98e01ac66baa223141f"
   integrity sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA==
@@ -9431,7 +9494,7 @@ rechoir@^0.6.2:
   dependencies:
     resolve "^1.1.6"
 
-recursive-readdir@^2.2.2:
+recursive-readdir@^2.2.2, recursive-readdir@~2.2.2:
   version "2.2.3"
   resolved "https://registry.yarnpkg.com/recursive-readdir/-/recursive-readdir-2.2.3.tgz#e726f328c0d69153bcabd5c322d3195252379372"
   integrity sha512-8HrF5ZsXk5FAH9dgsx3BlUer73nIhuj+9OrQwEbLTPOBzGkL1lsFCR01am+v+0m2Cmbs1nP12hLDl5FA7EszKA==
@@ -12190,6 +12253,11 @@ yargs@^4.7.1:
     window-size "^0.2.0"
     y18n "^3.2.1"
     yargs-parser "^2.4.1"
+
+yesno@^0.4.0:
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/yesno/-/yesno-0.4.0.tgz#5d674f14d339f0bd4b0edc47f899612c74fcd895"
+  integrity sha512-tdBxmHvbXPBKYIg81bMCB7bVeDmHkRzk5rVJyYYXurwKkHq/MCd8rz4HSJUP7hW0H2NlXiq8IFiWvYKEHhlotA==
 
 yn@3.1.1:
   version "3.1.1"

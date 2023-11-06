@@ -17,7 +17,7 @@ export const generate0xSwapData = async (
   const swapsData = [];
   // swap reward tokens for eth
   for (let i = 0; i < tokenAddresses.length; i++) {
-    console.log("generating swapdata for", i, tokenAddresses[i]);
+    console.log("generating swapdata for", tokenAddresses[i]);
     const sellToken = tokenAddresses[i];
     const buyToken = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 

@@ -56,3 +56,16 @@ yarn && yarn compile
 ## Architecture Diagrams
 
 Coming soon
+
+## Claiming & applying votium rewards
+
+1. Run `yarn && yarn claimRewardsData` from the afEth repo
+
+2. Call `votiumStrategy.claimRewards()` using merkleProofs from step 1 and wait for transaction to confirm
+   https://etherscan.io/address/0xb5D336912EB99d0eA05F499172F39768afab8D4b#writeProxyContract
+
+3. Call `votiumStrategy.applyRewards()` using swapData from step 1 and wait for transaction to confirm
+   https://etherscan.io/address/0xb5D336912EB99d0eA05F499172F39768afab8D4b#writeProxyContract
+
+4. Verify `afEth.price()` went up
+   https://etherscan.io/address/0x5F10B16F0959AaC2E33bEdc9b0A4229Bb9a83590#readProxyContract
