@@ -163,7 +163,7 @@ describe("Test AfEth", async function () {
     expect(ethBalanceAfterWithdraw).gt(ethBalanceBeforeWithdraw);
   });
 
-  it.only("Should deposit with the correct ratios", async function () {
+  it("Should deposit with the correct ratios", async function () {
     const safEthVotiumRatio = ethers.utils.parseEther(".7");
     await afEth.setRatio(safEthVotiumRatio);
 
