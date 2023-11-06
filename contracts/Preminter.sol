@@ -6,10 +6,10 @@ import "./external_interfaces/IAfEth.sol";
 
 contract Preminter is Initializable, OwnableUpgradeable {
 
-    address constant afEthAddress = 0x5F10B16F0959AaC2E33bEdc9b0A4229Bb9a83590;
-
     uint256 preminterEthBalance;
     uint256 preminterAfEthBalance;
+
+    uint256 preminterSellFeeParam;
     
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -42,6 +42,14 @@ contract Preminter is Initializable, OwnableUpgradeable {
     }
 
     /**
+     * @notice Sets sell fee used in selling afEth afEth (Immediate Unstake Premtium)
+     * @param _sellFee fee paramater used in selling afEth (Immediate Unstake Premtium)
+     */
+    function ownerSetFee(uint256 _sellFee) public onlyOwner {
+        preminterSellFeeParam = _sellFee;
+    }
+
+    /**
      * @notice Buy afEth from Preminter
      * @param _minOut minimum afEth to receive or revert
      */
@@ -59,7 +67,7 @@ contract Preminter is Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @notice Price to buy afEth from preminter
+     * @notice Price (including fees) to buy afEth from preminter includin
      */
     function buyPrice() public view returns (uint256) {
         // TODO
@@ -68,7 +76,7 @@ contract Preminter is Initializable, OwnableUpgradeable {
     /**
      * @notice Price to sell afEth to preminter
      */
-    function sellPrice() public view returns (uint256) {
-        // TODO
+    function sellPrice(uint256 _amount) public view returns (uint256) {
+        
     }
 }
