@@ -6,10 +6,9 @@ import "contracts/strategies/votium/VotiumStrategy.sol";
 import "contracts/external_interfaces/IVotiumStrategy.sol";
 import "contracts/external_interfaces/ISafEth.sol";
 import "contracts/strategies/AbstractStrategy.sol";
-import "contracts/Preminter.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
-contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable, Preminter {
+contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     uint256 public ratio;
     uint256 public protocolFee;
     address public feeAddress;
@@ -23,6 +22,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable, Preminter
     uint256 public trackedsafEthBalance;
     bool public pauseDeposit;
     bool public pauseWithdraw;
+
+    uint256 preminterEthBalance;
+    uint256 preminterAfEthBalance;
+    uint256 preminterMinFee;
+    uint256 preminterMaxFee;
 
     struct WithdrawInfo {
         address owner;
@@ -375,4 +379,77 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable, Preminter
     }
 
     receive() external payable {}
+
+    /**
+     * @notice Allow owner to withdraw from Preminter
+     * @param _amount amount of eth or afEth to withdraw
+     * @param _afEth if true, withdraw afEth instead of eth
+     */
+    function premintOwnerWithdraw(uint256 _amount, bool _afEth) public onlyOwner {
+        // TODO
+    }
+
+    /**
+     * @notice Allow owner to deposit into Preminter
+     * @param _afEth if true, mint afEth with eth instead of depositing it
+     */
+    function premintOwnerDeposit(bool _afEth) public payable onlyOwner {
+        _transfer(msg.sender, address(this), msg.value);
+
+        if(!_afEth) {
+            preminterEthBalance += msg.value;
+        }
+        else {
+            this.deposit({value: msg.value});
+        }
+    }
+
+    /**
+     * @notice Sets sell fee used in selling afEth afEth (Immediate Unstake Premtium)
+     * @param _minSellFee minimum sell fee % to charge if there is 0 weeks to unstake
+     * @param _minSellFee maximum sell fee % to charge if there is 16 weeks to unstake
+     */
+    function premintOwnerSetFee(uint256 _minSellFee, uint256 _maxSellFee) public onlyOwner {
+        preminterMinFee = _maxSellFee;
+        preminterMaxFee = _minSellFee;
+    }
+
+    /**
+     * @notice Buy afEth from Preminter
+     * @param _minOut minimum afEth to receive or revert
+     */
+    function premintBuy(uint256 _minOut) public {
+        // TODO
+    }
+
+    /**
+     * Sell afEth to preminter
+     * @param _afEthToSell amount of afEth to sell
+     * @param _ethMinOut minimum eth to receive or revert
+     */
+    function premintSell(uint256 _afEthToSell, uint256 _ethMinOut) {
+        uint256 ethOut = premintSellAmount(_amount);
+    }
+
+    /**
+     * @notice Returns expected afEth out for a given eth amount
+     * @param _ethAmount amount of eth simulate buy with
+     * @return afEth out for a given eth amount
+     */
+    function premintBuyAmount(uint256 _ethAmount) public view returns (uint256) {
+        // TODO
+    }
+
+    /**
+     * @notice Returns expected eth out for a given afEth amount
+     * @param _afEthToSell amount of afEth simulate sell with
+     * @return eth amount out for a given eth amount
+     */
+    function premintSellAmount(uint256 _afEthToSell) public view returns (uint256) {
+        uint256 maxPossibleWithdrawTime = 24 * 60 * 60 * 7 * 17;
+        uint256 withdrawTimeRemaiming = withdrawTime(_afEthToSell) - block.timestamp;
+        uint256 withdrawTimePercent = (withdrawTimeRemaiming * 1e18) / maxPossibleWithdrawTime;
+        uint256 feePercent = preminterMinFee + ((preminterMaxFee - preminterMinFee) * withdrawTimePercent) / 1e18;
+        return (price(true) * _afEthToSell) * (1e18 - feePercent);
+    }
 }
