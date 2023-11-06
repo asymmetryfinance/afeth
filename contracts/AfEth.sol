@@ -6,9 +6,10 @@ import "contracts/strategies/votium/VotiumStrategy.sol";
 import "contracts/external_interfaces/IVotiumStrategy.sol";
 import "contracts/external_interfaces/ISafEth.sol";
 import "contracts/strategies/AbstractStrategy.sol";
+import "contracts/Preminter.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
-contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
+contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable, Preminter {
     uint256 public ratio;
     uint256 public protocolFee;
     address public feeAddress;
