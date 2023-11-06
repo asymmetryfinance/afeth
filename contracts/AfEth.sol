@@ -392,15 +392,15 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
      * @notice Allow owner to deposit into Preminter
      * @param _afEth if true, mint afEth with eth instead of depositing it
+     * @param _afEthMinout minimum afEth to receive if depositing into afEth
      */
-    function premintOwnerDeposit(bool _afEth) public payable onlyOwner {
+    function premintOwnerDeposit(bool _afEth, uint256 _afEthMinout) public payable onlyOwner {
         _transfer(msg.sender, address(this), msg.value);
-
         if(!_afEth) {
             preminterEthBalance += msg.value;
         }
         else {
-            this.deposit({value: msg.value});
+            this.deposit{value: msg.value}(_afEthMinout, block.timestamp + 60 * 5);
         }
     }
 
@@ -427,8 +427,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _afEthToSell amount of afEth to sell
      * @param _ethMinOut minimum eth to receive or revert
      */
-    function premintSell(uint256 _afEthToSell, uint256 _ethMinOut) {
-        uint256 ethOut = premintSellAmount(_amount);
+    function premintSell(uint256 _afEthToSell, uint256 _ethMinOut) public {
+        uint256 ethOut = premintSellAmount(_afEthToSell);
+        if(ethOut < _ethMinOut) revert("Below min out"); // TODO proper error
+        _transfer(msg.sender, address(this), _afEthToSell);
+        // solhint-disable-next-line
+        (bool sent, ) = address(msg.sender).call{value: ethOut}("");
+        if (!sent) revert FailedToSend();
     }
 
     /**
