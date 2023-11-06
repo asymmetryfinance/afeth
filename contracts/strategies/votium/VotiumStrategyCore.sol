@@ -51,8 +51,10 @@ contract VotiumStrategyCore is
     uint256 trackedCvxBalance;
     uint256 minEpoch;
 
+    bool public cvxTrackingInitialized;
+
     // used to add storage variables in the future
-    uint256[19] private __gap;
+    uint256[18] private __gap;
 
     event DepositReward(
         uint256 indexed newPrice,
@@ -75,6 +77,7 @@ contract VotiumStrategyCore is
     error NotManager();
     error MinOut();
     error StaleAction();
+    error AlreadyInitialized();
 
     /**
         @notice - Sets the address for the chainlink feed
@@ -130,6 +133,12 @@ contract VotiumStrategyCore is
         chainlinkCvxEthFeed = AggregatorV3Interface(
             0xC9CbF687f43176B302F03f5e58470b77D07c61c6
         );
+    }
+
+    function initializeCvxBalanceTracking() external onlyOwner {
+        if (cvxTrackingInitialized) revert AlreadyWithdrawn();
+        cvxTrackingInitialized = true;
+        trackedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
     }
 
     /**
@@ -341,15 +350,9 @@ contract VotiumStrategyCore is
         }
 
         uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        trackedCvxBalance =
-            trackedCvxBalance +
-            cvxBalanceAfter -
-            cvxBalanceBefore;
-        // Ensure CVX tokens are not removed
-        require(
-            IERC20(CVX_ADDRESS).balanceOf(address(this)) >= trackedCvxBalance
-        );
 
+        // this will overflow if tokens are removed
+        trackedCvxBalance += cvxBalanceAfter - cvxBalanceBefore;
         uint256 ethBalanceAfter = address(this).balance;
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
