@@ -23,10 +23,15 @@ import { wethAbi } from "../test/abis/wethAbi";
   await clone("https://github.com/oo-00/Votium.git", "./votium");
   const proofs = await getProofsFromVotiumGithub();
   const swapData = await get0xSwapData(proofs);
+  console.log("");
   console.log("merkleProofs:");
+  console.log("");
   console.log(JSON.stringify(proofs));
+  console.log("");
   console.log("swapData:");
+  console.log("");
   console.log(JSON.stringify(swapData));
+  console.log("");
 })()
   .then(() => process.exit(0))
   .catch((error) => {
