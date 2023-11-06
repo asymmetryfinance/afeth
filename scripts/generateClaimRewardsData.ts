@@ -2,12 +2,23 @@ import clone from "git-clone/promise.js";
 import Fs from "@supercharge/fs";
 import BigNumber from "bignumber.js";
 import yesno from "yesno";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { votiumMultiMerkleStashAbi } from "../test/abis/votiumMerkleStashAbi";
 import axios from "axios";
 import { wethAbi } from "../test/abis/wethAbi";
 
 (async function main() {
+  await network.provider.request({
+    method: "hardhat_reset",
+    params: [
+      {
+        forking: {
+          jsonRpcUrl: process.env.MAINNET_URL,
+        },
+      },
+    ],
+  });
+
   console.log("Cloning votium merkle data repo...");
   await clone("https://github.com/oo-00/Votium.git", "./votium");
   const proofs = await getProofsFromVotiumGithub();

@@ -59,8 +59,6 @@ Coming soon
 
 ## Claiming & applying votium rewards
 
-0. Set `BLOCK_NUMBER` in .env to the latest block number from etherscan
-
 1. Run `yarn && yarn claimRewardsData` from the afEth repo
 
 2. Call `votiumStrategy.claimRewards()` using merkleProofs from step 1 and wait for transaction to confirm
