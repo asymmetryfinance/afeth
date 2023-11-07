@@ -75,7 +75,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     event Deposit(
         address indexed recipient,
         uint256 afEthAmount,
-        uint256 ethAmountdfsdf
+        uint256 ethAmount
     );
     event RequestWithdraw(
         address indexed account,
