@@ -15,6 +15,8 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
+import "hardhat/console.sol";
+
 contract VotiumStrategyCore is
     Initializable,
     OwnableUpgradeable,
@@ -225,11 +227,11 @@ contract VotiumStrategyCore is
     function claimRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
     ) external onlyRewarder {
-        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
+//        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
         claimVotiumRewards(_claimProofs);
         claimVlCvxRewards();
-        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-        trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
+//        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
+//        trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
     }
 
     /**
@@ -320,7 +322,6 @@ contract VotiumStrategyCore is
         uint256 _cvxMinout,
         uint256 _deadline
     ) external onlyRewarder {
-        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
         if (block.timestamp > _deadline) revert StaleAction();
         uint256 ethBalanceBefore = address(this).balance;
         for (uint256 i = 0; i < _swapsData.length; i++) {
@@ -349,12 +350,6 @@ contract VotiumStrategyCore is
             }
         }
 
-        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-
-        trackedCvxBalance =
-            trackedCvxBalance +
-            cvxBalanceAfter -
-            cvxBalanceBefore;
         // Ensure CVX tokens are not removed
         require(
             IERC20(CVX_ADDRESS).balanceOf(address(this)) >= trackedCvxBalance
