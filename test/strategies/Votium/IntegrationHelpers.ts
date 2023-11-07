@@ -90,7 +90,7 @@ export const increaseTime1Epoch = async (
 
   const currentEpoch = await getCurrentEpoch();
   if (!noRewards && currentEpoch % 2 === 0) {
-    console.log("applying rewards 1");
+    console.log("applying rewards");
     const rewardEvent = await oracleApplyRewards(
       await getRewarderAccount(),
       votiumStrategy.address,
