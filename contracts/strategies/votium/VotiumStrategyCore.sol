@@ -15,7 +15,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
-import "hardhat/console.sol";
 
 contract VotiumStrategyCore is
     Initializable,
@@ -227,11 +226,8 @@ contract VotiumStrategyCore is
     function claimRewards(
         IVotiumMerkleStash.ClaimParam[] calldata _claimProofs
     ) external onlyRewarder {
-//        uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
         claimVotiumRewards(_claimProofs);
         claimVlCvxRewards();
-//        uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
-//        trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
     }
 
     /**
