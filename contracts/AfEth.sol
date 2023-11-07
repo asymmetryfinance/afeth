@@ -23,11 +23,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     bool public pauseDeposit;
     bool public pauseWithdraw;
 
+    // eth balance held by contract for premint functionality
     uint256 preminterEthBalance;
+    // afEth balance held by contract for premint functionality
     uint256 preminterAfEthBalance;
+    // fee percent charged if withdraw time is 0
     uint256 preminterMinFee;
+    // fee percent charged if withdraw time is 17 weeks
     uint256 preminterMaxFee;
+    // max afEth that can be sold at once
     uint256 preminterMaxSell;
+    // max amount of eth that can be spent at once buying afEth
     uint256 preminterMaxBuy;
 
     struct WithdrawInfo {
