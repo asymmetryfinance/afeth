@@ -80,9 +80,10 @@ describe.only("Test AfEth Premint Functionality", async function () {
     await afEth.setRewarderAddress(accounts[0].address);
   });
 
-  it("Should allow owner to call premintOwnerDeposit() and premintOwnerWithdraw() with eth and afEth and fail if trying to withdraw too much", async function () {
+  it("Should allow owner to call premintOwnerDeposit() and premintOwnerWithdraw() with eth and afEth and fail if trying to withdraw too much or non owner call", async function () {
     let tx;
 
+    // get some afEth to put in the preminter
     tx = await afEth.deposit(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("10"),
     });
@@ -150,5 +151,40 @@ describe.only("Test AfEth Premint Functionality", async function () {
 
     expect(afEthTrueBalanceFinal).eq(afEthPremintBalanceFinal).eq(0);
     expect(ethTrueBalanceFinal).eq(ethPremintBalanceFinal).eq(0);
+
+    const afEthNonOwner = afEth.connect(accounts[1]);
+
+    await expect(
+      afEthNonOwner.premintWithdraw(
+        ethers.utils.parseEther("1"),
+        ethers.utils.parseEther("1")
+      )
+    ).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(
+      afEthNonOwner.premintDeposit(ethers.utils.parseEther("1"))
+    ).to.be.revertedWith("Ownable: caller is not the owner");
+  });
+
+  it("Should allow owner to call premintSetFees() and fail if non owner", async function () {
+    const tx = await afEth.premintSetFees(
+      ethers.utils.parseEther("0.420"),
+      ethers.utils.parseEther("0.69")
+    );
+    await tx.wait();
+
+    const minFee = await afEth.preminterMinFee();
+    const maxFee = await afEth.preminterMaxFee();
+
+    expect(minFee).eq(ethers.utils.parseEther("0.420"));
+    expect(maxFee).eq(ethers.utils.parseEther("0.69"));
+
+    const afEthNonOwner = afEth.connect(accounts[1]);
+
+    await expect(
+      afEthNonOwner.premintSetFees(
+        ethers.utils.parseEther("0.420"),
+        ethers.utils.parseEther("0.69")
+      )
+    ).to.be.revertedWith("Ownable: caller is not the owner");
   });
 });
