@@ -24,17 +24,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     bool public pauseWithdraw;
 
     // eth balance held by contract for premint functionality
-    uint256 preminterEthBalance;
+    uint256 public preminterEthBalance;
     // afEth balance held by contract for premint functionality
-    uint256 preminterAfEthBalance;
+    uint256 public preminterAfEthBalance;
     // fee percent charged if withdraw time is 0
-    uint256 preminterMinFee;
+    uint256 public preminterMinFee;
     // fee percent charged if withdraw time is 17 weeks
-    uint256 preminterMaxFee;
+    uint256 public preminterMaxFee;
     // max afEth that can be sold at once
-    uint256 preminterMaxSell;
+    uint256 public preminterMaxSell;
     // max amount of eth that can be spent at once buying afEth
-    uint256 preminterMaxBuy;
+    uint256 public preminterMaxBuy;
 
     struct WithdrawInfo {
         address owner;
@@ -94,6 +94,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 afEthAmount,
         uint256 ethAmount
     );
+    event PremintSetFees(uint256 minSellFee, uint256 maxSellFee);
+    event PremintDeposit(uint256 afEthAmount, uint256 ethAmount);
+    event PremintWithdraw(uint256 afEthAmount, uint256 ethAmount);
+    event PremintBuy(uint256 afEthBought, uint256 ethSpent);
+    event PremintSell(uint256 afEthSold, uint256 ethReceived);
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
@@ -393,49 +398,42 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     /**
      * @notice Allow owner to withdraw from Preminter
-     * @param _amount amount of eth or afEth to withdraw
-     * @param _afEth if true, withdraw afEth instead of eth
+     * @param _ethAmount amount of eth to withdraw
+     * @param _afEthAmount amount of afEth to withdraw
      */
-    function premintOwnerWithdraw(
-        uint256 _amount,
-        bool _afEth
+    function premintWithdraw(
+        uint256 _ethAmount,
+        uint256 _afEthAmount
     ) public onlyOwner {
-        if (!_afEth) {
-            if (_amount > preminterEthBalance) revert InsufficientBalance();
+        if (_ethAmount > 0) {
+            if (_ethAmount > preminterEthBalance) revert InsufficientBalance();
             // solhint-disable-next-line
-            (bool sent, ) = feeAddress.call{value: _amount}("");
+            (bool sent, ) = feeAddress.call{value: _ethAmount}("");
             if (!sent) revert FailedToSend();
-            preminterEthBalance -= _amount;
-        } else {
-            if (_amount > preminterAfEthBalance) revert InsufficientBalance();
-            _transfer(address(this), msg.sender, _amount);
-            preminterAfEthBalance -= _amount;
+            preminterEthBalance -= _ethAmount;
         }
+        if (_afEthAmount > 0) {
+            if (_afEthAmount > preminterAfEthBalance)
+                revert InsufficientBalance();
+            _transfer(address(this), msg.sender, _afEthAmount);
+            preminterAfEthBalance -= _afEthAmount;
+        }
+        emit PremintWithdraw(_afEthAmount, _ethAmount);
     }
 
     /**
      * @notice Allow owner to deposit into Preminter
-     * @param _afEth if true, mint afEth with eth instead of depositing it
-     * @param _afEthMinout minimum afEth to receive if depositing into afEth
+     * @param _afEthAmount amount of afEth to deposit
      */
-    function premintOwnerDeposit(
-        bool _afEth,
-        uint256 _afEthMinout
-    ) public payable onlyOwner {
-        _transfer(msg.sender, address(this), msg.value);
-        if (!_afEth) {
-            preminterEthBalance += msg.value;
-        } else {
-            uint256 afEthBalaanceBefore = balanceOf(address(this));
-            this.deposit{value: msg.value}(
-                _afEthMinout,
-                block.timestamp + 60 * 5
-            );
-            uint256 afEthBalanceAfter = balanceOf(address(this));
-            uint256 afEthReceived = afEthBalanceAfter - afEthBalaanceBefore;
-            if (afEthReceived < _afEthMinout) revert PreminterMinout();
-            preminterAfEthBalance += afEthReceived;
+    function premintDeposit(uint256 _afEthAmount) public payable onlyOwner {
+        if (_afEthAmount > 0) {
+            _transfer(msg.sender, address(this), _afEthAmount);
+            preminterAfEthBalance += _afEthAmount;
         }
+        if (msg.value > 0) {
+            preminterEthBalance += msg.value;
+        }
+        emit PremintDeposit(_afEthAmount, msg.value);
     }
 
     /**
@@ -443,12 +441,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _minSellFee minimum sell fee % to charge if there is 0 weeks to unstake
      * @param _minSellFee maximum sell fee % to charge if there is 16 weeks to unstake
      */
-    function premintOwnerSetFee(
+    function premintSetFees(
         uint256 _minSellFee,
         uint256 _maxSellFee
     ) public onlyOwner {
         preminterMinFee = _maxSellFee;
         preminterMaxFee = _minSellFee;
+        emit PremintSetFees(_minSellFee, _maxSellFee);
     }
 
     /**
@@ -460,6 +459,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 afEthOut = premintBuyAmount(msg.value);
         if (afEthOut < _minOut) revert PreminterMinout();
         _transfer(address(this), msg.sender, afEthOut);
+        emit PremintBuy(afEthOut, msg.value);
     }
 
     /**
@@ -475,6 +475,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         // solhint-disable-next-line
         (bool sent, ) = address(msg.sender).call{value: ethOut}("");
         if (!sent) revert FailedToSend();
+        emit PremintSell(_afEthToSell, ethOut);
     }
 
     /**
