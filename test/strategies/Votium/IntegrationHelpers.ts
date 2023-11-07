@@ -90,6 +90,7 @@ export const increaseTime1Epoch = async (
 
   const currentEpoch = await getCurrentEpoch();
   if (!noRewards && currentEpoch % 2 === 0) {
+    console.log("applying rewards 1");
     const rewardEvent = await oracleApplyRewards(
       await getRewarderAccount(),
       votiumStrategy.address,
@@ -105,6 +106,7 @@ export const increaseTime1Epoch = async (
     const userAccounts = await getUserAccounts();
 
     const expectedUserRewardAmounts: any = [];
+
     for (let i = 0; i < userAccounts.length; i++) {
       const userAcount = userAccounts[i];
       const userBalance = await votiumStrategy.balanceOf(userAcount.address);

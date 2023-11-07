@@ -15,7 +15,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
-
 contract VotiumStrategyCore is
     Initializable,
     OwnableUpgradeable,
@@ -358,7 +357,7 @@ contract VotiumStrategyCore is
                 _safEthMinout,
                 _cvxMinout
             );
-        else depositRewards(ethReceived, _cvxMinout);   
+        else depositRewards(ethReceived, _cvxMinout);
     }
 
     /**
