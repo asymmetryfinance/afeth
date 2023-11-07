@@ -80,7 +80,7 @@ describe.only("Test AfEth Premint Functionality", async function () {
     await afEth.setRewarderAddress(accounts[0].address);
   });
 
-  it("Should allow owner to call premintOwnerDeposit() and premintOwnerWithdraw() with eth and afEth", async function () {
+  it("Should allow owner to call premintOwnerDeposit() and premintOwnerWithdraw() with eth and afEth and fail if trying to withdraw too much", async function () {
     let tx;
 
     tx = await afEth.deposit(0, await nowPlusOneMinute(), {
@@ -104,5 +104,51 @@ describe.only("Test AfEth Premint Functionality", async function () {
 
     expect(ethDepositAmount).eq(ethTrueBalance).eq(ethPremintBalance);
     expect(afEthDepositAmount).eq(afethTrueBalance).eq(afEthPremintBalance);
+
+    tx = await afEth.premintWithdraw(
+      ethers.utils.parseEther("1"),
+      ethers.utils.parseEther("2")
+    );
+    await tx.wait();
+
+    const afethTrueBalanceAfter = await afEth.balanceOf(afEth.address);
+    const afEthPremintBalanceAfter = await afEth.preminterAfEthBalance();
+    const ethTrueBalanceAfter = await ethers.provider.getBalance(afEth.address);
+    const ethPremintBalanceAfter = await afEth.preminterEthBalance();
+
+    expect(ethDepositAmount.sub(ethers.utils.parseEther("1")))
+      .eq(ethTrueBalanceAfter)
+      .eq(ethPremintBalanceAfter);
+    expect(afEthDepositAmount.sub(ethers.utils.parseEther("2")))
+      .eq(afethTrueBalanceAfter)
+      .eq(afEthPremintBalanceAfter);
+
+    // expect revert if withdrawing too much of either asset
+    await expect(
+      afEth.premintWithdraw(
+        ethTrueBalanceAfter.add(ethers.utils.parseEther("1")),
+        ethers.utils.parseEther("0")
+      )
+    ).to.be.revertedWith("InsufficientBalance()");
+    await expect(
+      afEth.premintWithdraw(
+        ethers.utils.parseEther("0"),
+        afethTrueBalanceAfter.add(ethers.utils.parseEther("1"))
+      )
+    ).to.be.revertedWith("InsufficientBalance()");
+
+    // withdraw all
+    tx = await afEth.premintWithdraw(
+      ethPremintBalanceAfter,
+      afEthPremintBalanceAfter
+    );
+
+    const afEthTrueBalanceFinal = await afEth.balanceOf(afEth.address);
+    const afEthPremintBalanceFinal = await afEth.preminterAfEthBalance();
+    const ethTrueBalanceFinal = await ethers.provider.getBalance(afEth.address);
+    const ethPremintBalanceFinal = await afEth.preminterEthBalance();
+
+    expect(afEthTrueBalanceFinal).eq(afEthPremintBalanceFinal).eq(0);
+    expect(ethTrueBalanceFinal).eq(ethPremintBalanceFinal).eq(0);
   });
 });
