@@ -27,6 +27,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     uint256 preminterAfEthBalance;
     uint256 preminterMinFee;
     uint256 preminterMaxFee;
+    uint256 preminterMaxSell;
+    uint256 preminterMaxBuy;
 
     struct WithdrawInfo {
         address owner;
@@ -53,6 +55,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error StaleAction();
     error NotManagerOrRewarder();
     error InvalidRatio();
+    error PreminterMaxBuy();
+    error PreminterMaxSell();
+    error PreminterMinout();
+
 
     event SetStrategyAddress(address indexed newAddress);
     event SetRewarderAddress(address indexed newAddress);
@@ -386,7 +392,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _afEth if true, withdraw afEth instead of eth
      */
     function premintOwnerWithdraw(uint256 _amount, bool _afEth) public onlyOwner {
-        // TODO
+        if(!_afEth) {
+            if(_amount > preminterEthBalance) revert InsufficientBalance();
+            // solhint-disable-next-line
+            (bool sent, ) = feeAddress.call{value: _amount}("");
+            if (!sent) revert FailedToSend();
+            preminterEthBalance -= _amount;
+        } else {
+            if(_amount > preminterAfEthBalance) revert InsufficientBalance();
+            _transfer(address(this), msg.sender, _amount);
+            preminterAfEthBalance -= _amount;
+        }
     }
 
     /**
@@ -398,9 +414,13 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _transfer(msg.sender, address(this), msg.value);
         if(!_afEth) {
             preminterEthBalance += msg.value;
-        }
-        else {
+        } else {
+            uint256 afEthBalaanceBefore = balanceOf(address(this));
             this.deposit{value: msg.value}(_afEthMinout, block.timestamp + 60 * 5);
+            uint256 afEthBalanceAfter = balanceOf(address(this));
+            uint256 afEthReceived = afEthBalanceAfter - afEthBalaanceBefore;
+            if(afEthReceived < _afEthMinout) revert PreminterMinout();
+            preminterAfEthBalance += afEthReceived;
         }
     }
 
@@ -418,8 +438,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @notice Buy afEth from Preminter
      * @param _minOut minimum afEth to receive or revert
      */
-    function premintBuy(uint256 _minOut) public {
-        // TODO
+    function premintBuy(uint256 _minOut) public payable {
+        if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
+        uint256 afEthOut = premintBuyAmount(msg.value);
+        if(afEthOut < _minOut) revert PreminterMinout();
+        _transfer(address(this), msg.sender, afEthOut);
     }
 
     /**
@@ -428,8 +451,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _ethMinOut minimum eth to receive or revert
      */
     function premintSell(uint256 _afEthToSell, uint256 _ethMinOut) public {
+        if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
         uint256 ethOut = premintSellAmount(_afEthToSell);
-        if(ethOut < _ethMinOut) revert("Below min out"); // TODO proper error
+        if(ethOut < _ethMinOut) revert PreminterMinout();
         _transfer(msg.sender, address(this), _afEthToSell);
         // solhint-disable-next-line
         (bool sent, ) = address(msg.sender).call{value: ethOut}("");
@@ -442,7 +466,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @return afEth out for a given eth amount
      */
     function premintBuyAmount(uint256 _ethAmount) public view returns (uint256) {
-        // TODO
+        return ((_ethAmount * 1e18) / price(true));
     }
 
     /**
@@ -451,10 +475,23 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @return eth amount out for a given eth amount
      */
     function premintSellAmount(uint256 _afEthToSell) public view returns (uint256) {
-        uint256 maxPossibleWithdrawTime = 24 * 60 * 60 * 7 * 17;
-        uint256 withdrawTimeRemaiming = withdrawTime(_afEthToSell) - block.timestamp;
-        uint256 withdrawTimePercent = (withdrawTimeRemaiming * 1e18) / maxPossibleWithdrawTime;
-        uint256 feePercent = preminterMinFee + ((preminterMaxFee - preminterMinFee) * withdrawTimePercent) / 1e18;
-        return (price(true) * _afEthToSell) * (1e18 - feePercent);
+        uint256 sellAmount = (_afEthToSell * price(true)) / 1e18;
+        uint256 sellAmountMinusFee = sellAmount * (1e18 - premintSellFeePercent(_afEthToSell)) / 1e18;
+        return sellAmountMinusFee;
+    }
+
+    /**
+     * @notice calculates fee percent to be charged on selling afEth instantly instead of unstaking normally
+     * @param _afEthToSell amount of afEth to sell
+     * @return fee % to charge for selling afEth instantly instead of unstaking normally
+     */
+    function premintSellFeePercent(uint256 _afEthToSell) public view returns (uint256) {
+        uint256 maxPossibleWithdrawTime = 24 * 60 * 60 * 7 * 17; // 17 epochs
+        // how long until they could normally unstake
+        uint256 withdrawTimeRemaining = withdrawTime(_afEthToSell) - block.timestamp;
+        // what % of the way through the unstake period are they
+        uint256 withdrawTimePercent = (withdrawTimeRemaining * 1e18) / maxPossibleWithdrawTime;
+        // expected fee based on how far through the unstake period they are
+        return preminterMinFee + ((preminterMaxFee - preminterMinFee) * withdrawTimePercent) / 1e18;
     }
 }
