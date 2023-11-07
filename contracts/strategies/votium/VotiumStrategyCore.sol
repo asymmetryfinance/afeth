@@ -350,7 +350,7 @@ contract VotiumStrategyCore is
             }
         }
 
-        // Ensure CVX tokens are not removed
+        // Ensure tracked balances are still valid
         require(
             IERC20(CVX_ADDRESS).balanceOf(address(this)) >= trackedCvxBalance
         );
@@ -362,7 +362,7 @@ contract VotiumStrategyCore is
                 _safEthMinout,
                 _cvxMinout
             );
-        else depositRewards(ethReceived, _cvxMinout);
+        else depositRewards(ethReceived, _cvxMinout);   
     }
 
     /**
