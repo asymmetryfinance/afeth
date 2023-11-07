@@ -5,6 +5,7 @@ import { MULTI_SIG, RETH_DERIVATIVE, WST_DERIVATIVE } from "./constants";
 import { expect } from "chai";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import { nowPlusOneMinute } from "./AfEth.test";
+import { within1Pip, withinQuarterPercent } from "./helpers/helpers";
 
 describe.only("Test AfEth Premint Functionality", async function () {
   let afEth: AfEth;
@@ -165,8 +166,9 @@ describe.only("Test AfEth Premint Functionality", async function () {
     ).to.be.revertedWith("Ownable: caller is not the owner");
   });
 
-  it("Should allow owner to call premintSetFees() and fail if non owner", async function () {
-    const tx = await afEth.premintSetFees(
+  it("Should allow owner to call premintSetFees() and setPremintMaxAmounts() and fail if non owner", async function () {
+    let tx;
+    tx = await afEth.premintSetFees(
       ethers.utils.parseEther("0.420"),
       ethers.utils.parseEther("0.69")
     );
@@ -178,7 +180,20 @@ describe.only("Test AfEth Premint Functionality", async function () {
     expect(minFee).eq(ethers.utils.parseEther("0.420"));
     expect(maxFee).eq(ethers.utils.parseEther("0.69"));
 
+    tx = await afEth.setPremintMaxAmounts(
+      ethers.utils.parseEther("100"),
+      ethers.utils.parseEther("100")
+    );
+    await tx.wait();
+
     const afEthNonOwner = afEth.connect(accounts[1]);
+
+    expect(
+      afEthNonOwner.setPremintMaxAmounts(
+        ethers.utils.parseEther("100"),
+        ethers.utils.parseEther("100")
+      )
+    ).to.be.revertedWith("Ownable: caller is not the owner");
 
     await expect(
       afEthNonOwner.premintSetFees(
@@ -186,5 +201,51 @@ describe.only("Test AfEth Premint Functionality", async function () {
         ethers.utils.parseEther("0.69")
       )
     ).to.be.revertedWith("Ownable: caller is not the owner");
+  });
+
+  it("Should show premintBuy() returns similar amount to deposit() and checks minout and max buy amount", async function () {
+    let tx;
+
+    // get some afEth to put in the preminter
+    tx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("10"),
+    });
+    await tx.wait();
+
+    const ethDepositAmount = ethers.utils.parseEther("5");
+    const afEthDepositAmount = ethers.utils.parseEther("5");
+
+    tx = await afEth.premintDeposit(afEthDepositAmount, {
+      value: ethDepositAmount,
+    });
+    await tx.wait();
+
+    const afEthNonOwner1 = afEth.connect(accounts[1]);
+    const afEthNonOwner2 = afEth.connect(accounts[2]);
+
+    tx = await afEthNonOwner1.premintBuy(0, {
+      value: ethers.utils.parseEther("4"),
+    });
+    await tx.wait();
+    tx = await afEthNonOwner2.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("4"),
+    });
+
+    const afEthBalance1 = await afEth.balanceOf(accounts[1].address);
+    const afEthBalance2 = await afEth.balanceOf(accounts[2].address);
+
+    expect(withinQuarterPercent(afEthBalance1, afEthBalance2)).eq(true);
+
+    await expect(
+      afEthNonOwner1.premintBuy(0, {
+        value: ethers.utils.parseEther("101"),
+      })
+    ).to.be.revertedWith("PreminterMaxBuy()");
+
+    await expect(
+      afEthNonOwner1.premintBuy(ethers.utils.parseEther("999"), {
+        value: ethers.utils.parseEther("4"),
+      })
+    ).to.be.revertedWith("PreminterMinout()");
   });
 });

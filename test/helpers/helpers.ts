@@ -1,5 +1,13 @@
 import { BigNumber } from "ethers/lib";
 
+export const withinQuarterPercent = (
+  amount1: BigNumber,
+  amount2: BigNumber
+) => {
+  if (amount1.eq(amount2)) return true;
+  return getDifferenceRatio(amount1, amount2).gt("400");
+};
+
 export const within1Percent = (amount1: BigNumber, amount2: BigNumber) => {
   if (amount1.eq(amount2)) return true;
   return getDifferenceRatio(amount1, amount2).gt("100");

@@ -437,7 +437,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
-     * @notice Sets sell fee used in selling afEth afEth (Immediate Unstake Premtium)
+     * @notice Sets sell fee used in selling afEth afEth (Immediate Unstake Premium)
      * @param _minSellFee minimum sell fee % to charge if there is 0 weeks to unstake
      * @param _minSellFee maximum sell fee % to charge if there is 16 weeks to unstake
      */
@@ -448,6 +448,19 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         preminterMinFee = _minSellFee;
         preminterMaxFee = _maxSellFee;
         emit PremintSetFees(_minSellFee, _maxSellFee);
+    }
+
+    /**
+     * @notice Sets max amounts for premint buying / selling
+     * @param _maxBuy max amount of eth that can be spent at once buying afEth
+     * @param _maxSell max afEth that can be sold at once
+     */
+    function setPremintMaxAmounts(
+        uint256 _maxBuy,
+        uint256 _maxSell
+    ) public onlyOwner {
+        preminterMaxBuy = _maxBuy;
+        preminterMaxSell = _maxSell;
     }
 
     /**
