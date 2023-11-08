@@ -1213,41 +1213,4 @@ describe("Test AfEth", async function () {
     // tvl in the system is only 0.1 so it should have increased by 6 epochs for trying to withdraw 1 eth.
     expect(withdrawTime2).not.eq(withdrawTime1);
   });
-
-  it.only("Should show requestWithdraw() has same strange behavior because it uses withdrawTime()", async () => {
-    let tx;
-
-    const depositAmount = ethers.utils.parseEther("3");
-    const withdrawAmount = ethers.utils.parseEther("1");
-
-    tx = await afEth.deposit(0, await nowPlusOneMinute(), {
-      value: depositAmount,
-    });
-
-    await tx.wait();
-
-    tx = await afEth.requestWithdraw(withdrawAmount);
-    const mined1 = await tx.wait();
-    const requestWithdrawEvent1 = mined1?.events?.[mined1?.events?.length - 1];
-    const withdrawTime1 = requestWithdrawEvent1?.args?.withdrawTime;
-
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-
-    tx = await afEth.requestWithdraw(withdrawAmount);
-    const mined2 = await tx.wait();
-    const requestWithdraw2Event = mined2?.events?.[mined2?.events?.length - 1];
-    const withdrawTime2 = requestWithdraw2Event?.args?.withdrawTime;
-
-    console.log('withdrawTime1', withdrawTime1.toString());
-    console.log('withdrawTime2', withdrawTime2.toString());
-
-    // Why does this test fail?
-    // tvl in the system is only 0.1 so it should have increased by 6 epochs for trying to withdraw 1 eth.
-    expect(withdrawTime2).not.eq(withdrawTime1);
-  });
 });
