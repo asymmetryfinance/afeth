@@ -6,6 +6,8 @@ import { expect } from "chai";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import { nowPlusOneMinute } from "./AfEth.test";
 import { within1Pip, withinQuarterPercent } from "./helpers/helpers";
+import { BigNumber } from "@ethersproject/bignumber";
+import { incrementVlcvxEpoch } from "./strategies/Votium/VotiumTestHelpers";
 
 describe.only("Test AfEth Premint Functionality", async function () {
   let afEth: AfEth;
@@ -248,4 +250,91 @@ describe.only("Test AfEth Premint Functionality", async function () {
       })
     ).to.be.revertedWith("PreminterMinout()");
   });
+
+  it("Should show premintSell() returning correct values for various unlock times", async function () {
+    let tx;
+
+    tx = await afEth.premintSetFees(
+      ethers.utils.parseEther("0.1"),
+      ethers.utils.parseEther("0.2")
+    );
+    await tx.wait();
+
+    const preminterMinFee = await afEth.preminterMinFee();
+    const preminterMaxFee = await afEth.preminterMaxFee();
+
+    // get some afEth to put in the preminter
+    tx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("25"),
+    });
+    await tx.wait();
+
+    const premintEthDepositAmount = ethers.utils.parseEther("20");
+    const premintAfEthDepositAmount = ethers.utils.parseEther("20");
+
+    tx = await afEth.premintDeposit(premintAfEthDepositAmount, {
+      value: premintEthDepositAmount,
+    });
+    await tx.wait();
+
+    const ethDepositAmount = ethers.utils.parseEther("1");
+
+    const afEthBalanceBeforeBuy1 = await afEth.balanceOf(accounts[1].address);
+    const premintUser = afEth.connect(accounts[1]);
+    tx = await premintUser.premintBuy(0, {
+      value: ethDepositAmount,
+    });
+    await tx.wait();
+    const afEthBalanceAfterBuy1 = await afEth.balanceOf(accounts[1].address);
+    const afEthMinted1 = afEthBalanceAfterBuy1.sub(afEthBalanceBeforeBuy1);
+
+    console.log("afEthMinted1", afEthMinted1.toString());
+
+    const expectedFeePercent1 = await afEth.premintSellFeePercent(
+      ethers.utils.parseEther("1")
+    );
+
+    // fee is somewhere between min and max
+    expect(preminterMinFee).lte(expectedFeePercent1).lte(preminterMaxFee);
+
+    // fee is very close to max because we didnt wait any time
+    const expectedSell1EthReceived = BigNumber.from("1000000000000000000")
+      .sub(preminterMaxFee.toString())
+      .mul(ethDepositAmount.toString())
+      .div("1000000000000000000");
+
+    const ethBalanceBeforeSell1 = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+
+    tx = await premintUser.premintSell(afEthMinted1, 0);
+    await tx.wait();
+    const ethBalanceAfterSell1 = await ethers.provider.getBalance(
+      accounts[1].address
+    );
+    const sell1EthReceived = ethBalanceAfterSell1.sub(ethBalanceBeforeSell1);
+    expect(within1Pip(sell1EthReceived, expectedSell1EthReceived)).eq(true);
+
+    // TODO finish this test with with various unlock times based on other users already having staked
+    // First figure out if withdrawTime() is working correctly (see test below)
+  });
+
+  it.only("Should show withdraw time strange behavior", async function () {
+    const withdrawTime1 = await afEth.withdrawTime(ethers.utils.parseEther("1"));
+    console.log('withdrawTime1', withdrawTime1.toString());
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    const withdrawTime2 = await afEth.withdrawTime(ethers.utils.parseEther("10"));
+    console.log('withdrawTime2', withdrawTime2.toString());
+
+    // This test fails. Why? Shouldnt withdraw time2 be 6 weeks in the future?
+    expect(withdrawTime2).gt(withdrawTime2);
+  });
+
+  it("Should test premintSellFeePercent() and premintSellAmount() for various unlock times", async function () {});
+  it("Should test premintBuyAmount()", async function () {});
 });
