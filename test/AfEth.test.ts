@@ -1189,4 +1189,23 @@ describe("Test AfEth", async function () {
       )
     ).to.be.revertedWith("BelowMinOut()");
   });
+
+  it.only("Should show withdraw time strange behavior", async function () {
+    const amount = ethers.utils.parseEther("1");
+
+    const withdrawTime1 = await afEth.withdrawTime(amount);
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    const withdrawTime2 = await afEth.withdrawTime(amount);
+
+    console.log('withdrawTime1', withdrawTime1.toString());
+    console.log('withdrawTime2', withdrawTime2.toString());
+
+    // Why does this test fail? Shouldn't withdrawTime2 be be different? (6 weeks in the future)
+    expect(withdrawTime2).not.eq(withdrawTime1);
+  });
 });
