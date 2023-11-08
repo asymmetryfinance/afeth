@@ -1191,8 +1191,10 @@ describe("Test AfEth", async function () {
   });
 
   it.only("Should show withdraw time strange behavior", async function () {
+    const tvl = (await afEth.price(true))
+      .mul(await afEth.totalSupply())
+      .div("1000000000000000000");
     const amount = ethers.utils.parseEther("1");
-
     const withdrawTime1 = await afEth.withdrawTime(amount);
     await incrementVlcvxEpoch();
     await incrementVlcvxEpoch();
@@ -1202,10 +1204,50 @@ describe("Test AfEth", async function () {
     await incrementVlcvxEpoch();
     const withdrawTime2 = await afEth.withdrawTime(amount);
 
+    console.log("withdrawTime1", withdrawTime1.toString());
+    console.log("withdrawTime2", withdrawTime2.toString());
+
+    expect(tvl).eq("100234381814244980"); // ~0.1 from the seed deposit
+
+    // Why does this test fail?
+    // tvl in the system is only 0.1 so it should have increased by 6 epochs for trying to withdraw 1 eth.
+    expect(withdrawTime2).not.eq(withdrawTime1);
+  });
+
+  it.only("Should show requestWithdraw() has same strange behavior because it uses withdrawTime()", async () => {
+    let tx;
+
+    const depositAmount = ethers.utils.parseEther("3");
+    const withdrawAmount = ethers.utils.parseEther("1");
+
+    tx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: depositAmount,
+    });
+
+    await tx.wait();
+
+    tx = await afEth.requestWithdraw(withdrawAmount);
+    const mined1 = await tx.wait();
+    const requestWithdrawEvent1 = mined1?.events?.[mined1?.events?.length - 1];
+    const withdrawTime1 = requestWithdrawEvent1?.args?.withdrawTime;
+
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+    await incrementVlcvxEpoch();
+
+    tx = await afEth.requestWithdraw(withdrawAmount);
+    const mined2 = await tx.wait();
+    const requestWithdraw2Event = mined2?.events?.[mined2?.events?.length - 1];
+    const withdrawTime2 = requestWithdraw2Event?.args?.withdrawTime;
+
     console.log('withdrawTime1', withdrawTime1.toString());
     console.log('withdrawTime2', withdrawTime2.toString());
 
-    // Why does this test fail? Shouldn't withdrawTime2 be be different? (6 weeks in the future)
+    // Why does this test fail?
+    // tvl in the system is only 0.1 so it should have increased by 6 epochs for trying to withdraw 1 eth.
     expect(withdrawTime2).not.eq(withdrawTime1);
   });
 });
