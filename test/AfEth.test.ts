@@ -17,7 +17,7 @@ import { safEthAbi } from "./abis/safEthAbi";
 
 export const nowPlusOneMinute = async () =>
   (await ethers.provider.getBlock("latest")).timestamp + 60;
-describe("Test AfEth", async function () {
+describe.only("Test AfEth", async function () {
   let afEth: AfEth;
   let votiumStrategy: VotiumStrategy;
   let safEth: any;
@@ -51,8 +51,10 @@ describe("Test AfEth", async function () {
       accounts[0].address,
       afEth.address,
     ])) as VotiumStrategy;
+    
     await votiumStrategy.deployed();
-
+    const receipt = await votiumStrategy.deployTransaction.wait();
+    console.log(receipt.gasUsed.toString());
     await afEth.setStrategyAddress(votiumStrategy.address);
     // mock chainlink feeds so not out of date
     await network.provider.request({
@@ -1191,10 +1193,12 @@ describe("Test AfEth", async function () {
   });
 
   it.only("Should show withdraw time strange behavior", async function () {
+    console.log("Supply: ", await afEth.totalSupply());
+    console.log("Supply: ", await votiumStrategy.totalSupply());
     const tvl = (await afEth.price(true))
       .mul(await afEth.totalSupply())
       .div("1000000000000000000");
-    const amount = ethers.utils.parseEther("1");
+    const amount = ethers.utils.parseEther("29");
     const withdrawTime1 = await afEth.withdrawTime(amount);
     await incrementVlcvxEpoch();
     await incrementVlcvxEpoch();
