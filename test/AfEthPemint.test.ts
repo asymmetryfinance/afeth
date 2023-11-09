@@ -315,26 +315,48 @@ describe.only("Test AfEth Premint Functionality", async function () {
     const sell1EthReceived = ethBalanceAfterSell1.sub(ethBalanceBeforeSell1);
     expect(within1Pip(sell1EthReceived, expectedSell1EthReceived)).eq(true);
 
-    // TODO finish this test with with various unlock times based on other users already having staked
-    // First figure out if withdrawTime() is working correctly (see test below)
-  });
+    const vStratBalance = await afEth.trackedvStrategyBalance();
 
-  it.only("Should show withdraw time strange behavior", async function () {
-    const withdrawTime1 = await afEth.withdrawTime(ethers.utils.parseEther("1"));
-    console.log('withdrawTime1', withdrawTime1.toString());
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    await incrementVlcvxEpoch();
-    const withdrawTime2 = await afEth.withdrawTime(ethers.utils.parseEther("10"));
-    console.log('withdrawTime2', withdrawTime2.toString());
+    // we dont ever want to try and withdraw more than vstrategy balance
+    // it shouldnt loop more than 17 times
+    const withdrawAmount = vStratBalance.div(20);
+    let count = 0;
+    while (true) {
+      // First figure out if withdrawTime() is working correctly (see test below)
+      const withdrawTime1 = await afEth.withdrawTime(withdrawAmount);
+      console.log("withdrawTime1", withdrawTime1.toString());
 
-    // This test fails. Why? Shouldnt withdraw time2 be 6 weeks in the future?
-    expect(withdrawTime2).gt(withdrawTime2);
+      const block = await ethers.provider.getBlock("latest");
+      const withdrawTimeRemaining = withdrawTime1.sub(block.timestamp);
+
+      console.log('block.timestamp', block.timestamp);
+
+      console.log("withdrawTimeRemaining", withdrawTimeRemaining.toString());
+
+      await incrementVlcvxEpoch();
+      console.log("count", count);
+      count++;
+
+      if(count == 20) break
+    }
   });
 
   it("Should test premintSellFeePercent() and premintSellAmount() for various unlock times", async function () {});
   it("Should test premintBuyAmount()", async function () {});
+
+  const predictedPremintSellFeePercent = async (afEthToSell: BigNumber) => {
+    const preminterMinFee = await afEth.preminterMinFee();
+    const preminterMaxFee = await afEth.preminterMaxFee();
+
+    const maxPossibleWithdrawTime = 24 * 60 * 60 * 7 * 17;
+    const withdrawTime1 = await afEth.withdrawTime(afEthToSell);
+    const block = await ethers.provider.getBlock("latest");
+    const withdrawTimeRemaining = withdrawTime1.sub(block.timestamp);
+    const withdrawTimePercent = withdrawTimeRemaining
+      .mul("1000000000000000000")
+      .div(maxPossibleWithdrawTime);
+    return preminterMinFee.add(
+      preminterMaxFee.sub(preminterMinFee).mul(withdrawTimePercent).mul(1e18)
+    );
+  };
 });
