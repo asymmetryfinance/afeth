@@ -312,51 +312,63 @@ describe.only("Test AfEth Premint Functionality", async function () {
     const ethBalanceAfterSell1 = await ethers.provider.getBalance(
       accounts[1].address
     );
+
     const sell1EthReceived = ethBalanceAfterSell1.sub(ethBalanceBeforeSell1);
+
     expect(within1Pip(sell1EthReceived, expectedSell1EthReceived)).eq(true);
-
-    const vStratBalance = await afEth.trackedvStrategyBalance();
-
-    // we dont ever want to try and withdraw more than vstrategy balance
-    // it shouldnt loop more than 17 times
-    const withdrawAmount = vStratBalance.div(20);
-    let count = 0;
-    while (true) {
-      // First figure out if withdrawTime() is working correctly (see test below)
-      const withdrawTime1 = await afEth.withdrawTime(withdrawAmount);
-      console.log("withdrawTime1", withdrawTime1.toString());
-
-      const block = await ethers.provider.getBlock("latest");
-      const withdrawTimeRemaining = withdrawTime1.sub(block.timestamp);
-
-      console.log('block.timestamp', block.timestamp);
-
-      console.log("withdrawTimeRemaining", withdrawTimeRemaining.toString());
-
-      await incrementVlcvxEpoch();
-      console.log("count", count);
-      count++;
-
-      if(count == 20) break
-    }
   });
 
-  it("Should test premintSellFeePercent() and premintSellAmount() for various unlock times", async function () {});
-  it("Should test premintBuyAmount()", async function () {});
+  const withdrawTimeRemaining = async (afEthAmont: BigNumber) => {
+    const currentBlock = await ethers.provider.getBlock("latest");
+    const currentBlockTime = currentBlock.timestamp;
+    return (await afEth.withdrawTime(afEthAmont)).sub(currentBlockTime);
+  };
 
-  const predictedPremintSellFeePercent = async (afEthToSell: BigNumber) => {
-    const preminterMinFee = await afEth.preminterMinFee();
+  const expectedFeePercent = async (afEthToSell: BigNumber) => {
+    const maxFeeTime = BigNumber.from(24 * 60 * 60 * 7 * 17); // 17 weeks out is when max fee applies
+    const minFeeTime = BigNumber.from(24 * 60 * 60 * 7 * 2); // 2 weeks or less is when min fee applies
+    const feeTimeDiff = maxFeeTime.sub(minFeeTime);
+
     const preminterMaxFee = await afEth.preminterMaxFee();
+    const preminterMinFee = await afEth.preminterMinFee();
 
-    const maxPossibleWithdrawTime = 24 * 60 * 60 * 7 * 17;
-    const withdrawTime1 = await afEth.withdrawTime(afEthToSell);
-    const block = await ethers.provider.getBlock("latest");
-    const withdrawTimeRemaining = withdrawTime1.sub(block.timestamp);
-    const withdrawTimePercent = withdrawTimeRemaining
+    const feeDiff = preminterMaxFee.sub(preminterMinFee);
+
+    // how long until they could normally unstake
+    const timeRemaining = await withdrawTimeRemaining(afEthToSell);
+
+    if (timeRemaining.lt(minFeeTime)) return preminterMinFee;
+    const timeRemainingAboveMinFeeTime = timeRemaining.sub(minFeeTime);
+    const feeTimeDiffPercentComplete = timeRemainingAboveMinFeeTime
       .mul("1000000000000000000")
-      .div(maxPossibleWithdrawTime);
+      .div(feeTimeDiff);
     return preminterMinFee.add(
-      preminterMaxFee.sub(preminterMinFee).mul(withdrawTimePercent).mul(1e18)
+      feeDiff.mul(feeTimeDiffPercentComplete).div("1000000000000000000")
     );
   };
+
+  it("Should test premintSellFeePercent() and premintSellAmount() for various unlock times", async function () {
+    const trackedvStrategyBalance = await afEth.trackedvStrategyBalance();
+    const afEthTotalSupply = await afEth.totalSupply();
+    const vStrategyWithdrawAmount = trackedvStrategyBalance.div(10);
+    const afEthWithdrawAmount = afEthTotalSupply.div(10);
+
+    for (let i = 0; i < 20; i++) {
+      const feePercent = await afEth.premintSellFeePercent(
+        vStrategyWithdrawAmount
+      );
+      const ethReceivedFrom = await afEth.premintSellAmount(
+        afEthWithdrawAmount
+      );
+      const timeRemaining = await withdrawTimeRemaining(
+        vStrategyWithdrawAmount
+      );
+      console.log("afEthWithdrawAmount", afEthWithdrawAmount.toString());
+      console.log("ethReceivedFrom", ethReceivedFrom.toString());
+      console.log("timeRemaining", timeRemaining.toString());
+      console.log("feePercent", ethers.utils.formatEther(feePercent));
+      await incrementVlcvxEpoch();
+    }
+  });
+  it("Should test premintBuyAmount()", async function () {});
 });

@@ -524,17 +524,22 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function premintSellFeePercent(
         uint256 _afEthToSell
     ) public view returns (uint256) {
-        uint256 maxPossibleWithdrawTime = 24 * 60 * 60 * 7 * 17; // 17 epochs
+        uint256 maxFeeTime = 24 * 60 * 60 * 7 * 17; // 17 weeks out is when max fee applies
+        uint256 minFeeTime = 24 * 60 * 60 * 7 * 2; // 2 weeks or less is when min fee applies
+        uint256 feeTimeDiff = maxFeeTime - minFeeTime;
+        uint256 feeDiff = preminterMaxFee - preminterMinFee;
+
         // how long until they could normally unstake
         uint256 withdrawTimeRemaining = withdrawTime(_afEthToSell) -
             block.timestamp;
-        // what % of the way through the unstake period are they
-        uint256 withdrawTimePercent = (withdrawTimeRemaining * 1e18) /
-            maxPossibleWithdrawTime;
-        // expected fee based on how far through the unstake period they are
-        return
-            preminterMinFee +
-            ((preminterMaxFee - preminterMinFee) * withdrawTimePercent) /
-            1e18;
+
+        if(withdrawTimeRemaining <= minFeeTime) {
+            return preminterMinFee;
+        } else {
+            uint256 timeRemainingAboveMinFeeTime = withdrawTimeRemaining - minFeeTime;
+            uint256 feeTimeDiffPercentComplete = (timeRemainingAboveMinFeeTime * 1e18) / feeTimeDiff;
+            return preminterMinFee + (feeDiff * feeTimeDiffPercentComplete) / 1e18;
+        }
+
     }
 }
