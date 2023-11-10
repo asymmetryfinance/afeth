@@ -533,13 +533,15 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 withdrawTimeRemaining = withdrawTime(_afEthToSell) -
             block.timestamp;
 
-        if(withdrawTimeRemaining <= minFeeTime) {
+        if (withdrawTimeRemaining <= minFeeTime) {
             return preminterMinFee;
         } else {
-            uint256 timeRemainingAboveMinFeeTime = withdrawTimeRemaining - minFeeTime;
-            uint256 feeTimeDiffPercentComplete = (timeRemainingAboveMinFeeTime * 1e18) / feeTimeDiff;
-            return preminterMinFee + (feeDiff * feeTimeDiffPercentComplete) / 1e18;
+            uint256 timeRemainingAboveMinFeeTime = withdrawTimeRemaining -
+                minFeeTime;
+            uint256 feeTimeDiffPercentComplete = (timeRemainingAboveMinFeeTime *
+                1e18) / feeTimeDiff;
+            return
+                preminterMinFee + (feeDiff * feeTimeDiffPercentComplete) / 1e18;
         }
-
     }
 }

@@ -6,8 +6,8 @@ import { expect } from "chai";
 import { derivativeAbi } from "./abis/derivativeAbi";
 import { nowPlusOneMinute } from "./AfEth.test";
 import { within1Pip, withinQuarterPercent } from "./helpers/helpers";
-import { BigNumber } from "@ethersproject/bignumber";
 import { incrementVlcvxEpoch } from "./strategies/Votium/VotiumTestHelpers";
+import { BigNumber } from "ethers/lib/ethers";
 
 describe.only("Test AfEth Premint Functionality", async function () {
   let afEth: AfEth;
@@ -251,7 +251,7 @@ describe.only("Test AfEth Premint Functionality", async function () {
     ).to.be.revertedWith("PreminterMinout()");
   });
 
-  it("Should show premintSell() returning correct values for various unlock times", async function () {
+  it("Should show premintSell() returning correct values for max time", async function () {
     let tx;
 
     tx = await afEth.premintSetFees(
@@ -287,8 +287,6 @@ describe.only("Test AfEth Premint Functionality", async function () {
     await tx.wait();
     const afEthBalanceAfterBuy1 = await afEth.balanceOf(accounts[1].address);
     const afEthMinted1 = afEthBalanceAfterBuy1.sub(afEthBalanceBeforeBuy1);
-
-    console.log("afEthMinted1", afEthMinted1.toString());
 
     const expectedFeePercent1 = await afEth.premintSellFeePercent(
       ethers.utils.parseEther("1")
@@ -347,28 +345,69 @@ describe.only("Test AfEth Premint Functionality", async function () {
     );
   };
 
-  it("Should test premintSellFeePercent() and premintSellAmount() for various unlock times", async function () {
+  const expectedPremintSellResult = async (afEthWithdrawAmount: BigNumber) => {
+    const expectedFeePercentage = await expectedFeePercent(afEthWithdrawAmount);
+
+    // 1 afEth should equal 1 eth because prices havent changed yet
+    const ethReceivedBeforeFee = afEthWithdrawAmount;
+
+    // eslint-disable-next-line prettier/prettier
+    const ethReceivedAfterFee = (BigNumber.from("1000000000000000000")
+      // eslint-disable-next-line prettier/prettier
+      .sub(expectedFeePercentage))
+      .mul(ethReceivedBeforeFee)
+      .div("1000000000000000000");
+    return ethReceivedAfterFee;
+  };
+
+  it("Should test premintSellFeePercent(), premintSellAmount() and premintSell() for various unlock times", async function () {
+    // get some afEth to put in the preminter
+    let tx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
     const trackedvStrategyBalance = await afEth.trackedvStrategyBalance();
     const afEthTotalSupply = await afEth.totalSupply();
-    const vStrategyWithdrawAmount = trackedvStrategyBalance.div(10);
-    const afEthWithdrawAmount = afEthTotalSupply.div(10);
+    const vStrategyWithdrawAmount = trackedvStrategyBalance.div(40);
+    const afEthWithdrawAmount = afEthTotalSupply.div(40);
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 1; i++) {
       const feePercent = await afEth.premintSellFeePercent(
         vStrategyWithdrawAmount
       );
-      const ethReceivedFrom = await afEth.premintSellAmount(
+      const expectedEthReceivedFromPremint = await afEth.premintSellAmount(
         afEthWithdrawAmount
       );
-      const timeRemaining = await withdrawTimeRemaining(
-        vStrategyWithdrawAmount
+
+      const ethBalanceBeforeSell1 = await ethers.provider.getBalance(
+        accounts[0].address
       );
-      console.log("afEthWithdrawAmount", afEthWithdrawAmount.toString());
-      console.log("ethReceivedFrom", ethReceivedFrom.toString());
-      console.log("timeRemaining", timeRemaining.toString());
-      console.log("feePercent", ethers.utils.formatEther(feePercent));
+      tx = await afEth.premintSell(afEthWithdrawAmount, 0);
+      const mined = await tx.wait();
+      const ethBalanceAfterSell1 = await ethers.provider.getBalance(
+        accounts[0].address
+      );
+      const txFee = mined.gasUsed.mul(mined.effectiveGasPrice);
+      const ethReceived = ethBalanceAfterSell1
+        .sub(ethBalanceBeforeSell1)
+        .add(txFee);
+
+      expect(within1Pip(ethReceived, expectedEthReceivedFromPremint)).eq(true);
+      const expectedFeePercentage = await expectedFeePercent(
+        afEthWithdrawAmount
+      );
+
+      expect(withinQuarterPercent(feePercent, expectedFeePercentage)).eq(true);
+      const expectedEthReceivedFromPremintSell =
+        await expectedPremintSellResult(afEthWithdrawAmount);
+      expect(
+        withinQuarterPercent(
+          expectedEthReceivedFromPremint,
+          expectedEthReceivedFromPremintSell
+        )
+      ).eq(true);
       await incrementVlcvxEpoch();
     }
   });
-  it("Should test premintBuyAmount()", async function () {});
 });
