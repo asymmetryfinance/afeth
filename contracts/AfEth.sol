@@ -471,7 +471,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
         uint256 afEthOut = premintBuyAmount(msg.value);
         if (afEthOut < _minOut) revert PreminterMinout();
-        if(afEthOut > preminterAfEthBalance) revert InsufficientBalance();
+        if (afEthOut > preminterAfEthBalance) revert InsufficientBalance();
         _transfer(address(this), msg.sender, afEthOut);
         emit PremintBuy(afEthOut, msg.value);
     }
@@ -485,7 +485,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
         uint256 ethOut = premintSellAmount(_afEthToSell);
         if (ethOut < _ethMinOut) revert PreminterMinout();
-        if(ethOut > preminterEthBalance) revert InsufficientBalance();
+        if (ethOut > preminterEthBalance) revert InsufficientBalance();
         _transfer(msg.sender, address(this), _afEthToSell);
         // solhint-disable-next-line
         (bool sent, ) = address(msg.sender).call{value: ethOut}("");
