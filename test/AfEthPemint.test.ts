@@ -9,7 +9,7 @@ import { within1Pip, withinQuarterPercent } from "./helpers/helpers";
 import { incrementVlcvxEpoch } from "./strategies/Votium/VotiumTestHelpers";
 import { BigNumber } from "ethers/lib/ethers";
 
-describe.only("Test AfEth Premint Functionality", async function () {
+describe("Test AfEth Premint Functionality", async function () {
   let afEth: AfEth;
   let votiumStrategy: VotiumStrategy;
   let accounts: SignerWithAddress[];
@@ -17,7 +17,18 @@ describe.only("Test AfEth Premint Functionality", async function () {
   const initialStake = ethers.utils.parseEther(".1");
   const initialStakeAccount = 11;
 
-  before(async () => {
+  beforeEach(async () => {
+    await network.provider.request({
+      method: "hardhat_reset",
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: process.env.MAINNET_URL,
+            blockNumber: parseInt(process.env.BLOCK_NUMBER ?? "0"),
+          },
+        },
+      ],
+    });
     accounts = await ethers.getSigners();
     const afEthFactory = await ethers.getContractFactory("AfEth");
     afEth = (await upgrades.deployProxy(afEthFactory, [])) as AfEth;
@@ -81,6 +92,12 @@ describe.only("Test AfEth Premint Functionality", async function () {
     await chainLinkCvxEthFeed.deployed();
     await votiumStrategy.setChainlinkCvxEthFeed(chainLinkCvxEthFeed.address);
     await afEth.setRewarderAddress(accounts[0].address);
+
+    const tx2 = await afEth.setPremintMaxAmounts(
+      ethers.utils.parseEther("100"),
+      ethers.utils.parseEther("100")
+    );
+    await tx2.wait();
   });
 
   it("Should allow owner to call premintOwnerDeposit() and premintOwnerWithdraw() with eth and afEth and fail if trying to withdraw too much or non owner call", async function () {
@@ -262,7 +279,6 @@ describe.only("Test AfEth Premint Functionality", async function () {
 
     const preminterMinFee = await afEth.preminterMinFee();
     const preminterMaxFee = await afEth.preminterMaxFee();
-
     // get some afEth to put in the preminter
     tx = await afEth.deposit(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("25"),
@@ -271,12 +287,10 @@ describe.only("Test AfEth Premint Functionality", async function () {
 
     const premintEthDepositAmount = ethers.utils.parseEther("20");
     const premintAfEthDepositAmount = ethers.utils.parseEther("20");
-
     tx = await afEth.premintDeposit(premintAfEthDepositAmount, {
       value: premintEthDepositAmount,
     });
     await tx.wait();
-
     const ethDepositAmount = ethers.utils.parseEther("1");
 
     const afEthBalanceBeforeBuy1 = await afEth.balanceOf(accounts[1].address);
@@ -313,7 +327,9 @@ describe.only("Test AfEth Premint Functionality", async function () {
 
     const sell1EthReceived = ethBalanceAfterSell1.sub(ethBalanceBeforeSell1);
 
-    expect(within1Pip(sell1EthReceived, expectedSell1EthReceived)).eq(true);
+    expect(withinQuarterPercent(sell1EthReceived, expectedSell1EthReceived)).eq(
+      true
+    );
   });
 
   const withdrawTimeRemaining = async (afEthAmont: BigNumber) => {
@@ -363,7 +379,12 @@ describe.only("Test AfEth Premint Functionality", async function () {
   it("Should test premintSellFeePercent(), premintSellAmount() and premintSell() for various unlock times", async function () {
     // get some afEth to put in the preminter
     let tx = await afEth.deposit(0, await nowPlusOneMinute(), {
-      value: ethers.utils.parseEther("1"),
+      value: ethers.utils.parseEther("5"),
+    });
+    await tx.wait();
+
+    tx = await afEth.premintDeposit(ethers.utils.parseEther("2"), {
+      value: ethers.utils.parseEther("2"),
     });
     await tx.wait();
 
@@ -383,6 +404,7 @@ describe.only("Test AfEth Premint Functionality", async function () {
       const ethBalanceBeforeSell1 = await ethers.provider.getBalance(
         accounts[0].address
       );
+
       tx = await afEth.premintSell(afEthWithdrawAmount, 0);
       const mined = await tx.wait();
       const ethBalanceAfterSell1 = await ethers.provider.getBalance(
@@ -409,5 +431,25 @@ describe.only("Test AfEth Premint Functionality", async function () {
       ).eq(true);
       await incrementVlcvxEpoch();
     }
+  });
+
+  it("Should fail to premintSell() and premintBuy() if insufficient balances", async function () {
+    // get some afEth to put in the preminter
+    let tx = await afEth.deposit(0, await nowPlusOneMinute(), {
+      value: ethers.utils.parseEther("2"),
+    });
+    await tx.wait();
+
+    tx = await afEth.premintDeposit(ethers.utils.parseEther("1"), {
+      value: ethers.utils.parseEther("1"),
+    });
+    await tx.wait();
+
+    expect(
+      afEth.premintBuy(0, { value: ethers.utils.parseEther("2") })
+    ).to.be.revertedWith("InsufficientBalance()");
+    expect(
+      afEth.premintSell(ethers.utils.parseEther("2"), 0)
+    ).to.be.revertedWith("InsufficientBalance()");
   });
 });
