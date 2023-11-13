@@ -14,7 +14,7 @@ import {
 } from "../../helpers/helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-describe.skip("Test VotiumStrategy (Part 2)", async function () {
+describe("Test VotiumStrategy (Part 2)", async function () {
   let votiumStrategy: VotiumStrategy;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;

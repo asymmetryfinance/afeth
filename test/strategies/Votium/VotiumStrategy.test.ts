@@ -13,7 +13,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 import { nowPlusOneMinute } from "../../AfEth.test";
 
-describe.skip("Test VotiumStrategy", async function () {
+describe("Test VotiumStrategy", async function () {
   let votiumStrategy: VotiumStrategy & VotiumStrategyCore;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
