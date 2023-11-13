@@ -410,13 +410,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
             // solhint-disable-next-line
             (bool sent, ) = feeAddress.call{value: _ethAmount}("");
             if (!sent) revert FailedToSend();
-            preminterEthBalance -= _ethAmount;
+            unchecked {
+                preminterEthBalance -= _ethAmount;
+            }
         }
         if (_afEthAmount > 0) {
             if (_afEthAmount > preminterAfEthBalance)
                 revert InsufficientBalance();
             _transfer(address(this), msg.sender, _afEthAmount);
-            preminterAfEthBalance -= _afEthAmount;
+            unchecked {
+                preminterAfEthBalance -= _afEthAmount;
+            }
         }
         emit PremintWithdraw(_afEthAmount, _ethAmount);
     }
@@ -472,7 +476,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 afEthOut = premintBuyAmount(msg.value);
         if (afEthOut < _minOut) revert PreminterMinout();
         if (afEthOut > preminterAfEthBalance) revert InsufficientBalance();
-        preminterAfEthBalance -= afEthOut;
+        unchecked {
+            preminterAfEthBalance -= afEthOut;
+        }
         preminterEthBalance += msg.value;
         _transfer(address(this), msg.sender, afEthOut);
         emit PremintBuy(afEthOut, msg.value);
@@ -489,7 +495,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (ethOut < _ethMinOut) revert PreminterMinout();
         if (ethOut > preminterEthBalance) revert InsufficientBalance();
         preminterAfEthBalance += _afEthToSell;
-        preminterEthBalance -= ethOut;
+        unchecked {
+            preminterEthBalance -= ethOut;
+        }
         _transfer(msg.sender, address(this), _afEthToSell);
         // solhint-disable-next-line
         (bool sent, ) = address(msg.sender).call{value: ethOut}("");
