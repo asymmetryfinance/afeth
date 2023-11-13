@@ -62,7 +62,7 @@ export const incrementVlcvxEpoch = async () => {
     vlCvxAbi,
     accounts[9]
   );
-  await time.increaseTo(blockTime + epochDuration);
+  await time.increaseTo(blockTime + epochDuration - 1);
   const tx = await vlCvxContract.checkpointEpoch();
   await tx.wait();
 };

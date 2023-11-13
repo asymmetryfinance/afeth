@@ -23,6 +23,19 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     bool public pauseDeposit;
     bool public pauseWithdraw;
 
+    // eth balance held by contract for premint functionality
+    uint256 public preminterEthBalance;
+    // afEth balance held by contract for premint functionality
+    uint256 public preminterAfEthBalance;
+    // fee percent charged if withdraw time is 0
+    uint256 public preminterMinFee;
+    // fee percent charged if withdraw time is 17 weeks
+    uint256 public preminterMaxFee;
+    // max afEth that can be sold at once
+    uint256 public preminterMaxSell;
+    // max amount of eth that can be spent at once buying afEth
+    uint256 public preminterMaxBuy;
+
     struct WithdrawInfo {
         address owner;
         uint256 amount;
@@ -48,6 +61,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     error StaleAction();
     error NotManagerOrRewarder();
     error InvalidRatio();
+    error PreminterMaxBuy();
+    error PreminterMaxSell();
+    error PreminterMinout();
 
     event SetStrategyAddress(address indexed newAddress);
     event SetRewarderAddress(address indexed newAddress);
@@ -78,6 +94,11 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 afEthAmount,
         uint256 ethAmount
     );
+    event PremintSetFees(uint256 minSellFee, uint256 maxSellFee);
+    event PremintDeposit(uint256 afEthAmount, uint256 ethAmount);
+    event PremintWithdraw(uint256 afEthAmount, uint256 ethAmount);
+    event PremintBuy(uint256 afEthBought, uint256 ethSpent);
+    event PremintSell(uint256 afEthSold, uint256 ethReceived);
 
     modifier onlyWithdrawIdOwner(uint256 withdrawId) {
         if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
@@ -374,4 +395,167 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     receive() external payable {}
+
+    /**
+     * @notice Allow owner to withdraw from Preminter
+     * @param _ethAmount amount of eth to withdraw
+     * @param _afEthAmount amount of afEth to withdraw
+     */
+    function premintWithdraw(
+        uint256 _ethAmount,
+        uint256 _afEthAmount
+    ) public onlyOwner {
+        if (_ethAmount > 0) {
+            if (_ethAmount > preminterEthBalance) revert InsufficientBalance();
+            // solhint-disable-next-line
+            (bool sent, ) = feeAddress.call{value: _ethAmount}("");
+            if (!sent) revert FailedToSend();
+            unchecked {
+                preminterEthBalance -= _ethAmount;
+            }
+        }
+        if (_afEthAmount > 0) {
+            if (_afEthAmount > preminterAfEthBalance)
+                revert InsufficientBalance();
+            _transfer(address(this), msg.sender, _afEthAmount);
+            unchecked {
+                preminterAfEthBalance -= _afEthAmount;
+            }
+        }
+        emit PremintWithdraw(_afEthAmount, _ethAmount);
+    }
+
+    /**
+     * @notice Allow owner to deposit into Preminter
+     * @param _afEthAmount amount of afEth to deposit
+     */
+    function premintDeposit(uint256 _afEthAmount) public payable onlyOwner {
+        if (_afEthAmount > 0) {
+            _transfer(msg.sender, address(this), _afEthAmount);
+            preminterAfEthBalance += _afEthAmount;
+        }
+        if (msg.value > 0) {
+            preminterEthBalance += msg.value;
+        }
+        emit PremintDeposit(_afEthAmount, msg.value);
+    }
+
+    /**
+     * @notice Sets sell fee used in selling afEth afEth (Immediate Unstake Premium)
+     * @param _minSellFee minimum sell fee % to charge if there is 0 weeks to unstake
+     * @param _minSellFee maximum sell fee % to charge if there is 16 weeks to unstake
+     */
+    function premintSetFees(
+        uint256 _minSellFee,
+        uint256 _maxSellFee
+    ) public onlyOwner {
+        preminterMinFee = _minSellFee;
+        preminterMaxFee = _maxSellFee;
+        emit PremintSetFees(_minSellFee, _maxSellFee);
+    }
+
+    /**
+     * @notice Sets max amounts for premint buying / selling
+     * @param _maxBuy max amount of eth that can be spent at once buying afEth
+     * @param _maxSell max afEth that can be sold at once
+     */
+    function setPremintMaxAmounts(
+        uint256 _maxBuy,
+        uint256 _maxSell
+    ) public onlyOwner {
+        preminterMaxBuy = _maxBuy;
+        preminterMaxSell = _maxSell;
+    }
+
+    /**
+     * @notice Buy afEth from Preminter
+     * @param _minOut minimum afEth to receive or revert
+     */
+    function premintBuy(uint256 _minOut) public payable {
+        if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
+        uint256 afEthOut = premintBuyAmount(msg.value);
+        if (afEthOut < _minOut) revert PreminterMinout();
+        if (afEthOut > preminterAfEthBalance) revert InsufficientBalance();
+        unchecked {
+            preminterAfEthBalance -= afEthOut;
+        }
+        preminterEthBalance += msg.value;
+        _transfer(address(this), msg.sender, afEthOut);
+        emit PremintBuy(afEthOut, msg.value);
+    }
+
+    /**
+     * Sell afEth to preminter
+     * @param _afEthToSell amount of afEth to sell
+     * @param _ethMinOut minimum eth to receive or revert
+     */
+    function premintSell(uint256 _afEthToSell, uint256 _ethMinOut) public {
+        if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
+        uint256 ethOut = premintSellAmount(_afEthToSell);
+        if (ethOut < _ethMinOut) revert PreminterMinout();
+        if (ethOut > preminterEthBalance) revert InsufficientBalance();
+        preminterAfEthBalance += _afEthToSell;
+        unchecked {
+            preminterEthBalance -= ethOut;
+        }
+        _transfer(msg.sender, address(this), _afEthToSell);
+        // solhint-disable-next-line
+        (bool sent, ) = address(msg.sender).call{value: ethOut}("");
+        if (!sent) revert FailedToSend();
+        emit PremintSell(_afEthToSell, ethOut);
+    }
+
+    /**
+     * @notice Returns expected afEth out for a given eth amount
+     * @param _ethAmount amount of eth simulate buy with
+     * @return afEth out for a given eth amount
+     */
+    function premintBuyAmount(
+        uint256 _ethAmount
+    ) public view returns (uint256) {
+        return ((_ethAmount * 1e18) / price(true));
+    }
+
+    /**
+     * @notice Returns expected eth out for a given afEth amount
+     * @param _afEthToSell amount of afEth simulate sell with
+     * @return eth amount out for a given eth amount
+     */
+    function premintSellAmount(
+        uint256 _afEthToSell
+    ) public view returns (uint256) {
+        uint256 sellAmount = (_afEthToSell * price(true)) / 1e18;
+        uint256 sellAmountMinusFee = (sellAmount *
+            (1e18 - premintSellFeePercent(_afEthToSell))) / 1e18;
+        return sellAmountMinusFee;
+    }
+
+    /**
+     * @notice calculates fee percent to be charged on selling afEth instantly instead of unstaking normally
+     * @param _afEthToSell amount of afEth to sell
+     * @return fee % to charge for selling afEth instantly instead of unstaking normally
+     */
+    function premintSellFeePercent(
+        uint256 _afEthToSell
+    ) public view returns (uint256) {
+        uint256 maxFeeTime = 24 * 60 * 60 * 7 * 17; // 17 weeks out is when max fee applies
+        uint256 minFeeTime = 24 * 60 * 60 * 7 * 2; // 2 weeks or less is when min fee applies
+        uint256 feeTimeDiff = maxFeeTime - minFeeTime;
+        uint256 feeDiff = preminterMaxFee - preminterMinFee;
+
+        // how long until they could normally unstake
+        uint256 withdrawTimeRemaining = withdrawTime(_afEthToSell) -
+            block.timestamp;
+
+        if (withdrawTimeRemaining <= minFeeTime) {
+            return preminterMinFee;
+        } else {
+            uint256 timeRemainingAboveMinFeeTime = withdrawTimeRemaining -
+                minFeeTime;
+            uint256 feeTimeDiffPercentComplete = (timeRemainingAboveMinFeeTime *
+                1e18) / feeTimeDiff;
+            return
+                preminterMinFee + (feeDiff * feeTimeDiffPercentComplete) / 1e18;
+        }
+    }
 }
