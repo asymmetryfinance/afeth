@@ -1,0 +1,290 @@
+{
+  "manifestVersion": "3.2",
+  "admin": {
+    "address": "0x3777c51170B0c1CEc4b236166680802c22D262cB",
+    "txHash": "0xf3e487cdd1a677ca0dd54a9e2daa78bfaccdcd4b816309d248c78e7fd1373746"
+  },
+  "proxies": [
+    {
+      "address": "0x5aED1241b2b4530D45F1E837a3955AB7953f8CD4",
+      "txHash": "0x35afe931731b330ca92da213eb8ed0ddd80cde429f092472b2ed9ad603b19494",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "32b15cbd4d1e4e4e26b7cacc2e90dfad32fc4a4e88f0f12868025b15dcf5641e": {
+      "address": "0x12fC2BF0Edea2437CD4FE17EC2B65dC45eb92aAd",
+      "txHash": "0x234496d69203352c7c2a131360be1310249433ac2bdd1bbdd14ae2d62b6edec2",
+      "layout": {
+        "solcVersion": "0.8.19",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_balances",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ERC20Upgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:40"
+          },
+          {
+            "label": "_allowances",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "contract": "ERC20Upgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:42"
+          },
+          {
+            "label": "_totalSupply",
+            "offset": 0,
+            "slot": "103",
+            "type": "t_uint256",
+            "contract": "ERC20Upgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "label": "_name",
+            "offset": 0,
+            "slot": "104",
+            "type": "t_string_storage",
+            "contract": "ERC20Upgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:46"
+          },
+          {
+            "label": "_symbol",
+            "offset": 0,
+            "slot": "105",
+            "type": "t_string_storage",
+            "contract": "ERC20Upgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:47"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "106",
+            "type": "t_array(t_uint256)45_storage",
+            "contract": "ERC20Upgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:376"
+          },
+          {
+            "label": "cvxUnlockObligations",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:44"
+          },
+          {
+            "label": "rewarder",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_address",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:45"
+          },
+          {
+            "label": "manager",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_address",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:46"
+          },
+          {
+            "label": "chainlinkCvxEthFeed",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_contract(AggregatorV3Interface)45",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:48"
+          },
+          {
+            "label": "latestWithdrawId",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_uint256",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:49"
+          },
+          {
+            "label": "trackedCvxBalance",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_uint256",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:51"
+          },
+          {
+            "label": "minEpoch",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_uint256",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:52"
+          },
+          {
+            "label": "cvxTrackingInitialized",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_bool",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:54"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_array(t_uint256)18_storage",
+            "contract": "VotiumStrategyCore",
+            "src": "contracts/strategies/votium/VotiumStrategyCore.sol:57"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "177",
+            "type": "t_array(t_uint256)20_storage",
+            "contract": "AbstractStrategy",
+            "src": "contracts/strategies/AbstractStrategy.sol:9"
+          },
+          {
+            "label": "withdrawIdToWithdrawRequestInfo",
+            "offset": 0,
+            "slot": "197",
+            "type": "t_mapping(t_uint256,t_struct(WithdrawRequestInfo)3740_storage)",
+            "contract": "VotiumStrategy",
+            "src": "contracts/strategies/votium/VotiumStrategy.sol:24"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)18_storage": {
+            "label": "uint256[18]",
+            "numberOfBytes": "576"
+          },
+          "t_array(t_uint256)20_storage": {
+            "label": "uint256[20]",
+            "numberOfBytes": "640"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]",
+            "numberOfBytes": "1440"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(AggregatorV3Interface)45": {
+            "label": "contract AggregatorV3Interface",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(WithdrawRequestInfo)3740_storage)": {
+            "label": "mapping(uint256 => struct VotiumStrategy.WithdrawRequestInfo)",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(WithdrawRequestInfo)3740_storage": {
+            "label": "struct VotiumStrategy.WithdrawRequestInfo",
+            "members": [
+              {
+                "label": "cvxOwed",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "withdrawn",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "epoch",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    }
+  }
+}

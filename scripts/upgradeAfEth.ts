@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 async function main() {
   //   const AfEthFactory = await ethers.getContractFactory("AfEth");
@@ -10,11 +10,12 @@ async function main() {
   const VotiumStrategyFactory = await ethers.getContractFactory(
     "VotiumStrategy"
   );
-  const votiumStrategy = await VotiumStrategyFactory.deploy({
-    gasPrice: 60000000000,
-  });
-  await votiumStrategy.deployed();
 
+  const votiumStrategy = await upgrades.deployProxy(VotiumStrategyFactory, [
+    ethers.constants.AddressZero,
+    ethers.constants.AddressZero,
+    ethers.constants.AddressZero,
+  ]);
   console.log("votiumStrategy deployed to:", votiumStrategy.address);
 }
 
