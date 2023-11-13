@@ -17,6 +17,9 @@ contract AfEthRelayer is Initializable {
     address public constant WETH_ADDRESS =
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
+    event DepositSafEth(address indexed sellToken, uint256 amount);
+    event DepositAfEth(address indexed sellToken, uint256 amount);
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -36,7 +39,7 @@ contract AfEthRelayer is Initializable {
         address spender,
         address payable swapTarget,
         bytes calldata swapCallData
-    ) public payable {
+    ) private {
         sellToken.transferFrom(msg.sender, address(this), amount);
 
         require(
@@ -82,6 +85,7 @@ contract AfEthRelayer is Initializable {
             address(this)
         ) - beforeDeposit;
         IERC20(SAF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
+        emit DepositSafEth(_sellToken, amountToTransfer);
     }
 
     /**
@@ -114,11 +118,15 @@ contract AfEthRelayer is Initializable {
         IWETH(WETH_ADDRESS).withdraw(amountToStake);
 
         uint256 beforeDeposit = IERC20(AF_ETH_ADDRESS).balanceOf(address(this));
-        IAfEth(AF_ETH_ADDRESS).deposit{value: amountToStake}(_minout, _deadline);
+        IAfEth(AF_ETH_ADDRESS).deposit{value: amountToStake}(
+            _minout,
+            _deadline
+        );
         uint256 amountToTransfer = IERC20(AF_ETH_ADDRESS).balanceOf(
             address(this)
         ) - beforeDeposit;
         IERC20(AF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
+        emit DepositAfEth(_sellToken, amountToTransfer);
     }
 
     // Payable fallback to allow this contract to receive protocol fee refunds.

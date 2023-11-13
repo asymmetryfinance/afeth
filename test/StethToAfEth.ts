@@ -4,7 +4,7 @@ import { AfEthRelayer } from "../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber } from "ethers";
 
-describe("Test stETH to AF", async function () {
+describe.only("Test stETH to AF", async function () {
   const STETH_ADDRESS = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
 
   let accounts: SignerWithAddress[];
@@ -33,7 +33,7 @@ describe("Test stETH to AF", async function () {
 
   it("Should approve & swap stEth to Eth, then deposit into SafEth", async function () {
     const takerAddress = "0x02eD4a07431Bcc26c5519EbF8473Ee221F26Da8b"; // Lido Whale
-    const sellAmount = ethers.utils.parseEther("30");
+    const sellAmount = ethers.utils.parseEther("2");
     const STETH = new ethers.Contract(STETH_ADDRESS, stEthAbi, ethers.provider);
 
     const quote = await fetch(
@@ -74,14 +74,13 @@ describe("Test stETH to AF", async function () {
         quote.data
       );
     const receipt = await tx.wait();
-    const gasUsed = BigNumber.from(receipt.cumulativeGasUsed).mul(
-      receipt.effectiveGasPrice
-    );
+    const gasUsed = BigNumber.from(receipt.gasUsed);
+    
     console.log({ gasUsed, gasPrice: receipt.effectiveGasPrice });
   });
   it("Should approve & swap stEth to Eth, then deposit into AfEth", async function () {
     const takerAddress = "0x02eD4a07431Bcc26c5519EbF8473Ee221F26Da8b"; // Lido Whale
-    const sellAmount = ethers.utils.parseEther("30");
+    const sellAmount = ethers.utils.parseEther("2");
     const STETH = new ethers.Contract(STETH_ADDRESS, stEthAbi, ethers.provider);
 
     const quote = await fetch(
@@ -123,9 +122,7 @@ describe("Test stETH to AF", async function () {
         quote.data
       );
     const receipt = await tx.wait();
-    const gasUsed = BigNumber.from(receipt.cumulativeGasUsed).mul(
-      receipt.effectiveGasPrice
-    );
+    const gasUsed = BigNumber.from(receipt.gasUsed);
     console.log({ gasUsed, gasPrice: receipt.effectiveGasPrice });
   });
 });
