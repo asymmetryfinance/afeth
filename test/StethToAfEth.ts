@@ -4,7 +4,7 @@ import { AfEthRelayer } from "../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber } from "ethers";
 
-describe.only("Test stETH to AF", async function () {
+describe("Test stETH to AF", async function () {
   const STETH_ADDRESS = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
 
   let accounts: SignerWithAddress[];
@@ -75,7 +75,7 @@ describe.only("Test stETH to AF", async function () {
       );
     const receipt = await tx.wait();
     const gasUsed = BigNumber.from(receipt.gasUsed);
-    
+
     console.log({ gasUsed, gasPrice: receipt.effectiveGasPrice });
   });
   it("Should approve & swap stEth to Eth, then deposit into AfEth", async function () {

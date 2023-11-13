@@ -6,7 +6,6 @@ import "./external_interfaces/IAfEth.sol";
 import "./external_interfaces/IWETH.sol";
 import "contracts/external_interfaces/ISafEth.sol";
 import "contracts/strategies/AbstractStrategy.sol";
-import "hardhat/console.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEthRelayer is Initializable {
