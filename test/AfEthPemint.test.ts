@@ -98,6 +98,12 @@ describe("Test AfEth Premint Functionality", async function () {
       ethers.utils.parseEther("100")
     );
     await tx2.wait();
+
+    const tx3 = await afEth.premintSetFees(
+      ethers.utils.parseEther("0.2"),
+      ethers.utils.parseEther("0.5")
+    );
+    await tx3.wait();
   });
 
   it("Should allow owner to call premintOwnerDeposit() and premintOwnerWithdraw() with eth and afEth and fail if trying to withdraw too much or non owner call", async function () {
@@ -393,14 +399,16 @@ describe("Test AfEth Premint Functionality", async function () {
     const vStrategyWithdrawAmount = trackedvStrategyBalance.div(40);
     const afEthWithdrawAmount = afEthTotalSupply.div(40);
 
-    for (let i = 0; i < 1; i++) {
+    let lastEthReceived = BigNumber.from("0");
+
+    // go for more than 15 epochs to show fees dont go any lower after 15
+    for (let i = 0; i < 20; i++) {
       const feePercent = await afEth.premintSellFeePercent(
         vStrategyWithdrawAmount
       );
       const expectedEthReceivedFromPremint = await afEth.premintSellAmount(
         afEthWithdrawAmount
       );
-
       const ethBalanceBeforeSell1 = await ethers.provider.getBalance(
         accounts[0].address
       );
@@ -430,6 +438,10 @@ describe("Test AfEth Premint Functionality", async function () {
         )
       ).eq(true);
       await incrementVlcvxEpoch();
+
+      // for the last 2 epochs fees dont go down any more
+      if (i > 15) expect(lastEthReceived.eq(ethReceived)).eq(true);
+      lastEthReceived = ethReceived;
     }
   });
 
