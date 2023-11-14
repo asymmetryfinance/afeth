@@ -8,8 +8,6 @@ import "contracts/external_interfaces/ISafEth.sol";
 import "contracts/strategies/AbstractStrategy.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
-import "hardhat/console.sol";
-
 contract AfEthRelayer is Initializable {
     address public constant SAF_ETH_ADDRESS =
         0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
