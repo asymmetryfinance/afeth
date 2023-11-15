@@ -7,6 +7,7 @@ env:
   MAINNET_URL: ${{ secrets.MAINNET_URL }}
   ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
   MNEMONIC: ${{ secrets.MNEMONIC }}
+  API_KEY_0X: ${{ secrets.API_KEY_0X }}
   ETHERNAL_ENABLED: false
   BLOCK_NUMBER: 17984693
 
