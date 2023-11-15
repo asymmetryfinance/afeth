@@ -46,6 +46,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
+    bool private symbolUpdated;
 
     error StrategyAlreadyAdded();
     error StrategyNotFound();
@@ -125,6 +126,15 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         __ERC20_init("Asymmetry Finance AfEth", "AfEth");
         _transferOwnership(msg.sender);
         ratio = 5e17;
+    }
+
+    /**
+        @notice - Updates the symbol for the contract
+        @dev - This is only called once
+    */
+    function updateSymbol() external onlyOwner {
+        if (symbolUpdated) revert("Symbol already updated");
+        __ERC20_init("Asymmetry Finance AfEth", "afEth");
     }
 
     /**
