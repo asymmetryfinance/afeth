@@ -16,8 +16,18 @@ contract AfEthRelayer is Initializable {
     address public constant WETH_ADDRESS =
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    event DepositSafEth(address indexed sellToken, uint256 sellAmount, uint256 safEthAmount, address indexed recipient);
-    event DepositAfEth(address indexed sellToken, uint256 sellAmount, uint256 afEthAmount, address indexed recipient);
+    event DepositSafEth(
+        address indexed sellToken,
+        uint256 sellAmount,
+        uint256 safEthAmount,
+        address indexed recipient
+    );
+    event DepositAfEth(
+        address indexed sellToken,
+        uint256 sellAmount,
+        uint256 afEthAmount,
+        address indexed recipient
+    );
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor

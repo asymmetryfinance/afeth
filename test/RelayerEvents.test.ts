@@ -1,15 +1,11 @@
 import { ethers, network, upgrades } from "hardhat";
 import { stEthAbi } from "./abis/stEthAbi";
 import { AfEth, AfEthRelayer } from "../typechain-types";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Contract } from "ethers";
 import { afEthAbi } from "./abis/afEthAbi";
 import { expect } from "chai";
-import { safEthAbi } from "./abis/safEthAbi";
 
 const OETH_ADDRESS = "0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3";
 const AFETH_ADDRESS = "0x5F10B16F0959AaC2E33bEdc9b0A4229Bb9a83590";
-const SAFETH_ADDRESS = "0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5";
 
 const oethWhale = "0x8e02247d3ee0e6153495c971ffd45aa131f4d7cb";
 
@@ -17,11 +13,8 @@ const nowPlusOneMinute = async () =>
   (await ethers.provider.getBlock("latest")).timestamp + 60;
 
 describe.only("Tests showing calculations for the different ways of accumulating gems from contract events", async function () {
-  let accounts: SignerWithAddress[];
-
   let afEthRelayer: AfEthRelayer;
   let afEth: AfEth;
-  let safEth: Contract;
 
   beforeEach(async () => {
     await network.provider.request({
@@ -35,7 +28,6 @@ describe.only("Tests showing calculations for the different ways of accumulating
         },
       ],
     });
-    accounts = await ethers.getSigners();
     const afEthFactory = await ethers.getContractFactory("AfEthRelayer");
     afEthRelayer = (await upgrades.deployProxy(
       afEthFactory,
@@ -48,7 +40,6 @@ describe.only("Tests showing calculations for the different ways of accumulating
       afEthAbi,
       ethers.provider
     ) as AfEth;
-    safEth = new ethers.Contract(SAFETH_ADDRESS, safEthAbi, ethers.provider);
   });
 
   it("Should detect relayer events for safEth and afEth deposits", async function () {
