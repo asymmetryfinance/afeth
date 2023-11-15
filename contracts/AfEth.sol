@@ -135,6 +135,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function updateSymbol() external onlyOwner {
         if (symbolUpdated) revert("Symbol already updated");
         __ERC20_init("Asymmetry Finance AfEth", "afEth");
+        symbolUpdated = true;
     }
 
     /**
