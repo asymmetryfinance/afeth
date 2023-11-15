@@ -12,7 +12,7 @@ const oethWhale = "0x8e02247d3ee0e6153495c971ffd45aa131f4d7cb";
 const nowPlusOneMinute = async () =>
   (await ethers.provider.getBlock("latest")).timestamp + 60;
 
-describe.only("Tests showing calculations for the different ways of accumulating gems from contract events", async function () {
+describe("Tests showing calculations for the different ways of accumulating gems from contract events", async function () {
   let afEthRelayer: AfEthRelayer;
   let afEth: AfEth;
 
