@@ -16,8 +16,18 @@ contract AfEthRelayer is Initializable {
     address public constant WETH_ADDRESS =
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    event DepositSafEth(address indexed sellToken, uint256 amount);
-    event DepositAfEth(address indexed sellToken, uint256 amount);
+    event DepositSafEth(
+        address indexed sellToken,
+        uint256 sellAmount,
+        uint256 safEthAmount,
+        address indexed recipient
+    );
+    event DepositAfEth(
+        address indexed sellToken,
+        uint256 sellAmount,
+        uint256 afEthAmount,
+        address indexed recipient
+    );
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -84,7 +94,7 @@ contract AfEthRelayer is Initializable {
             address(this)
         ) - beforeDeposit;
         IERC20(SAF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
-        emit DepositSafEth(_sellToken, amountToTransfer);
+        emit DepositSafEth(_sellToken, _amount, amountToTransfer, _owner);
     }
 
     /**
@@ -125,7 +135,7 @@ contract AfEthRelayer is Initializable {
             address(this)
         ) - beforeDeposit;
         IERC20(AF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
-        emit DepositAfEth(_sellToken, amountToTransfer);
+        emit DepositAfEth(_sellToken, _amount, amountToTransfer, _owner);
     }
 
     // Payable fallback to allow this contract to receive protocol fee refunds.
