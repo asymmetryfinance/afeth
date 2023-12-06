@@ -555,7 +555,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 feeDiff = preminterMaxFee - preminterMinFee;
 
         // how long until they could normally unstake
-        uint256 withdrawTimeRemaining = withdrawTime(_afEthToSell) -
+        uint256 withdrawRatio = (_afEthToSell * 1e18) / totalSupply();
+        uint256 votiumWithdrawAmount = (withdrawRatio *
+            trackedvStrategyBalance) / 1e18;
+        uint256 withdrawTimeRemaining = withdrawTime(votiumWithdrawAmount) -
             block.timestamp;
 
         if (withdrawTimeRemaining <= minFeeTime) {
