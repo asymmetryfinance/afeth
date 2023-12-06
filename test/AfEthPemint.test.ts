@@ -382,7 +382,7 @@ describe("Test AfEth Premint Functionality", async function () {
     return ethReceivedAfterFee;
   };
 
-  it.only("Should test premintSellFeePercent(), premintSellAmount() and premintSell() for various unlock times", async function () {
+  it("Should test premintSellFeePercent(), premintSellAmount() and premintSell() for various unlock times", async function () {
     // get some afEth to put in the preminter
     let tx = await afEth.deposit(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("5"),
