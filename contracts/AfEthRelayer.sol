@@ -15,7 +15,7 @@ contract AfEthRelayer is Initializable {
         0x5F10B16F0959AaC2E33bEdc9b0A4229Bb9a83590;
     address public constant WETH_ADDRESS =
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    mapping(address => bool) public whitelistSwapTarget;
+    mapping(address => bool) public whiteList;
 
     event DepositSafEth(
         address indexed sellToken,
@@ -43,8 +43,8 @@ contract AfEthRelayer is Initializable {
         @dev - This replaces the constructor for upgradeable contracts
     */
     function initialize() external initializer {
-        whitelistSwapTarget[0xDef1C0ded9bec7F1a1670819833240f027b25EfF] = true;
-        whitelistSwapTarget[0x95E6F48254609A6ee006F7D493c8e5fB97094ceF] = true;
+        whiteList[0xDef1C0ded9bec7F1a1670819833240f027b25EfF] = true;
+        whiteList[0x95E6F48254609A6ee006F7D493c8e5fB97094ceF] = true;
     }
 
     // Swaps ERC20->ERC20 tokens held by this contract using a 0x-API quote.
@@ -55,7 +55,7 @@ contract AfEthRelayer is Initializable {
         address payable swapTarget,
         bytes calldata swapCallData
     ) private {
-        if (!whitelistSwapTarget[swapTarget]) {
+        if (!whiteList[swapTarget] || !whiteList[spender]) {
             revert NotWhitelisted();
         }
         sellToken.transferFrom(msg.sender, address(this), amount);
