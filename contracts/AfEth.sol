@@ -233,7 +233,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function deposit(
         uint256 _minout,
         uint256 _deadline
-    ) external payable virtual {
+    ) external payable virtual returns (uint256 amountToMint) {
         if (pauseDeposit) revert Paused();
         if (block.timestamp > _deadline) revert StaleAction();
         uint256 priceBeforeDeposit = price(true);
@@ -253,7 +253,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         trackedvStrategyBalance += vMinted;
         trackedsafEthBalance += sMinted;
         if (totalValue == 0) revert FailedToDeposit();
-        uint256 amountToMint = totalValue / priceBeforeDeposit;
+        amountToMint = totalValue / priceBeforeDeposit;
         if (amountToMint < _minout) revert BelowMinOut();
         _mint(msg.sender, amountToMint);
         emit Deposit(msg.sender, amountToMint, msg.value);
