@@ -73,7 +73,7 @@ contract AfEthRelayer is Initializable {
         address _allowanceTarget,
         address payable _to,
         bytes calldata _swapCallData
-    ) external payable {
+    ) external {
         uint256 balanceBefore = IERC20(WETH_ADDRESS).balanceOf(address(this));
         fillQuote(
             IERC20(_sellToken),
@@ -112,7 +112,7 @@ contract AfEthRelayer is Initializable {
         address _allowanceTarget,
         address payable _to,
         bytes calldata _swapCallData
-    ) external payable {
+    ) external {
         uint256 balanceBefore = IERC20(WETH_ADDRESS).balanceOf(address(this));
         fillQuote(
             IERC20(_sellToken),
