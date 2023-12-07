@@ -481,9 +481,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
      * @notice Buy afEth from Preminter
      * @param _minOut minimum afEth to receive or revert
+     * @param _deadline - Sets a deadline for the deposit
      */
-    function premintBuy(uint256 _minOut) public payable {
+    function premintBuy(uint256 _minOut, uint256 _deadline) public payable {
         if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
+        if (block.timestamp > _deadline) revert StaleAction();
+
         uint256 afEthOut = premintBuyAmount(msg.value);
         if (afEthOut < _minOut) revert PreminterMinout();
         if (afEthOut > preminterAfEthBalance) revert InsufficientBalance();
@@ -499,9 +502,16 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * Sell afEth to preminter
      * @param _afEthToSell amount of afEth to sell
      * @param _ethMinOut minimum eth to receive or revert
+     * @param _deadline - Sets a deadline for the deposit
      */
-    function premintSell(uint256 _afEthToSell, uint256 _ethMinOut) public {
+    function premintSell(
+        uint256 _afEthToSell,
+        uint256 _ethMinOut,
+        uint256 _deadline
+    ) public {
         if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
+        if (block.timestamp > _deadline) revert StaleAction();
+
         uint256 ethOut = premintSellAmount(_afEthToSell);
         if (ethOut < _ethMinOut) revert PreminterMinout();
         if (ethOut > preminterEthBalance) revert InsufficientBalance();
