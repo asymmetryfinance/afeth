@@ -95,6 +95,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 afEthAmount,
         uint256 ethAmount
     );
+    event PremintSetMaxAmounts(uint256 buyAmount, uint256 sellAmount);
     event PremintSetFees(uint256 minSellFee, uint256 maxSellFee);
     event PremintDeposit(uint256 afEthAmount, uint256 ethAmount);
     event PremintWithdraw(uint256 afEthAmount, uint256 ethAmount);
@@ -476,6 +477,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     ) public onlyOwner {
         preminterMaxBuy = _maxBuy;
         preminterMaxSell = _maxSell;
+        emit PremintSetMaxAmounts(_maxBuy, _maxSell);
     }
 
     /**
