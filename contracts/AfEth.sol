@@ -489,10 +489,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function premintBuy(uint256 _minOut) public payable {
         if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
         uint256 afEthOut = premintBuyAmount(msg.value);
+        uint256 _preminterAfEthBalance = preminterAfEthBalance;
+
         if (afEthOut < _minOut) revert PreminterMinout();
-        if (afEthOut > preminterAfEthBalance) revert InsufficientBalance();
+        if (afEthOut > _preminterAfEthBalance) revert InsufficientBalance();
         unchecked {
-            preminterAfEthBalance -= afEthOut;
+            preminterAfEthBalance = _preminterAfEthBalance - afEthOut;
         }
         preminterEthBalance += msg.value;
         _transfer(address(this), msg.sender, afEthOut);
@@ -508,10 +510,12 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
         uint256 ethOut = premintSellAmount(_afEthToSell);
         if (ethOut < _ethMinOut) revert PreminterMinout();
-        if (ethOut > preminterEthBalance) revert InsufficientBalance();
+        uint256 _preminterEthBalance = preminterEthBalance;
+
+        if (ethOut > _preminterEthBalance) revert InsufficientBalance();
         preminterAfEthBalance += _afEthToSell;
         unchecked {
-            preminterEthBalance -= ethOut;
+            preminterEthBalance = _preminterEthBalance - ethOut;
         }
         _transfer(msg.sender, address(this), _afEthToSell);
         // solhint-disable-next-line
@@ -556,21 +560,27 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 maxFeeTime = 24 * 60 * 60 * 7 * 17; // 17 weeks out is when max fee applies
         uint256 minFeeTime = 24 * 60 * 60 * 7 * 2; // 2 weeks or less is when min fee applies
         uint256 feeTimeDiff = maxFeeTime - minFeeTime;
-        uint256 feeDiff = preminterMaxFee - preminterMinFee;
+        uint256 _preminterMinFee = preminterMinFee;
+        uint256 feeDiff = preminterMaxFee - _preminterMinFee;
 
         // how long until they could normally unstake
         uint256 withdrawTimeRemaining = withdrawTime(_afEthToSell) -
             block.timestamp;
 
         if (withdrawTimeRemaining <= minFeeTime) {
-            return preminterMinFee;
+            return _preminterMinFee;
         } else {
-            uint256 timeRemainingAboveMinFeeTime = withdrawTimeRemaining -
-                minFeeTime;
-            uint256 feeTimeDiffPercentComplete = (timeRemainingAboveMinFeeTime *
-                1e18) / feeTimeDiff;
+            uint256 timeRemainingAboveMinFeeTime;
+            unchecked {
+                timeRemainingAboveMinFeeTime =
+                    withdrawTimeRemaining -
+                    minFeeTime;
+            }
+
             return
-                preminterMinFee + (feeDiff * feeTimeDiffPercentComplete) / 1e18;
+                _preminterMinFee +
+                (feeDiff * timeRemainingAboveMinFeeTime) /
+                feeTimeDiff;
         }
     }
 }

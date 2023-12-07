@@ -251,7 +251,8 @@ describe("Test AfEth Premint Functionality", async function () {
     tx = await afEthNonOwner1.premintBuy(0, {
       value: ethers.utils.parseEther("4"),
     });
-    await tx.wait();
+    const receipt = await tx.wait();
+    console.log("gas used", receipt.gasUsed.toString());
     tx = await afEthNonOwner2.deposit(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("4"),
     });
