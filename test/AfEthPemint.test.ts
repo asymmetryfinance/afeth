@@ -251,8 +251,8 @@ describe("Test AfEth Premint Functionality", async function () {
     tx = await afEthNonOwner1.premintBuy(0, {
       value: ethers.utils.parseEther("4"),
     });
-    const receipt = await tx.wait();
-    console.log("gas used", receipt.gasUsed.toString());
+    await tx.wait();
+
     tx = await afEthNonOwner2.deposit(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("4"),
     });
@@ -375,9 +375,9 @@ describe("Test AfEth Premint Functionality", async function () {
     const ethReceivedBeforeFee = afEthWithdrawAmount;
 
     // eslint-disable-next-line prettier/prettier
-    const ethReceivedAfterFee = (BigNumber.from("1000000000000000000")
+    const ethReceivedAfterFee = BigNumber.from("1000000000000000000")
       // eslint-disable-next-line prettier/prettier
-      .sub(expectedFeePercentage))
+      .sub(expectedFeePercentage)
       .mul(ethReceivedBeforeFee)
       .div("1000000000000000000");
     return ethReceivedAfterFee;
