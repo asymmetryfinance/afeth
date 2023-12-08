@@ -103,7 +103,7 @@ describe.skip("Test relayer deposit of oETH, lido & wstEth to afEth and safEth",
 
     console.log({ gasUsed, gasPrice: receipt.effectiveGasPrice });
   });
-  it.only("Should approve & swap oEth to Eth, then deposit into AfEth", async function () {
+  it("Should approve & swap oEth to Eth, then deposit into AfEth", async function () {
     const sellAmount = ethers.utils.parseEther("2");
     const OETH = new ethers.Contract(OETH_ADDRESS, stEthAbi, ethers.provider);
     const takerAddress = "0x8e02247d3ee0e6153495c971ffd45aa131f4d7cb"; // Oeth Whale
@@ -261,7 +261,7 @@ describe.skip("Test relayer deposit of oETH, lido & wstEth to afEth and safEth",
     console.log({ gasUsed, gasPrice: receipt.effectiveGasPrice });
   });
 
-  it.only("Should approve & swap wstEth to Eth, then deposit into SafEth", async function () {
+  it("Should approve & swap wstEth to Eth, then deposit into SafEth", async function () {
     const sellAmount = ethers.utils.parseEther("2");
     const WSTETH = new ethers.Contract(
       WSTETH_ADDRESS,
@@ -318,7 +318,7 @@ describe.skip("Test relayer deposit of oETH, lido & wstEth to afEth and safEth",
 
     console.log({ gasUsed, gasPrice: receipt.effectiveGasPrice });
   });
-  it.only("Should approve & swap wstEth to Eth, then deposit into AfEth", async function () {
+  it("Should approve & swap wstEth to Eth, then deposit into AfEth", async function () {
     const sellAmount = ethers.utils.parseEther("2");
     const WSTETH = new ethers.Contract(
       WSTETH_ADDRESS,
