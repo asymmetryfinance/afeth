@@ -248,7 +248,7 @@ describe("Test AfEth Premint Functionality", async function () {
     const afEthNonOwner1 = afEth.connect(accounts[1]);
     const afEthNonOwner2 = afEth.connect(accounts[2]);
 
-    tx = await afEthNonOwner1.premintBuy(0, {
+    tx = await afEthNonOwner1.premintBuy(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("4"),
     });
     await tx.wait();
@@ -263,15 +263,19 @@ describe("Test AfEth Premint Functionality", async function () {
     expect(withinQuarterPercent(afEthBalance1, afEthBalance2)).eq(true);
 
     await expect(
-      afEthNonOwner1.premintBuy(0, {
+      afEthNonOwner1.premintBuy(0, await nowPlusOneMinute(), {
         value: ethers.utils.parseEther("101"),
       })
     ).to.be.revertedWith("PreminterMaxBuy()");
 
     await expect(
-      afEthNonOwner1.premintBuy(ethers.utils.parseEther("999"), {
-        value: ethers.utils.parseEther("4"),
-      })
+      afEthNonOwner1.premintBuy(
+        ethers.utils.parseEther("999"),
+        await nowPlusOneMinute(),
+        {
+          value: ethers.utils.parseEther("4"),
+        }
+      )
     ).to.be.revertedWith("PreminterMinout()");
   });
 
@@ -302,7 +306,7 @@ describe("Test AfEth Premint Functionality", async function () {
 
     const afEthBalanceBeforeBuy1 = await afEth.balanceOf(accounts[1].address);
     const premintUser = afEth.connect(accounts[1]);
-    tx = await premintUser.premintBuy(0, {
+    tx = await premintUser.premintBuy(0, await nowPlusOneMinute(), {
       value: ethDepositAmount,
     });
     await tx.wait();
@@ -326,7 +330,11 @@ describe("Test AfEth Premint Functionality", async function () {
       accounts[1].address
     );
 
-    tx = await premintUser.premintSell(afEthMinted1, 0);
+    tx = await premintUser.premintSell(
+      afEthMinted1,
+      0,
+      await nowPlusOneMinute()
+    );
     await tx.wait();
     const ethBalanceAfterSell1 = await ethers.provider.getBalance(
       accounts[1].address
@@ -395,18 +403,14 @@ describe("Test AfEth Premint Functionality", async function () {
     });
     await tx.wait();
 
-    const trackedvStrategyBalance = await afEth.trackedvStrategyBalance();
     const afEthTotalSupply = await afEth.totalSupply();
-    const vStrategyWithdrawAmount = trackedvStrategyBalance.div(40);
     const afEthWithdrawAmount = afEthTotalSupply.div(40);
 
     let lastEthReceived = BigNumber.from("0");
 
     // go for more than 15 epochs to show fees dont go any lower after 15
     for (let i = 0; i < 20; i++) {
-      const feePercent = await afEth.premintSellFeePercent(
-        vStrategyWithdrawAmount
-      );
+      const feePercent = await afEth.premintSellFeePercent(afEthWithdrawAmount);
       const expectedEthReceivedFromPremint = await afEth.premintSellAmount(
         afEthWithdrawAmount
       );
@@ -414,7 +418,11 @@ describe("Test AfEth Premint Functionality", async function () {
         accounts[0].address
       );
 
-      tx = await afEth.premintSell(afEthWithdrawAmount, 0);
+      tx = await afEth.premintSell(
+        afEthWithdrawAmount,
+        0,
+        await nowPlusOneMinute()
+      );
       const mined = await tx.wait();
       const ethBalanceAfterSell1 = await ethers.provider.getBalance(
         accounts[0].address
@@ -459,10 +467,16 @@ describe("Test AfEth Premint Functionality", async function () {
     await tx.wait();
 
     expect(
-      afEth.premintBuy(0, { value: ethers.utils.parseEther("2") })
+      afEth.premintBuy(0, await nowPlusOneMinute(), {
+        value: ethers.utils.parseEther("2"),
+      })
     ).to.be.revertedWith("InsufficientBalance()");
     expect(
-      afEth.premintSell(ethers.utils.parseEther("2"), 0)
+      afEth.premintSell(
+        ethers.utils.parseEther("2"),
+        0,
+        await nowPlusOneMinute()
+      )
     ).to.be.revertedWith("InsufficientBalance()");
   });
 });

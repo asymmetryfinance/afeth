@@ -420,21 +420,22 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         if (_ethAmount > 0) {
             uint256 _preminterEthBalance = preminterEthBalance;
             if (_ethAmount > _preminterEthBalance) revert InsufficientBalance();
-            // solhint-disable-next-line
-            (bool sent, ) = feeAddress.call{value: _ethAmount}("");
-            if (!sent) revert FailedToSend();
+
             unchecked {
                 preminterEthBalance = _preminterEthBalance - _ethAmount;
             }
+            // solhint-disable-next-line
+            (bool sent, ) = msg.sender.call{value: _ethAmount}("");
+            if (!sent) revert FailedToSend();
         }
         if (_afEthAmount > 0) {
             uint256 _preminterAfEthBalance = preminterAfEthBalance;
             if (_afEthAmount > _preminterAfEthBalance)
                 revert InsufficientBalance();
-            _transfer(address(this), msg.sender, _afEthAmount);
             unchecked {
                 preminterAfEthBalance = _preminterAfEthBalance - _afEthAmount;
             }
+            _transfer(address(this), msg.sender, _afEthAmount);
         }
         emit PremintWithdraw(_afEthAmount, _ethAmount);
     }
@@ -463,6 +464,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 _minSellFee,
         uint256 _maxSellFee
     ) public onlyOwner {
+        if (_minSellFee > _maxSellFee) revert InvalidFee();
+        if (_maxSellFee > 1e18) revert InvalidFee();
+
         preminterMinFee = _minSellFee;
         preminterMaxFee = _maxSellFee;
         emit PremintSetFees(_minSellFee, _maxSellFee);
@@ -485,9 +489,14 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
      * @notice Buy afEth from Preminter
      * @param _minOut minimum afEth to receive or revert
+     * @param _deadline - Sets a deadline for the deposit
      */
-    function premintBuy(uint256 _minOut) public payable {
+    function premintBuy(uint256 _minOut, uint256 _deadline) public payable {
+        if (pauseDeposit) revert Paused();
+
         if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
+        if (block.timestamp > _deadline) revert StaleAction();
+
         uint256 afEthOut = premintBuyAmount(msg.value);
         uint256 _preminterAfEthBalance = preminterAfEthBalance;
 
@@ -505,9 +514,17 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * Sell afEth to preminter
      * @param _afEthToSell amount of afEth to sell
      * @param _ethMinOut minimum eth to receive or revert
+     * @param _deadline - Sets a deadline for the deposit
      */
-    function premintSell(uint256 _afEthToSell, uint256 _ethMinOut) public {
+    function premintSell(
+        uint256 _afEthToSell,
+        uint256 _ethMinOut,
+        uint256 _deadline
+    ) public {
+        if (pauseWithdraw) revert Paused();
         if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
+        if (block.timestamp > _deadline) revert StaleAction();
+
         uint256 ethOut = premintSellAmount(_afEthToSell);
         if (ethOut < _ethMinOut) revert PreminterMinout();
         uint256 _preminterEthBalance = preminterEthBalance;
@@ -564,7 +581,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 feeDiff = preminterMaxFee - _preminterMinFee;
 
         // how long until they could normally unstake
-        uint256 withdrawTimeRemaining = withdrawTime(_afEthToSell) -
+        uint256 withdrawRatio = (_afEthToSell * 1e18) / totalSupply();
+        uint256 votiumWithdrawAmount = (withdrawRatio *
+            trackedvStrategyBalance) / 1e18;
+        uint256 withdrawTimeRemaining = withdrawTime(votiumWithdrawAmount) -
             block.timestamp;
 
         if (withdrawTimeRemaining <= minFeeTime) {
