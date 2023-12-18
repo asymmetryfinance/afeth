@@ -418,20 +418,20 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     ) public onlyOwner {
         if (_ethAmount > 0) {
             if (_ethAmount > preminterEthBalance) revert InsufficientBalance();
-            // solhint-disable-next-line
-            (bool sent, ) = feeAddress.call{value: _ethAmount}("");
-            if (!sent) revert FailedToSend();
             unchecked {
                 preminterEthBalance -= _ethAmount;
             }
+            // solhint-disable-next-line
+            (bool sent, ) = feeAddress.call{value: _ethAmount}("");
+            if (!sent) revert FailedToSend();
         }
         if (_afEthAmount > 0) {
             if (_afEthAmount > preminterAfEthBalance)
                 revert InsufficientBalance();
-            _transfer(address(this), msg.sender, _afEthAmount);
             unchecked {
                 preminterAfEthBalance -= _afEthAmount;
             }
+            _transfer(address(this), msg.sender, _afEthAmount);
         }
         emit PremintWithdraw(_afEthAmount, _ethAmount);
     }
