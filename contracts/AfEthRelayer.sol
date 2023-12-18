@@ -2,10 +2,13 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./external_interfaces/IAfEth.sol";
 import "./external_interfaces/IWETH.sol";
 import "contracts/external_interfaces/ISafEth.sol";
 import "contracts/strategies/AbstractStrategy.sol";
+
+using SafeERC20 for IERC20;
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEthRelayer is Initializable {
@@ -47,6 +50,25 @@ contract AfEthRelayer is Initializable {
         whiteList[0x95E6F48254609A6ee006F7D493c8e5fB97094ceF] = true;
     }
 
+    /**
+        @notice - Supports tokens that need to reset approval to 0 before setting to desired amount
+    */
+    function _setTokenAllowance(
+        IERC20 token,
+        address spender,
+        uint256 desiredAllowance
+    ) internal {
+        uint256 currentAllowance = token.allowance(address(this), spender);
+        if (currentAllowance != desiredAllowance) {
+            // Reset first to zero, if not zero already
+            if (currentAllowance > 0) {
+                token.safeApprove(spender, 0);
+            }
+            // set approval
+            token.safeApprove(spender, desiredAllowance);
+        }
+    }
+
     // Swaps ERC20->ERC20 tokens held by this contract using a 0x-API quote.
     function fillQuote(
         IERC20 sellToken,
@@ -60,10 +82,7 @@ contract AfEthRelayer is Initializable {
         }
         sellToken.transferFrom(msg.sender, address(this), amount);
 
-        require(
-            sellToken.approve(spender, type(uint256).max),
-            "Approve Failed"
-        );
+        _setTokenAllowance(sellToken, spender, amount);
 
         (bool success, ) = swapTarget.call(swapCallData);
         require(success, "Swap Failed");
