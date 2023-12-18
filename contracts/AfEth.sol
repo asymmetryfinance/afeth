@@ -483,6 +483,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _minOut minimum afEth to receive or revert
      */
     function premintBuy(uint256 _minOut) public payable {
+        if (pauseDeposit) revert Paused();
+
         if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
         uint256 afEthOut = premintBuyAmount(msg.value);
         if (afEthOut < _minOut) revert PreminterMinout();
@@ -501,6 +503,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _ethMinOut minimum eth to receive or revert
      */
     function premintSell(uint256 _afEthToSell, uint256 _ethMinOut) public {
+        if (pauseWithdraw) revert Paused();
+
         if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
         uint256 ethOut = premintSellAmount(_afEthToSell);
         if (ethOut < _ethMinOut) revert PreminterMinout();
