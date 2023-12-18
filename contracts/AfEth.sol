@@ -418,20 +418,20 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     ) public onlyOwner {
         if (_ethAmount > 0) {
             if (_ethAmount > preminterEthBalance) revert InsufficientBalance();
-            // solhint-disable-next-line
-            (bool sent, ) = feeAddress.call{value: _ethAmount}("");
-            if (!sent) revert FailedToSend();
             unchecked {
                 preminterEthBalance -= _ethAmount;
             }
+            // solhint-disable-next-line
+            (bool sent, ) = feeAddress.call{value: _ethAmount}("");
+            if (!sent) revert FailedToSend();
         }
         if (_afEthAmount > 0) {
             if (_afEthAmount > preminterAfEthBalance)
                 revert InsufficientBalance();
-            _transfer(address(this), msg.sender, _afEthAmount);
             unchecked {
                 preminterAfEthBalance -= _afEthAmount;
             }
+            _transfer(address(this), msg.sender, _afEthAmount);
         }
         emit PremintWithdraw(_afEthAmount, _ethAmount);
     }
@@ -460,6 +460,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 _minSellFee,
         uint256 _maxSellFee
     ) public onlyOwner {
+        if (_minSellFee > _maxSellFee) revert InvalidFee();
+        if (_maxSellFee > 1e18) revert InvalidFee();
+
         preminterMinFee = _minSellFee;
         preminterMaxFee = _maxSellFee;
         emit PremintSetFees(_minSellFee, _maxSellFee);
@@ -484,6 +487,8 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      * @param _deadline - Sets a deadline for the deposit
      */
     function premintBuy(uint256 _minOut, uint256 _deadline) public payable {
+        if (pauseDeposit) revert Paused();
+
         if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
         if (block.timestamp > _deadline) revert StaleAction();
 
@@ -509,6 +514,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 _ethMinOut,
         uint256 _deadline
     ) public {
+        if (pauseWithdraw) revert Paused();
         if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
         if (block.timestamp > _deadline) revert StaleAction();
 
@@ -565,7 +571,10 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 feeDiff = preminterMaxFee - preminterMinFee;
 
         // how long until they could normally unstake
-        uint256 withdrawTimeRemaining = withdrawTime(_afEthToSell) -
+        uint256 withdrawRatio = (_afEthToSell * 1e18) / totalSupply();
+        uint256 votiumWithdrawAmount = (withdrawRatio *
+            trackedvStrategyBalance) / 1e18;
+        uint256 withdrawTimeRemaining = withdrawTime(votiumWithdrawAmount) -
             block.timestamp;
 
         if (withdrawTimeRemaining <= minFeeTime) {

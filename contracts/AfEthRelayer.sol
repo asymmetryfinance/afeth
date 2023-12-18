@@ -2,10 +2,13 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./external_interfaces/IAfEth.sol";
 import "./external_interfaces/IWETH.sol";
 import "contracts/external_interfaces/ISafEth.sol";
 import "contracts/strategies/AbstractStrategy.sol";
+
+using SafeERC20 for IERC20;
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEthRelayer is Initializable {
@@ -15,6 +18,7 @@ contract AfEthRelayer is Initializable {
         0x5F10B16F0959AaC2E33bEdc9b0A4229Bb9a83590;
     address public constant WETH_ADDRESS =
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    mapping(address => bool) public whiteList;
 
     event DepositSafEth(
         address indexed sellToken,
@@ -29,6 +33,8 @@ contract AfEthRelayer is Initializable {
         address indexed recipient
     );
 
+    error NotWhitelisted();
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -39,7 +45,29 @@ contract AfEthRelayer is Initializable {
         @notice - Initialize values for the contracts
         @dev - This replaces the constructor for upgradeable contracts
     */
-    function initialize() external initializer {}
+    function initialize() external initializer {
+        whiteList[0xDef1C0ded9bec7F1a1670819833240f027b25EfF] = true;
+        whiteList[0x95E6F48254609A6ee006F7D493c8e5fB97094ceF] = true;
+    }
+
+    /**
+        @notice - Supports tokens that need to reset approval to 0 before setting to desired amount
+    */
+    function _setTokenAllowance(
+        IERC20 token,
+        address spender,
+        uint256 desiredAllowance
+    ) internal {
+        uint256 currentAllowance = token.allowance(address(this), spender);
+        if (currentAllowance != desiredAllowance) {
+            // Reset first to zero, if not zero already
+            if (currentAllowance > 0) {
+                token.safeApprove(spender, 0);
+            }
+            // set approval
+            token.safeApprove(spender, desiredAllowance);
+        }
+    }
 
     // Swaps ERC20->ERC20 tokens held by this contract using a 0x-API quote.
     function fillQuote(
@@ -49,12 +77,12 @@ contract AfEthRelayer is Initializable {
         address payable swapTarget,
         bytes calldata swapCallData
     ) private {
+        if (!whiteList[swapTarget] || !whiteList[spender]) {
+            revert NotWhitelisted();
+        }
         sellToken.transferFrom(msg.sender, address(this), amount);
 
-        require(
-            sellToken.approve(spender, type(uint256).max),
-            "Approve Failed"
-        );
+        _setTokenAllowance(sellToken, spender, amount);
 
         (bool success, ) = swapTarget.call(swapCallData);
         require(success, "Swap Failed");
@@ -73,7 +101,7 @@ contract AfEthRelayer is Initializable {
         address _allowanceTarget,
         address payable _to,
         bytes calldata _swapCallData
-    ) external payable {
+    ) external {
         uint256 balanceBefore = IERC20(WETH_ADDRESS).balanceOf(address(this));
         fillQuote(
             IERC20(_sellToken),
@@ -112,7 +140,7 @@ contract AfEthRelayer is Initializable {
         address _allowanceTarget,
         address payable _to,
         bytes calldata _swapCallData
-    ) external payable {
+    ) external {
         uint256 balanceBefore = IERC20(WETH_ADDRESS).balanceOf(address(this));
         fillQuote(
             IERC20(_sellToken),

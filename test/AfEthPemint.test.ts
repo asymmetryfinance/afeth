@@ -402,18 +402,14 @@ describe("Test AfEth Premint Functionality", async function () {
     });
     await tx.wait();
 
-    const trackedvStrategyBalance = await afEth.trackedvStrategyBalance();
     const afEthTotalSupply = await afEth.totalSupply();
-    const vStrategyWithdrawAmount = trackedvStrategyBalance.div(40);
     const afEthWithdrawAmount = afEthTotalSupply.div(40);
 
     let lastEthReceived = BigNumber.from("0");
 
     // go for more than 15 epochs to show fees dont go any lower after 15
     for (let i = 0; i < 20; i++) {
-      const feePercent = await afEth.premintSellFeePercent(
-        vStrategyWithdrawAmount
-      );
+      const feePercent = await afEth.premintSellFeePercent(afEthWithdrawAmount);
       const expectedEthReceivedFromPremint = await afEth.premintSellAmount(
         afEthWithdrawAmount
       );
