@@ -114,13 +114,9 @@ contract AfEthRelayer is Initializable {
         uint256 amountToStake = balanceAfter - balanceBefore;
         IWETH(WETH_ADDRESS).withdraw(amountToStake);
 
-        uint256 beforeDeposit = IERC20(SAF_ETH_ADDRESS).balanceOf(
-            address(this)
-        );
-        ISafEth(SAF_ETH_ADDRESS).stake{value: amountToStake}(_minout);
-        uint256 amountToTransfer = IERC20(SAF_ETH_ADDRESS).balanceOf(
-            address(this)
-        ) - beforeDeposit;
+        uint256 amountToTransfer = ISafEth(SAF_ETH_ADDRESS).stake{
+            value: amountToStake
+        }(_minout);
         IERC20(SAF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
         emit DepositSafEth(_sellToken, _amount, amountToTransfer, _owner);
     }
@@ -154,14 +150,9 @@ contract AfEthRelayer is Initializable {
 
         IWETH(WETH_ADDRESS).withdraw(amountToStake);
 
-        uint256 beforeDeposit = IERC20(AF_ETH_ADDRESS).balanceOf(address(this));
-        IAfEth(AF_ETH_ADDRESS).deposit{value: amountToStake}(
-            _minout,
-            _deadline
-        );
-        uint256 amountToTransfer = IERC20(AF_ETH_ADDRESS).balanceOf(
-            address(this)
-        ) - beforeDeposit;
+        uint256 amountToTransfer = IAfEth(AF_ETH_ADDRESS).deposit{
+            value: amountToStake
+        }(_minout, _deadline);
         IERC20(AF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
         emit DepositAfEth(_sellToken, _amount, amountToTransfer, _owner);
     }

@@ -252,6 +252,7 @@ describe("Test AfEth Premint Functionality", async function () {
       value: ethers.utils.parseEther("4"),
     });
     await tx.wait();
+
     tx = await afEthNonOwner2.deposit(0, await nowPlusOneMinute(), {
       value: ethers.utils.parseEther("4"),
     });

@@ -8,7 +8,8 @@ import { expect } from "chai";
 import { safEthAbi } from "./abis/safEthAbi";
 import { wstEthAbi } from "./abis/wstEthAbi";
 
-describe("Test relayer deposit of oETH, lido & wstEth to afEth and safEth", async function () {
+// TODO: skipping due to needing to wait for the upgrade for afEthRelayer to be deployed
+describe.skip("Test relayer deposit of oETH, lido & wstEth to afEth and safEth", async function () {
   const OETH_ADDRESS = "0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3";
   const AFETH_ADDRESS = "0x5F10B16F0959AaC2E33bEdc9b0A4229Bb9a83590";
   const STETH_ADDRESS = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
@@ -38,9 +39,9 @@ describe("Test relayer deposit of oETH, lido & wstEth to afEth and safEth", asyn
       ],
     });
     accounts = await ethers.getSigners();
-    const afEthFactory = await ethers.getContractFactory("AfEthRelayer");
+    const afEthRelayerFactory = await ethers.getContractFactory("AfEthRelayer");
     afEthRelayer = (await upgrades.deployProxy(
-      afEthFactory,
+      afEthRelayerFactory,
       []
     )) as AfEthRelayer;
     await afEthRelayer.deployed();

@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 interface IAfEth {
-    function deposit(uint256, uint256) external payable;
+    function deposit(uint256, uint256) external payable returns (uint256);
 
     function applyStrategyReward(address) external payable;
 
