@@ -460,6 +460,9 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         uint256 _minSellFee,
         uint256 _maxSellFee
     ) public onlyOwner {
+        if (_minSellFee > _maxSellFee) revert InvalidFee();
+        if (_maxSellFee > 1e18) revert InvalidFee();
+
         preminterMinFee = _minSellFee;
         preminterMaxFee = _maxSellFee;
         emit PremintSetFees(_minSellFee, _maxSellFee);
