@@ -422,7 +422,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
                 preminterEthBalance -= _ethAmount;
             }
             // solhint-disable-next-line
-            (bool sent, ) = feeAddress.call{value: _ethAmount}("");
+            (bool sent, ) = msg.sender.call{value: _ethAmount}("");
             if (!sent) revert FailedToSend();
         }
         if (_afEthAmount > 0) {
