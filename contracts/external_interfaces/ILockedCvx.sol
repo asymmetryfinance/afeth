@@ -8,11 +8,7 @@ interface ILockedCvx {
         uint32 unlockTime;
     }
 
-    function lock(
-        address _account,
-        uint256 _amount,
-        uint256 _spendRatio
-    ) external;
+    function lock(address _account, uint256 _amount, uint256 _spendRatio) external;
 
     function processExpiredLocks(bool _relock) external;
 
@@ -20,14 +16,9 @@ interface ILockedCvx {
 
     function findEpochId(uint256 _time) external view returns (uint256);
 
-    function balanceAtEpochOf(
-        uint256 _epoch,
-        address _user
-    ) external view returns (uint256 amount);
+    function balanceAtEpochOf(uint256 _epoch, address _user) external view returns (uint256 amount);
 
-    function totalSupplyAtEpoch(
-        uint256 _epoch
-    ) external view returns (uint256 supply);
+    function totalSupplyAtEpoch(uint256 _epoch) external view returns (uint256 supply);
 
     function epochCount() external view returns (uint256);
 
@@ -37,54 +28,28 @@ interface ILockedCvx {
 
     function balanceOf(address _account) external view returns (uint256);
 
-    function lockedBalanceOf(
-        address _user
-    ) external view returns (uint256 amount);
+    function lockedBalanceOf(address _user) external view returns (uint256 amount);
 
-    function pendingLockOf(
-        address _user
-    ) external view returns (uint256 amount);
+    function pendingLockOf(address _user) external view returns (uint256 amount);
 
-    function pendingLockAtEpochOf(
-        uint256 _epoch,
-        address _user
-    ) external view returns (uint256 amount);
+    function pendingLockAtEpochOf(uint256 _epoch, address _user) external view returns (uint256 amount);
 
     function totalSupply() external view returns (uint256 supply);
 
     function lockDuration() external view returns (uint256);
 
-    function lockedBalances(
-        address _user
-    )
+    function lockedBalances(address _user)
         external
         view
-        returns (
-            uint256 total,
-            uint256 unlockable,
-            uint256 locked,
-            LockedBalance[] memory lockData
-        );
+        returns (uint256 total, uint256 unlockable, uint256 locked, LockedBalance[] memory lockData);
 
-    function addReward(
-        address _rewardsToken,
-        address _distributor,
-        bool _useBoost
-    ) external;
+    function addReward(address _rewardsToken, address _distributor, bool _useBoost) external;
 
-    function approveRewardDistributor(
-        address _rewardsToken,
-        address _distributor,
-        bool _approved
-    ) external;
+    function approveRewardDistributor(address _rewardsToken, address _distributor, bool _approved) external;
 
     function setStakeLimits(uint256 _minimum, uint256 _maximum) external;
 
-    function setBoost(
-        uint256 _max,
-        uint256 _rate,
-        address _receivingAddress
-    ) external;
+    function setBoost(uint256 _max, uint256 _rate, address _receivingAddress) external;
 
     function setKickIncentive(uint256 _rate, uint256 _delay) external;
 

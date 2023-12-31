@@ -8,11 +8,7 @@ import "./VotiumStrategyCore.sol";
 /// @title Votium Strategy Token
 /// @author Asymmetry Finance
 contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
-    event WithdrawRequest(
-        address indexed user,
-        uint256 amount,
-        uint256 withdrawId
-    );
+    event WithdrawRequest(address indexed user, uint256 amount, uint256 withdrawId);
 
     struct WithdrawRequestInfo {
         uint256 cvxOwed;
@@ -21,8 +17,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
         address owner;
     }
 
-    mapping(uint256 => WithdrawRequestInfo)
-        public withdrawIdToWithdrawRequestInfo;
+    mapping(uint256 => WithdrawRequestInfo) public withdrawIdToWithdrawRequestInfo;
 
     /**
      * @notice Gets price in eth
@@ -36,13 +31,7 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Deposit eth to mint this token at current price
      * @return mintAmount Amount of tokens minted
      */
-    function deposit()
-        external
-        payable
-        override
-        onlyManager
-        returns (uint256 mintAmount)
-    {
+    function deposit() external payable override onlyManager returns (uint256 mintAmount) {
         uint256 priceBefore = cvxPerVotium();
         uint256 cvxAmount = buyCvx(msg.value);
         IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmount);
@@ -58,33 +47,22 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @param _amount Amount to request withdraw
      * @return Id of withdraw request
      */
-    function requestWithdraw(
-        uint256 _amount
-    ) external override onlyManager returns (uint256) {
+    function requestWithdraw(uint256 _amount) external override onlyManager returns (uint256) {
         latestWithdrawId++;
         uint256 _priceInCvx = cvxPerVotium();
 
         _burn(msg.sender, _amount);
 
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-            block.timestamp
-        );
-        (
-            ,
-            uint256 unlockable,
-            ,
-            ILockedCvx.LockedBalance[] memory lockedBalances
-        ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
+        (, uint256 unlockable,, ILockedCvx.LockedBalance[] memory lockedBalances) =
+            ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
         cvxUnlockObligations += cvxAmount;
         uint256 unlockObligations = cvxUnlockObligations;
-        uint256 totalLockedBalancePlusUnlockable = unlockable +
-            trackedCvxBalance;
+        uint256 totalLockedBalancePlusUnlockable = unlockable + trackedCvxBalance;
 
         if (totalLockedBalancePlusUnlockable >= unlockObligations) {
-            withdrawIdToWithdrawRequestInfo[
-                latestWithdrawId
-            ] = WithdrawRequestInfo({
+            withdrawIdToWithdrawRequestInfo[latestWithdrawId] = WithdrawRequestInfo({
                 cvxOwed: cvxAmount,
                 withdrawn: false,
                 epoch: currentEpoch + minEpoch,
@@ -95,29 +73,20 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
             return latestWithdrawId;
         }
 
-        (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(
-            currentEpoch
-        );
+        (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(currentEpoch);
         uint256 duration = ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
             if (totalLockedBalancePlusUnlockable >= unlockObligations) {
-                uint256 timeDifference = lockedBalances[i].unlockTime -
-                    currentEpochStartingTime;
+                uint256 timeDifference = lockedBalances[i].unlockTime - currentEpochStartingTime;
                 uint256 epochOffset = timeDifference / duration;
                 if (epochOffset < minEpoch) {
                     epochOffset = minEpoch;
                 }
                 uint256 withdrawEpoch = currentEpoch + epochOffset;
-                withdrawIdToWithdrawRequestInfo[
-                    latestWithdrawId
-                ] = WithdrawRequestInfo({
-                    cvxOwed: cvxAmount,
-                    withdrawn: false,
-                    epoch: withdrawEpoch,
-                    owner: msg.sender
-                });
+                withdrawIdToWithdrawRequestInfo[latestWithdrawId] =
+                    WithdrawRequestInfo({cvxOwed: cvxAmount, withdrawn: false, epoch: withdrawEpoch, owner: msg.sender});
 
                 emit WithdrawRequest(msg.sender, cvxAmount, latestWithdrawId);
                 return latestWithdrawId;
@@ -132,26 +101,25 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @param _withdrawId Id of withdraw request
      */
     function withdraw(uint256 _withdrawId) external override onlyManager {
-        if (withdrawIdToWithdrawRequestInfo[_withdrawId].owner != msg.sender)
+        if (withdrawIdToWithdrawRequestInfo[_withdrawId].owner != msg.sender) {
             revert NotOwner();
+        }
         if (!canWithdraw(_withdrawId)) revert WithdrawNotReady();
 
-        if (withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn)
+        if (withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn) {
             revert AlreadyWithdrawn();
+        }
 
         relock();
 
-        uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[_withdrawId]
-            .cvxOwed;
+        uint256 cvxWithdrawAmount = withdrawIdToWithdrawRequestInfo[_withdrawId].cvxOwed;
 
-        uint256 ethReceived = cvxWithdrawAmount > 0
-            ? sellCvx(cvxWithdrawAmount)
-            : 0;
+        uint256 ethReceived = cvxWithdrawAmount > 0 ? sellCvx(cvxWithdrawAmount) : 0;
         cvxUnlockObligations -= cvxWithdrawAmount;
         withdrawIdToWithdrawRequestInfo[_withdrawId].withdrawn = true;
         // solhint-disable-next-line
         if (ethReceived > 0) {
-            (bool sent, ) = msg.sender.call{value: ethReceived}("");
+            (bool sent,) = msg.sender.call{value: ethReceived}("");
             if (!sent) revert FailedToSend();
         }
     }
@@ -161,29 +129,19 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @dev This happens automatically on withdraw but will need to be manually called if no withdraws happen in an epoch where locks are expiring
      */
     function relock() public {
-        (, uint256 unlockable, , ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(
-            address(this)
-        );
+        (, uint256 unlockable,,) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 unlockObligations = cvxUnlockObligations;
         if (unlockable > 0) {
-            uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(
-                address(this)
-            );
+            uint256 cvxBalanceBefore = IERC20(CVX_ADDRESS).balanceOf(address(this));
             ILockedCvx(VLCVX_ADDRESS).processExpiredLocks(false);
-            uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(
-                address(this)
-            );
+            uint256 cvxBalanceAfter = IERC20(CVX_ADDRESS).balanceOf(address(this));
             trackedCvxBalance += (cvxBalanceAfter - cvxBalanceBefore);
         }
         uint256 cvxAmountToRelock;
         unchecked {
-            cvxAmountToRelock = trackedCvxBalance > unlockObligations
-                ? trackedCvxBalance - unlockObligations
-                : 0;
+            cvxAmountToRelock = trackedCvxBalance > unlockObligations ? trackedCvxBalance - unlockObligations : 0;
         }
-        if (
-            cvxAmountToRelock > 0 && !(ILockedCvx(VLCVX_ADDRESS).isShutdown())
-        ) {
+        if (cvxAmountToRelock > 0 && !(ILockedCvx(VLCVX_ADDRESS).isShutdown())) {
             IERC20(CVX_ADDRESS).approve(VLCVX_ADDRESS, cvxAmountToRelock);
             ILockedCvx(VLCVX_ADDRESS).lock(address(this), cvxAmountToRelock, 0);
             trackedCvxBalance -= cvxAmountToRelock;
@@ -194,18 +152,10 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @notice Checks if withdraw request is eligible to be withdrawn
      * @param _withdrawId Id of withdraw request
      */
-    function canWithdraw(
-        uint256 _withdrawId
-    ) public view virtual override returns (bool) {
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-            block.timestamp
-        );
-        WithdrawRequestInfo
-            storage withdrawRequest = withdrawIdToWithdrawRequestInfo[
-                _withdrawId
-            ];
-        return
-            withdrawRequest.epoch <= currentEpoch && !withdrawRequest.withdrawn;
+    function canWithdraw(uint256 _withdrawId) public view virtual override returns (bool) {
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
+        WithdrawRequestInfo storage withdrawRequest = withdrawIdToWithdrawRequestInfo[_withdrawId];
+        return withdrawRequest.epoch <= currentEpoch && !withdrawRequest.withdrawn;
     }
 
     /**
@@ -213,47 +163,28 @@ contract VotiumStrategy is VotiumStrategyCore, AbstractStrategy {
      * @param _amount Amount of afEth to check how long it will take to withdraw
      * @return When it would be withdrawable based on the amount
      */
-    function withdrawTime(
-        uint256 _amount
-    ) external view virtual override returns (uint256) {
+    function withdrawTime(uint256 _amount) external view virtual override returns (uint256) {
         uint256 _priceInCvx = cvxPerVotium();
-        (
-            ,
-            uint256 unlockable,
-            ,
-            ILockedCvx.LockedBalance[] memory lockedBalances
-        ) = ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
+        (, uint256 unlockable,, ILockedCvx.LockedBalance[] memory lockedBalances) =
+            ILockedCvx(VLCVX_ADDRESS).lockedBalances(address(this));
         uint256 cvxAmount = (_amount * _priceInCvx) / 1e18;
-        uint256 totalLockedBalancePlusUnlockable = unlockable +
-            trackedCvxBalance;
+        uint256 totalLockedBalancePlusUnlockable = unlockable + trackedCvxBalance;
         uint256 duration = ILockedCvx(VLCVX_ADDRESS).rewardsDuration();
-        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(
-            block.timestamp
-        );
-        (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(
-            currentEpoch
-        );
+        uint256 currentEpoch = ILockedCvx(VLCVX_ADDRESS).findEpochId(block.timestamp);
+        (, uint32 currentEpochStartingTime) = ILockedCvx(VLCVX_ADDRESS).epochs(currentEpoch);
 
-        if (
-            totalLockedBalancePlusUnlockable >= cvxUnlockObligations + cvxAmount
-        ) {
+        if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations + cvxAmount) {
             return currentEpochStartingTime + (minEpoch * duration);
         }
         for (uint256 i = 0; i < lockedBalances.length; i++) {
             totalLockedBalancePlusUnlockable += lockedBalances[i].amount;
             // we found the epoch at which there is enough to unlock this position
-            if (
-                totalLockedBalancePlusUnlockable >=
-                cvxUnlockObligations + cvxAmount
-            ) {
-                uint256 timeDifference = lockedBalances[i].unlockTime -
-                    currentEpochStartingTime;
+            if (totalLockedBalancePlusUnlockable >= cvxUnlockObligations + cvxAmount) {
+                uint256 timeDifference = lockedBalances[i].unlockTime - currentEpochStartingTime;
                 uint256 epochOffset = timeDifference / duration;
                 bool isBeforeMinEpoch = epochOffset < minEpoch;
                 return
-                    isBeforeMinEpoch
-                        ? currentEpochStartingTime + (duration * minEpoch)
-                        : lockedBalances[i].unlockTime;
+                    isBeforeMinEpoch ? currentEpochStartingTime + (duration * minEpoch) : lockedBalances[i].unlockTime;
             }
         }
         revert InvalidLockedAmount();
