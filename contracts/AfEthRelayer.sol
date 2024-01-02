@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./external_interfaces/IAfEth.sol";
-import "./external_interfaces/IWETH.sol";
-import "contracts/external_interfaces/ISafEth.sol";
-import "contracts/strategies/AbstractStrategy.sol";
-
-using SafeERC20 for IERC20;
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IAfEth} from "./interfaces/afeth/IAfEth.sol";
+import {ISafEth} from "./interfaces/safeth/ISafEth.sol";
+import {IWETH} from "./interfaces/IWETH.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEthRelayer is Initializable {
+    using SafeERC20 for IERC20;
+
     address public constant SAF_ETH_ADDRESS = 0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
     address public constant AF_ETH_ADDRESS = 0x5F10B16F0959AaC2E33bEdc9b0A4229Bb9a83590;
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;

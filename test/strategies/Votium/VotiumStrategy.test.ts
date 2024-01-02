@@ -13,8 +13,8 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi } from "../../abis/erc20Abi";
 import { nowPlusOneMinute } from "../../AfEth.test";
 
-describe("Test VotiumStrategy", async function () {
-  let votiumStrategy: VotiumStrategy & VotiumStrategyCore;
+describe("Test VotiumStrategy", async function() {
+  let votiumStrategy: VotiumStrategy;
   let accounts: SignerWithAddress[];
   let rewarderAccount: SignerWithAddress;
 
@@ -53,7 +53,7 @@ describe("Test VotiumStrategy", async function () {
     async () => await resetToBlock(parseInt(process.env.BLOCK_NUMBER ?? "0"))
   );
 
-  it("Should mint vEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function () {
+  it("Should mint vEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue", async function() {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const priceBeforeDeposit = await votiumStrategy.cvxPerVotium();
     expect(priceBeforeDeposit).eq(ethers.utils.parseEther("1"));
@@ -109,7 +109,7 @@ describe("Test VotiumStrategy", async function () {
     // balance after fully withdrawing is higher
     expect(ethBalanceAfter).gt(ethBalanceBefore);
   });
-  it("Should mint vEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function () {
+  it("Should mint vEth tokens, burn tokens some tokens, apply rewards, pass time & process withdraw queue for multiple accounts", async function() {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const stakerAmounts = 2;
 
@@ -185,7 +185,7 @@ describe("Test VotiumStrategy", async function () {
       expect(within1Percent(balancesBefore[i], balancesAfter[i])).eq(true);
     }
   });
-  it("Should show 2 accounts receive different rewards during different epochs", async function () {
+  it("Should show 2 accounts receive different rewards during different epochs", async function() {
     const stakeAmount = ethers.utils.parseEther("10");
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
@@ -274,7 +274,7 @@ describe("Test VotiumStrategy", async function () {
 
     expect(rewardAmount1).gt(rewardAmount2.mul(2));
   });
-  it("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function () {
+  it("Should show 2 accounts receive same rewards during different epochs if account2 staked enough to match account1", async function() {
     const stakeAmount = ethers.utils.parseEther("10");
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
@@ -369,7 +369,7 @@ describe("Test VotiumStrategy", async function () {
 
     expect(within2Percent(rewardAmount1, rewardAmount2)).eq(true);
   });
-  it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function () {
+  it("Should show 2 accounts receive the same rewards if hodling the same amount for the same time", async function() {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const stakerAmounts = 2;
     const stakeAmount = ethers.utils.parseEther("4");
@@ -447,7 +447,7 @@ describe("Test VotiumStrategy", async function () {
       expect(within1Percent(rewardsGained[i - 1], rewardsGained[i])).eq(true);
     }
   });
-  it("Should show an account with twice as many tokens receive twice as many rewards as another", async function () {
+  it("Should show an account with twice as many tokens receive twice as many rewards as another", async function() {
     const startingTotalSupply = await votiumStrategy.totalSupply();
     const stakerAmounts = 2;
     const stakeAmount = ethers.utils.parseEther("2");
@@ -531,7 +531,7 @@ describe("Test VotiumStrategy", async function () {
       ).eq(true);
     }
   });
-  it("Should increase price proportionally to how much rewards were added vs tvl", async function () {
+  it("Should increase price proportionally to how much rewards were added vs tvl", async function() {
     const stakeAmount = ethers.utils.parseEther("25");
     const tx = await votiumStrategy.deposit({
       value: stakeAmount,
@@ -555,7 +555,7 @@ describe("Test VotiumStrategy", async function () {
       true
     );
   });
-  it("Should increase price twice as much when depositing twice as much rewards", async function () {
+  it("Should increase price twice as much when depositing twice as much rewards", async function() {
     const stakeAmount = ethers.utils.parseEther("25");
     const tx = await votiumStrategy.deposit({
       value: stakeAmount,
@@ -584,7 +584,7 @@ describe("Test VotiumStrategy", async function () {
     // Price should be near what the price is reflecting (not exact due to slippage)
     expect(within1Percent(rewardAmount, eventRewardAmount)).eq(true);
   });
-  it("Should allow 1 user to withdraw over two epochs", async function () {
+  it("Should allow 1 user to withdraw over two epochs", async function() {
     let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
@@ -625,7 +625,7 @@ describe("Test VotiumStrategy", async function () {
     await tx.wait();
     expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
   });
-  it("Should allow multiple users to withdraw over two epochs", async function () {
+  it("Should allow multiple users to withdraw over two epochs", async function() {
     const stakerVotiumStrategy1 = votiumStrategy.connect(accounts[1]);
     const stakerVotiumStrategy2 = votiumStrategy.connect(accounts[2]);
 
@@ -703,7 +703,7 @@ describe("Test VotiumStrategy", async function () {
     expect(ethBalanceAfter2).gt(ethBalanceBefore2);
     expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
   });
-  it("Should never take more than 16 weeks to withdraw from the queue", async function () {
+  it("Should never take more than 16 weeks to withdraw from the queue", async function() {
     let tx = await votiumStrategy.deposit({
       value: ethers.utils.parseEther("1"),
     });
@@ -732,7 +732,7 @@ describe("Test VotiumStrategy", async function () {
 
     expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
   });
-  it("Should allow to withdraw from min epoch if cvx is ready", async function () {
+  it("Should allow to withdraw from min epoch if cvx is ready", async function() {
     const amount = ethers.utils.parseEther("1");
     let tx = await votiumStrategy.deposit({
       value: amount,
@@ -794,7 +794,7 @@ describe("Test VotiumStrategy", async function () {
 
     expect(await votiumStrategy.balanceOf(accounts[0].address)).eq(0);
   });
-  it("Should allow owner to withdraw stuck tokens with withdrawStuckTokens()", async function () {
+  it("Should allow owner to withdraw stuck tokens with withdrawStuckTokens()", async function() {
     const stuckToken = "0xb620be8a1949aa9532e6a3510132864ef9bc3f82";
     const StuckTokenContract = await ethers.getContractAt(
       erc20Abi,
@@ -811,7 +811,7 @@ describe("Test VotiumStrategy", async function () {
     stuckTokenBalance = await StuckTokenContract.balanceOf(accounts[0].address);
     expect(stuckTokenBalance).gt(0);
   });
-  it("Should allow anyone apply rewards manually with depositRewards()", async function () {
+  it("Should allow anyone apply rewards manually with depositRewards()", async function() {
     const depositAmount = ethers.utils.parseEther("100");
     const priceBeforeRewards = await votiumStrategy.cvxPerVotium();
 
@@ -824,7 +824,7 @@ describe("Test VotiumStrategy", async function () {
 
     expect(priceAfterRewards).gt(priceBeforeRewards);
   });
-  it("Should change rewarder with setRewarder", async function () {
+  it("Should change rewarder with setRewarder", async function() {
     await expect(
       oracleApplyRewards(accounts[6], votiumStrategy.address)
     ).to.be.revertedWith("NotRewarder()");
@@ -833,7 +833,7 @@ describe("Test VotiumStrategy", async function () {
 
     await oracleApplyRewards(accounts[6], votiumStrategy.address);
   });
-  it("Should be able to change cvxEthFeed", async function () {
+  it("Should be able to change cvxEthFeed", async function() {
     expect(await votiumStrategy.chainlinkCvxEthFeed()).not.eq(
       ethers.constants.AddressZero
     );
@@ -847,7 +847,7 @@ describe("Test VotiumStrategy", async function () {
       ethers.constants.AddressZero
     );
   });
-  it("cvxPerVotium should be 1e18 before any deposit", async function () {
+  it("cvxPerVotium should be 1e18 before any deposit", async function() {
     const votiumStrategyFactory = await ethers.getContractFactory(
       "VotiumStrategy"
     );
@@ -859,7 +859,7 @@ describe("Test VotiumStrategy", async function () {
     const initialPrice = await votiumStrategy.cvxPerVotium();
     expect(initialPrice).eq(ethers.utils.parseEther("1"));
   });
-  it("Should protect permissioned functions", async function () {
+  it("Should protect permissioned functions", async function() {
     await expect(
       votiumStrategy.connect(accounts[5]).setRewarder(accounts[6].address)
     ).to.be.revertedWith("Ownable: caller is not the owner");

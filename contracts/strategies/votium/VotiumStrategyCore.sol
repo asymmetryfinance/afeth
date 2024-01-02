@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "../../external_interfaces/IVotiumMerkleStash.sol";
-import "../../external_interfaces/ISnapshotDelegationRegistry.sol";
-import "../../external_interfaces/ILockedCvx.sol";
-import "../../external_interfaces/IClaimZap.sol";
-import "../../external_interfaces/ICrvEthPool.sol";
-import "../../external_interfaces/IAfEth.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {IVotiumStrategy} from "../../interfaces/afeth/IVotiumStrategy.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IVotiumMerkleStash} from "../../interfaces/curve-convex/IVotiumMerkleStash.sol";
+import {ISnapshotDelegationRegistry} from "../../interfaces/curve-convex/ISnapshotDelegationRegistry.sol";
+import {ICrvEthPool} from "../../interfaces/curve-convex/ICrvEthPool.sol";
+import {ILockedCvx} from "../../interfaces/curve-convex/ILockedCvx.sol";
+import {IClaimZap} from "../../interfaces/IClaimZap.sol";
+import {IAfEth} from "../../interfaces/afeth/IAfEth.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {AggregatorV3Interface as IAggregatorV3} from
+    "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /// @title Votium Strategy Token internal functions
 /// @author Asymmetry Finance
-contract VotiumStrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeable {
+abstract contract VotiumStrategyCore is IVotiumStrategy, OwnableUpgradeable, ERC20Upgradeable {
     using SafeERC20 for IERC20;
 
     address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -40,7 +42,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeab
     address public rewarder;
     address public manager;
 
-    AggregatorV3Interface public chainlinkCvxEthFeed;
+    IAggregatorV3 public chainlinkCvxEthFeed;
     uint256 latestWithdrawId;
 
     uint256 trackedCvxBalance;
@@ -75,7 +77,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeab
      *     @param _cvxEthFeedAddress - Address of the chainlink feed
      */
     function setChainlinkCvxEthFeed(address _cvxEthFeedAddress) external onlyOwner {
-        chainlinkCvxEthFeed = AggregatorV3Interface(_cvxEthFeedAddress);
+        chainlinkCvxEthFeed = IAggregatorV3(_cvxEthFeedAddress);
     }
 
     modifier onlyRewarder() {
@@ -113,7 +115,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeab
         minEpoch = 2;
         __ERC20_init("Votium AfEth Strategy", "vAfEth");
         _transferOwnership(_owner);
-        chainlinkCvxEthFeed = AggregatorV3Interface(0xC9CbF687f43176B302F03f5e58470b77D07c61c6);
+        chainlinkCvxEthFeed = IAggregatorV3(0xC9CbF687f43176B302F03f5e58470b77D07c61c6);
     }
 
     function initializeCvxBalanceTracking() external onlyOwner {
@@ -303,7 +305,7 @@ contract VotiumStrategyCore is Initializable, OwnableUpgradeable, ERC20Upgradeab
         uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
 
         if (address(manager) != address(0)) {
-            IAfEth(manager).depositRewards{value: ethReceived}(_safEthMinout, _cvxMinout);
+            IAfEth(manager).depositRewards{value: ethReceived}(_safEthMinout, _cvxMinout, block.timestamp);
         } else {
             depositRewards(ethReceived, _cvxMinout);
         }

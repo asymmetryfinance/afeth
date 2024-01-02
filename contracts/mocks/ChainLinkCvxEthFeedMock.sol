@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "../external_interfaces/IChainlinkFeed.sol";
+import {IChainlinkFeed} from "../interfaces/IChainlinkFeed.sol";
 
 contract ChainLinkCvxEthFeedMock is IChainlinkFeed {
     constructor() {}

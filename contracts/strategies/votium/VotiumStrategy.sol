@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "../AbstractStrategy.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "./VotiumStrategyCore.sol";
+import {AbstractStrategy} from "../AbstractStrategy.sol";
+import {VotiumStrategyCore} from "./VotiumStrategyCore.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ILockedCvx} from "../../interfaces/curve-convex/ILockedCvx.sol";
 
 /// @title Votium Strategy Token
 /// @author Asymmetry Finance

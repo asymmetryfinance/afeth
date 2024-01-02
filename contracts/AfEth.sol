@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "contracts/strategies/votium/VotiumStrategy.sol";
-import "contracts/external_interfaces/IVotiumStrategy.sol";
-import "contracts/external_interfaces/ISafEth.sol";
-import "contracts/strategies/AbstractStrategy.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {AbstractStrategy} from "./strategies/AbstractStrategy.sol";
+import {IVotiumStrategy} from "./interfaces/afeth/IVotiumStrategy.sol";
+import {ISafEth} from "./interfaces/safeth/ISafEth.sol";
+import {IAfEth} from "./interfaces/afeth/IAfEth.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
-contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
+contract AfEth is IAfEth, OwnableUpgradeable, ERC20Upgradeable {
     uint256 public ratio;
     uint256 public protocolFee;
     address public feeAddress;
@@ -140,7 +141,7 @@ contract AfEth is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
-     * @notice - Sets the target ratio of safEth to votium. 
+     * @notice - Sets the target ratio of safEth to votium.
      *     @notice target ratio is maintained by directing rewards into either safEth or votium strategy
      *     @param _newRatio - New ratio of safEth to votium
      */
