@@ -88,6 +88,7 @@
     "bignumber.js": "^9.1.2",
     "discord.js": "^14.9.0",
     "git-clone": "^0.2.0",
+    "solady": "^0.0.155",
     "yesno": "^0.4.0"
   }
 }
