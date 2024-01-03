@@ -21,8 +21,11 @@ abstract contract VotiumStrategyCore is IVotiumStrategy, OwnableUpgradeable, ERC
     using SafeERC20 for IERC20;
 
     address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
-    address constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address constant VLCVX_ADDRESS = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
+    bytes32 internal constant VOTE_DELEGATION_ID = 0x6376782e65746800000000000000000000000000000000000000000000000000;
+    address internal constant VOTE_PROXY = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
+    address internal constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address internal constant VLCVX_ADDRESS = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
+    ICrvEthPool internal constant CVX_ETH_POOL = ICrvEthPool(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4);
 
     struct SwapData {
         address sellToken;
@@ -72,13 +75,7 @@ abstract contract VotiumStrategyCore is IVotiumStrategy, OwnableUpgradeable, ERC
     error StaleAction();
     error AlreadyInitialized();
 
-    /**
-     * @notice - Sets the address for the chainlink feed
-     *     @param _cvxEthFeedAddress - Address of the chainlink feed
-     */
-    function setChainlinkCvxEthFeed(address _cvxEthFeedAddress) external onlyOwner {
-        chainlinkCvxEthFeed = IAggregatorV3(_cvxEthFeedAddress);
-    }
+    receive() external payable {}
 
     modifier onlyRewarder() {
         if (msg.sender != rewarder) revert NotRewarder();
@@ -106,10 +103,7 @@ abstract contract VotiumStrategyCore is IVotiumStrategy, OwnableUpgradeable, ERC
      *     @param _manager - Address of the manager contract (afEth)
      */
     function initialize(address _owner, address _rewarder, address _manager) external initializer {
-        bytes32 VotiumVoteDelegationId = 0x6376782e65746800000000000000000000000000000000000000000000000000;
-        address DelegationRegistry = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
-        address votiumVoteProxyAddress = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
-        ISnapshotDelegationRegistry(DelegationRegistry).setDelegate(VotiumVoteDelegationId, votiumVoteProxyAddress);
+        ISnapshotDelegationRegistry(SNAPSHOT_DELEGATE_REGISTRY).setDelegate(VOTE_DELEGATION_ID, VOTE_PROXY);
         rewarder = _rewarder;
         manager = _manager;
         minEpoch = 2;
@@ -122,6 +116,14 @@ abstract contract VotiumStrategyCore is IVotiumStrategy, OwnableUpgradeable, ERC
         if (cvxTrackingInitialized) revert AlreadyWithdrawn();
         cvxTrackingInitialized = true;
         trackedCvxBalance = IERC20(CVX_ADDRESS).balanceOf(address(this));
+    }
+
+    /**
+     * @notice - Sets the address for the chainlink feed
+     *     @param _cvxEthFeedAddress - Address of the chainlink feed
+     */
+    function setChainlinkCvxEthFeed(address _cvxEthFeedAddress) external onlyOwner {
+        chainlinkCvxEthFeed = IAggregatorV3(_cvxEthFeedAddress);
     }
 
     /**
@@ -241,9 +243,8 @@ abstract contract VotiumStrategyCore is IVotiumStrategy, OwnableUpgradeable, ERC
      * @return cvxAmountOut - Amount of cvx bought
      */
     function buyCvx(uint256 _ethAmountIn) internal returns (uint256 cvxAmountOut) {
-        address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // eth -> cvx
-        cvxAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying{value: _ethAmountIn}(
+        cvxAmountOut = CVX_ETH_POOL.exchange_underlying{value: _ethAmountIn}(
             0,
             1,
             _ethAmountIn,
@@ -258,11 +259,10 @@ abstract contract VotiumStrategyCore is IVotiumStrategy, OwnableUpgradeable, ERC
      * @return ethAmountOut - Amount of eth received
      */
     function sellCvx(uint256 _cvxAmountIn) internal returns (uint256 ethAmountOut) {
-        address CVX_ETH_CRV_POOL_ADDRESS = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4;
         // cvx -> eth
-        IERC20(CVX_ADDRESS).approve(CVX_ETH_CRV_POOL_ADDRESS, _cvxAmountIn);
+        IERC20(CVX_ADDRESS).approve(address(CVX_ETH_POOL), _cvxAmountIn);
 
-        ethAmountOut = ICrvEthPool(CVX_ETH_CRV_POOL_ADDRESS).exchange_underlying(
+        ethAmountOut = CVX_ETH_POOL.exchange_underlying(
             1,
             0,
             _cvxAmountIn,
@@ -328,6 +328,4 @@ abstract contract VotiumStrategyCore is IVotiumStrategy, OwnableUpgradeable, ERC
             emptyArray, emptyArray, emptyArray, emptyArray, 0, 0, 0, 0, 8
         );
     }
-
-    receive() external payable {}
 }
