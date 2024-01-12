@@ -3,6 +3,9 @@ pragma solidity ^0.8.4;
 
 IFrxEthPool constant FRX_ETH_POOL = IFrxEthPool(0xa1F8A6807c402E4A15ef4EBa36528A3FED24E577);
 
+int128 constant ETH_COIN_INDEX = 0;
+int128 constant FRX_ETH_COIN_INDEX = 1;
+
 interface IFrxEthPool {
     event AddLiquidity(
         address indexed provider, uint256[2] token_amounts, uint256[2] fees, uint256 invariant, uint256 token_supply

@@ -2,530 +2,338 @@
 pragma solidity 0.8.19;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {AbstractStrategy} from "./strategies/AbstractStrategy.sol";
-import {IVotiumStrategy} from "./interfaces/afeth/IVotiumStrategy.sol";
-import {ISafEth} from "./interfaces/safeth/ISafEth.sol";
 import {IAfEth} from "./interfaces/afeth/IAfEth.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
+import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
+import {SafeCastLib} from "solady/src/utils/SafeCastLib.sol";
+import {IVotiumStrategy} from "./interfaces/afeth/IVotiumStrategy.sol";
+import {SfrxEthStrategy} from "./strategies/SfrxEthStrategy.sol";
+import {ERC1967, ERC1967_IMPL_SLOT} from "./utils/ERC1967.sol";
+import {HotData} from "./utils/HotDataLib.sol";
 
-// AfEth is the strategy manager for safEth and votium strategies
-contract AfEth is IAfEth, OwnableUpgradeable, ERC20Upgradeable {
-    uint256 public ratio;
-    uint256 public protocolFee;
-    address public feeAddress;
-    address public constant SAF_ETH_ADDRESS = 0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
-    address public vEthAddress; // Votium Strategy Address
-    uint256 public latestWithdrawId;
+// AfEth is the strategy manager for the sfrxETH and votium strategies
+contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
+    using FixedPointMathLib for uint256;
+    using SafeTransferLib for address;
+    using SafeCastLib for uint256;
+
+    uint256 internal constant UNLOCK_REWARDS_OVER = 2 weeks;
+    uint256 internal constant ONE_BPS = 10000;
+
+    IVotiumStrategy public immutable VOTIUM;
+
     address public rewarder;
-    uint256 public pendingSafEthWithdraws;
-    uint256 public trackedvStrategyBalance;
-    uint256 public trackedsafEthBalance;
-    bool public pauseDeposit;
-    bool public pauseWithdraw;
+    uint16 public protocolFeeBps;
+    uint16 public sfrxStrategyShareBps;
 
-    // eth balance held by contract for premint functionality
-    uint256 public preminterEthBalance;
-    // afEth balance held by contract for premint functionality
-    uint256 public preminterAfEthBalance;
-    // fee percent charged if withdraw time is 0
-    uint256 public preminterMinFee;
-    // fee percent charged if withdraw time is 17 weeks
-    uint256 public preminterMaxFee;
-    // max afEth that can be sold at once
-    uint256 public preminterMaxSell;
-    // max amount of eth that can be spent at once buying afEth
-    uint256 public preminterMaxBuy;
+    /// @dev Maximum amount that can be staked in a single quick stake. Can be bypassed via multiple
+    /// quick stakes, mainly to protect owner from large stakes that would gain on slippage.
+    uint128 public maxSingleQuickStake;
+    uint16 public quickStakeFeeBps;
+    /// @dev Maximum amount that can be unstaked in a single quick unstake. Similar
+    uint128 public maxSingleQuickUnstake;
+    uint16 public quickUnstakeFeeBps;
 
-    struct WithdrawInfo {
-        address owner;
-        uint256 amount;
-        uint256 safEthWithdrawAmount;
-        uint256 votiumWithdrawAmount;
-        uint256 vEthWithdrawId;
-        uint256 withdrawTime;
+    struct ERC1967Slot {
+        address implementation;
+        HotData hotData;
     }
 
-    mapping(uint256 => WithdrawInfo) public withdrawIdInfo;
-    bool private symbolUpdated;
-
-    error StrategyAlreadyAdded();
-    error StrategyNotFound();
-    error InsufficientBalance();
-    error InvalidStrategy();
-    error InvalidFee();
-    error CanNotWithdraw();
-    error NotOwner();
-    error FailedToSend();
-    error FailedToDeposit();
-    error Paused();
-    error BelowMinOut();
-    error StaleAction();
-    error NotManagerOrRewarder();
-    error InvalidRatio();
-    error PreminterMaxBuy();
-    error PreminterMaxSell();
-    error PreminterMinout();
-
-    event SetStrategyAddress(address indexed newAddress);
-    event SetRewarderAddress(address indexed newAddress);
-    event SetRatio(uint256 indexed newRatio);
-    event SetFeeAddress(address indexed newFeeAddress);
-    event SetProtocolFee(uint256 indexed newProtocolFee);
-    event SetPauseDeposit(bool indexed paused);
-    event SetPauseWithdraw(bool indexed paused);
-    event Deposit(address indexed recipient, uint256 afEthAmount, uint256 ethAmount);
-    event RequestWithdraw(address indexed account, uint256 amount, uint256 withdrawId, uint256 withdrawTime);
-    event Withdraw(address indexed recipient, uint256 afEthAmount, uint256 ethAmount, uint256 withdrawId);
-    event DepositRewards(address indexed recipient, uint256 afEthAmount, uint256 ethAmount);
-    event PremintSetMaxAmounts(uint256 buyAmount, uint256 sellAmount);
-    event PremintSetFees(uint256 minSellFee, uint256 maxSellFee);
-    event PremintDeposit(uint256 afEthAmount, uint256 ethAmount);
-    event PremintWithdraw(uint256 afEthAmount, uint256 ethAmount);
-    event PremintBuy(uint256 afEthBought, uint256 ethSpent);
-    event PremintSell(uint256 afEthSold, uint256 ethReceived);
-
-    modifier onlyWithdrawIdOwner(uint256 withdrawId) {
-        if (withdrawIdInfo[withdrawId].owner != msg.sender) revert NotOwner();
-        _;
-    }
-
-    modifier onlyVotiumOrRewarder() {
-        if (msg.sender != rewarder && msg.sender != vEthAddress) {
-            revert NotManagerOrRewarder();
-        }
-        _;
-    }
+    receive() external payable {}
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(address votiumAddress) {
         _disableInitializers();
+        VOTIUM = IVotiumStrategy(payable(votiumAddress));
     }
 
     /**
      * @notice - Initialize values for the contracts
-     *     @dev - This replaces the constructor for upgradeable contracts
+     * @dev - This replaces the constructor for upgradeable contracts
      */
     function initialize() external initializer {
-        __ERC20_init("Asymmetry Finance AfEth", "AfEth");
-        _transferOwnership(msg.sender);
-        ratio = 5e17;
+        __ERC20_init("Asymmetry Finance AfEth", "afETH");
+        _initializeOwner(msg.sender);
+
+        // Configure default ratio to of sfrxETH to locked CVX to 70/30.
+        sfrxStrategyShareBps = 0.7e4;
+    }
+
+    modifier whileNotPaused() {
+        if (paused()) revert Paused();
+        _;
     }
 
     /**
-     * @notice - Updates the symbol for the contract
-     *     @dev - This is only called once
+     * @dev Upgrades the underlying proxy to a new implementation according to the ERC1967 standard.
      */
-    function updateSymbol() external onlyOwner {
-        if (symbolUpdated) revert("Symbol already updated");
-        __ERC20_init("Asymmetry Finance AfEth", "afEth");
-        symbolUpdated = true;
-    }
-
-    /**
-     * @notice - Sets the strategy addresses for safEth and votium
-     * @param _vEthAddress - vEth strategy address
-     */
-    function setStrategyAddress(address _vEthAddress) external onlyOwner {
-        vEthAddress = _vEthAddress;
-        emit SetStrategyAddress(_vEthAddress);
+    function upgradeTo(address newImplementation, bytes memory reinitializationData) external onlyOwner {
+        _upgradeTo(newImplementation, reinitializationData);
     }
 
     /**
      * @notice - Sets the rewarder address
      * @param _rewarder - rewarder address
      */
-    function setRewarderAddress(address _rewarder) external onlyOwner {
+    function setRewarder(address _rewarder) external onlyOwner {
         rewarder = _rewarder;
-        emit SetRewarderAddress(_rewarder);
+        emit SetRewarder(_rewarder);
     }
 
     /**
-     * @notice - Sets the target ratio of safEth to votium.
-     *     @notice target ratio is maintained by directing rewards into either safEth or votium strategy
-     *     @param _newRatio - New ratio of safEth to votium
+     * @notice Sets the share of value in WAD that the sfrxEth strategy should hold.
+     * @notice Target ratio is maintained by directing rewards into either sfrxETH or votium strategy.
+     * @param newShareBps New share of the sfrxETH strategy (votium's share is automatically 100% - sfrxStrategyShare)
      */
-    function setRatio(uint256 _newRatio) external onlyOwner {
-        if (_newRatio > 1e18) revert InvalidRatio();
-        ratio = _newRatio;
-        emit SetRatio(_newRatio);
+    function setSfrxEthStrategyShare(uint16 newShareBps) external onlyOwner {
+        if (newShareBps > ONE_BPS) revert InvalidShare();
+        sfrxStrategyShareBps = newShareBps;
+        emit SetSfrxStrategyShare(newShareBps);
     }
 
     /**
-     * @notice - Sets the protocol fee address which takes a percentage of the rewards.
-     *     @param _newFeeAddress - New protocol fee address to collect rewards
+     * @notice Sets the protocol fee which takes a percentage of the rewards.
+     * @param newFeeBps New protocol fee
      */
-    function setFeeAddress(address _newFeeAddress) external onlyOwner {
-        feeAddress = _newFeeAddress;
-        emit SetFeeAddress(_newFeeAddress);
+    function setProtocolFee(uint16 newFeeBps) external onlyOwner {
+        if (newFeeBps > ONE_BPS) revert InvalidFee();
+        protocolFeeBps = newFeeBps;
+        emit SetProtocolFee(newFeeBps);
+    }
+
+    function emergencyShutdown() external onlyOwner {
+        ERC1967Slot storage slot = _erc1967Slot();
+        slot.hotData = slot.hotData.setPaused(true);
+        VOTIUM.emergencyShutdown();
+        emit EmergencyShutdown();
     }
 
     /**
-     * @notice - Sets the protocol fee which takes a percentage of the rewards.
-     *     @param _newFee - New protocol fee
+     * @notice Deposits into each strategy
+     * @dev This is the entry into the protocol
+     * @param minOut Minimum amount of afEth to mint
+     * @param deadline Sets a deadline for the deposit
+     * @return amount afETH shares minted.
      */
-    function setProtocolFee(uint256 _newFee) external onlyOwner {
-        if (_newFee > 1e18) revert InvalidFee();
-        protocolFee = _newFee;
-        emit SetProtocolFee(_newFee);
+    function deposit(uint256 minOut, uint256 deadline) external payable whileNotPaused returns (uint256 amount) {
+        if (block.timestamp > deadline) revert StaleAction();
+
+        // Assumes that the price sources doesn't change atomically based on on-chain conditions
+        // e.g. a chainlink price oracle.
+        (uint256 sfrxStrategyValue, uint256 ethSfrxPrice) = SfrxEthStrategy.totalEthValue();
+        (uint256 votiumValue, uint256 cvxEthPrice) = VOTIUM.totalEthValue();
+
+        uint256 mintedSfrxEth = SfrxEthStrategy.deposit(sfrxStrategyValue);
+        uint256 mintedCvx = VOTIUM.deposit{value: votiumValue}();
+
+        (, uint256 unlockedRewards) = _unlockedRewards();
+        uint256 totalValue = sfrxStrategyValue + votiumValue + unlockedRewards;
+        // Calculate the user's deposit value, makes system slippage agnostic (depositor responsible
+        // for slippage based on their set `minOut`).
+        uint256 depositValue = mintedSfrxEth.mulWad(ethSfrxPrice) + mintedCvx.mulWad(cvxEthPrice);
+
+        amount = depositValue * totalSupply() / totalValue;
+
+        if (amount < minOut) revert BelowMinOut();
+        _mint(msg.sender, amount);
+
+        emit Deposit(msg.sender, amount, msg.value);
     }
 
     /**
-     * @notice - Enables/Disables depositing
-     *     @param _pauseDeposit - Bool to set pauseDeposit
+     * @notice Request to close position
+     * @param amount Amount of afEth to withdraw
      */
-    function setPauseDeposit(bool _pauseDeposit) external onlyOwner {
-        pauseDeposit = _pauseDeposit;
-        emit SetPauseDeposit(_pauseDeposit);
-    }
-
-    /**
-     * @notice - Enables/Disables withdrawing & requesting to withdraw
-     *     @param _pauseWithdraw - Bool to set pauseWithdraw
-     */
-    function setPauseWithdraw(bool _pauseWithdraw) external onlyOwner {
-        pauseWithdraw = _pauseWithdraw;
-        emit SetPauseWithdraw(_pauseWithdraw);
-    }
-
-    /**
-     * @notice - Get's the price of afEth
-     *     @dev - Checks each strategy and calculates the total value in ETH divided by supply of afETH tokens
-     *     @param _validate - Validates the chainlink oracle price
-     *     @return - Price of afEth
-     */
-    function price(bool _validate) public view returns (uint256) {
-        uint256 totalSupply = totalSupply();
-        if (totalSupply == 0) return 1e18;
-        AbstractStrategy vEthStrategy = AbstractStrategy(vEthAddress);
-        uint256 safEthValueInEth =
-            (ISafEth(SAF_ETH_ADDRESS).approxPrice(_validate) * safEthBalanceMinusPending()) / 1e18;
-        uint256 vEthValueInEth = (vEthStrategy.price(_validate) * trackedvStrategyBalance) / 1e18;
-        return ((vEthValueInEth + safEthValueInEth) * 1e18) / totalSupply;
-    }
-
-    /**
-     * @notice - Deposits into each strategy
-     *     @dev - This is the entry into the protocol
-     *     @param _minout - Minimum amount of afEth to mint
-     *     @param _deadline - Sets a deadline for the deposit
-     */
-    function deposit(uint256 _minout, uint256 _deadline) external payable virtual returns (uint256 amountToMint) {
-        if (pauseDeposit) revert Paused();
-        if (block.timestamp > _deadline) revert StaleAction();
-        uint256 priceBeforeDeposit = price(true);
-        uint256 totalValue;
-
-        AbstractStrategy vStrategy = AbstractStrategy(vEthAddress);
-
-        uint256 sValue = (msg.value * ratio) / 1e18;
-        uint256 sMinted = sValue > 0 ? ISafEth(SAF_ETH_ADDRESS).stake{value: sValue}(0) : 0;
-        uint256 vValue = (msg.value - sValue);
-        uint256 vMinted = vValue > 0 ? vStrategy.deposit{value: vValue}() : 0;
-        totalValue = (sMinted * ISafEth(SAF_ETH_ADDRESS).approxPrice(true)) + (vMinted * vStrategy.price(true));
-        trackedvStrategyBalance += vMinted;
-        trackedsafEthBalance += sMinted;
-        if (totalValue == 0) revert FailedToDeposit();
-        amountToMint = totalValue / priceBeforeDeposit;
-        if (amountToMint < _minout) revert BelowMinOut();
-        _mint(msg.sender, amountToMint);
-        emit Deposit(msg.sender, amountToMint, msg.value);
-    }
-
-    /**
-     * @notice - Request to close position
-     *     @param _amount - Amount of afEth to withdraw
-     */
-    function requestWithdraw(uint256 _amount) external virtual {
-        if (pauseWithdraw) revert Paused();
-        latestWithdrawId++;
-        uint256 withdrawId = latestWithdrawId;
-
-        uint256 withdrawRatio = (_amount * 1e18) / totalSupply();
-
-        _burn(msg.sender, _amount);
-
-        uint256 votiumWithdrawAmount = (withdrawRatio * trackedvStrategyBalance) / 1e18;
-        uint256 withdrawTimeBefore = withdrawTime(votiumWithdrawAmount);
-        uint256 vEthWithdrawId = AbstractStrategy(vEthAddress).requestWithdraw(votiumWithdrawAmount);
-        trackedvStrategyBalance -= votiumWithdrawAmount;
-
-        uint256 safEthBalance = safEthBalanceMinusPending();
-
-        uint256 safEthWithdrawAmount = (withdrawRatio * safEthBalance) / 1e18;
-
-        pendingSafEthWithdraws += safEthWithdrawAmount;
-
-        withdrawIdInfo[withdrawId].safEthWithdrawAmount = safEthWithdrawAmount;
-        withdrawIdInfo[withdrawId].votiumWithdrawAmount = votiumWithdrawAmount;
-        withdrawIdInfo[withdrawId].vEthWithdrawId = vEthWithdrawId;
-
-        withdrawIdInfo[withdrawId].owner = msg.sender;
-        withdrawIdInfo[withdrawId].amount = _amount;
-        withdrawIdInfo[withdrawId].withdrawTime = withdrawTimeBefore;
-
-        emit RequestWithdraw(msg.sender, _amount, withdrawId, withdrawTimeBefore);
-    }
-
-    /**
-     * @notice - Checks if withdraw can be executed from withdrawId
-     *     @param _withdrawId - Id of the withdraw request for SafEth
-     *     @return - Bool if withdraw can be executed
-     */
-    function canWithdraw(uint256 _withdrawId) public view returns (bool) {
-        return AbstractStrategy(vEthAddress).canWithdraw(withdrawIdInfo[_withdrawId].vEthWithdrawId);
-    }
-
-    /**
-     * @notice - Get's the withdraw time for an amount of AfEth
-     *     @param _amount - Amount of afETH to withdraw
-     *     @return - Highest withdraw time of the strategies
-     */
-    function withdrawTime(uint256 _amount) public view returns (uint256) {
-        return AbstractStrategy(vEthAddress).withdrawTime(_amount);
-    }
-
-    /**
-     * @notice - Withdraw from each strategy
-     *     @param _withdrawId - Id of the withdraw request
-     *     @param _minout - Minimum amount of ETH to receive
-     *     @param _deadline - Sets a deadline for the deposit
-     */
-    function withdraw(uint256 _withdrawId, uint256 _minout, uint256 _deadline)
+    function requestWithdraw(uint256 amount, uint256 minOutOnlySfrx, uint256 minOutAll, uint256 deadline)
         external
-        virtual
-        onlyWithdrawIdOwner(_withdrawId)
+        whileNotPaused
+        returns (bool locked, uint256 cumulativeUnlockThreshold)
     {
-        if (pauseWithdraw) revert Paused();
-        if (block.timestamp > _deadline) revert StaleAction();
-        uint256 ethBalanceBefore = address(this).balance;
-        WithdrawInfo storage withdrawInfo = withdrawIdInfo[_withdrawId];
+        if (block.timestamp > deadline) revert StaleAction();
 
-        if (withdrawInfo.safEthWithdrawAmount > 0) {
-            ISafEth(SAF_ETH_ADDRESS).unstake(withdrawInfo.safEthWithdrawAmount, 0);
-            trackedsafEthBalance -= withdrawInfo.safEthWithdrawAmount;
-        }
-        AbstractStrategy(vEthAddress).withdraw(withdrawInfo.vEthWithdrawId);
-        uint256 ethBalanceAfter = address(this).balance;
-        uint256 ethReceived = ethBalanceAfter - ethBalanceBefore;
+        uint256 withdrawShare = amount.divWad(totalSupply());
+        _burn(msg.sender, amount);
 
-        pendingSafEthWithdraws -= withdrawInfo.safEthWithdrawAmount;
+        uint256 totalEthOut;
+        (locked, totalEthOut, cumulativeUnlockThreshold) = VOTIUM.requestWithdraw(withdrawShare, msg.sender);
+        totalEthOut += SfrxEthStrategy.withdraw(withdrawShare);
+        uint256 minOut = locked ? minOutOnlySfrx : minOutAll;
 
-        if (ethReceived < _minout) revert BelowMinOut();
-        // solhint-disable-next-line
-        (bool sent,) = msg.sender.call{value: ethReceived}("");
-        if (!sent) revert FailedToSend();
-        emit Withdraw(msg.sender, withdrawInfo.amount, ethReceived, _withdrawId);
+        if (totalEthOut < minOut) revert BelowMinOut();
+        if (totalEthOut > 0) msg.sender.safeTransferETH(totalEthOut);
+
+        if (locked) emit PartialWithdraw(msg.sender, totalEthOut, cumulativeUnlockThreshold);
+        else emit FullWithdraw(msg.sender, totalEthOut);
     }
 
     /**
-     * @notice - sells _amount of eth from votium contract
-     * @dev - puts it into safEthStrategy or votiumStrategy, whichever is underweight.\
-     * @param _safEthMinout - Minimum amount of safEth to receive from rewards when buying safEth
-     * @param _cvxMinout - Minimum amount of cvx to receive from rewards when buying vAfEth
+     * @notice Allows rewarder to deposit external rewards and process unlocked rewards. Rebalances
+     * by routing value to underweight strategy.
+     * @param ethPerCvxMin Minimum accepted ETH/CVX price when converting ETH to CVX.
+     * @param ethPerSfrxMin Minimum accepted ETH/sfrxETH price when converting ETH to sfrxETH.
+     * @param ethPerSfrxMax Maximum accepted ETH/sfrxETH price when converting sfrxETH to ETH.
+     * @param deadline Last timestamp at which this call will be valid.
      */
-    function depositRewards(uint256 _safEthMinout, uint256 _cvxMinout, uint256 _deadline)
-        public
-        payable
-        onlyVotiumOrRewarder
-    {
-        require(!pauseDeposit, "paused");
-        if (block.timestamp > _deadline) revert StaleAction();
-        IVotiumStrategy votiumStrategy = IVotiumStrategy(vEthAddress);
-        uint256 feeAmount = (msg.value * protocolFee) / 1e18;
-        if (feeAmount > 0) {
-            // solhint-disable-next-line
-            (bool sent,) = feeAddress.call{value: feeAmount}("");
-            if (!sent) revert FailedToSend();
+    function depositRewardsAndRebalance(
+        uint256 ethPerCvxMin,
+        uint256 ethPerSfrxMin,
+        uint256 ethPerSfrxMax,
+        uint256 deadline
+    ) public payable whileNotPaused {
+        if (msg.sender != address(VOTIUM) && msg.sender != rewarder) {
+            revert NotAuthorizedToRebalance();
         }
-        uint256 amount = msg.value - feeAmount;
-        uint256 safEthTvl = (ISafEth(SAF_ETH_ADDRESS).approxPrice(true) * safEthBalanceMinusPending()) / 1e18;
-        uint256 votiumTvl =
-            ((votiumStrategy.cvxPerVotium() * votiumStrategy.ethPerCvx(true)) * trackedvStrategyBalance) / 1e36;
-        uint256 totalTvl = (safEthTvl + votiumTvl);
-        uint256 safEthRatio = (safEthTvl * 1e18) / totalTvl;
-        if (safEthRatio < ratio) {
-            uint256 safEthReceived = ISafEth(SAF_ETH_ADDRESS).stake{value: amount}(_safEthMinout);
-            trackedsafEthBalance += safEthReceived;
+        if (block.timestamp > deadline) revert StaleAction();
+
+        (uint256 sfrxStrategyValue,) = SfrxEthStrategy.totalEthValue();
+        (uint256 votiumValue,) = VOTIUM.totalEthValue();
+
+        uint256 unlockedRewards;
+
+        {
+            uint256 lastLocked;
+            (lastLocked, unlockedRewards) = _unlockedRewards();
+            // Fee accrues implicitly via the accounting (any ETH balance not locked is considered to be a "fee").
+            uint256 fee = mulBps(msg.value, protocolFeeBps);
+
+            _lockRewards(lastLocked - unlockedRewards + msg.value - fee);
+        }
+
+        uint256 totalValue = sfrxStrategyValue + votiumValue + unlockedRewards;
+
+        uint256 targetSfrxValue = mulBps(totalValue, sfrxStrategyShareBps);
+
+        uint256 sfrxDepositAmount = 0;
+        uint256 votiumDepositAmount = 0;
+        if (sfrxStrategyValue > targetSfrxValue) {
+            uint256 valueDelta;
+            unchecked {
+                valueDelta = sfrxStrategyValue - targetSfrxValue;
+            }
+            (uint256 ethReceived, uint256 sfrxEthRedeemed) = SfrxEthStrategy.withdrawEth(valueDelta);
+            if (ethReceived.divWad(sfrxEthRedeemed) > ethPerSfrxMax) revert AboveMaxOut();
+            votiumDepositAmount = unlockedRewards + ethReceived;
         } else {
-            votiumStrategy.depositRewards{value: amount}(amount, _cvxMinout);
-        }
-        emit DepositRewards(msg.sender, amount, msg.value);
-    }
-
-    function safEthBalanceMinusPending() public view returns (uint256) {
-        return trackedsafEthBalance - pendingSafEthWithdraws;
-    }
-
-    receive() external payable {}
-
-    /**
-     * @notice Allow owner to withdraw from Preminter
-     * @param _ethAmount amount of eth to withdraw
-     * @param _afEthAmount amount of afEth to withdraw
-     */
-    function premintWithdraw(uint256 _ethAmount, uint256 _afEthAmount) public onlyOwner {
-        if (_ethAmount > 0) {
-            uint256 _preminterEthBalance = preminterEthBalance;
-            if (_ethAmount > _preminterEthBalance) revert InsufficientBalance();
-
-            unchecked {
-                preminterEthBalance = _preminterEthBalance - _ethAmount;
+            uint256 targetVotiumValue = totalValue - targetSfrxValue;
+            if (targetVotiumValue > votiumValue) {
+                unchecked {
+                    sfrxDepositAmount = targetSfrxValue - sfrxStrategyValue;
+                    votiumDepositAmount = targetVotiumValue - votiumValue;
+                }
+            } else {
+                sfrxDepositAmount = unlockedRewards;
             }
-            // solhint-disable-next-line
-            (bool sent,) = msg.sender.call{value: _ethAmount}("");
-            if (!sent) revert FailedToSend();
         }
-        if (_afEthAmount > 0) {
-            uint256 _preminterAfEthBalance = preminterAfEthBalance;
-            if (_afEthAmount > _preminterAfEthBalance) {
-                revert InsufficientBalance();
-            }
-            unchecked {
-                preminterAfEthBalance = _preminterAfEthBalance - _afEthAmount;
-            }
-            _transfer(address(this), msg.sender, _afEthAmount);
+
+        if (sfrxDepositAmount > 0) {
+            uint256 sfrxEthOut = SfrxEthStrategy.deposit(sfrxDepositAmount);
+            if (sfrxDepositAmount.divWad(sfrxEthOut) < ethPerSfrxMin) revert BelowMinOut();
         }
-        emit PremintWithdraw(_afEthAmount, _ethAmount);
+        if (votiumDepositAmount > 0) {
+            VOTIUM.deposit{value: votiumDepositAmount}(votiumDepositAmount, votiumDepositAmount.divWad(ethPerCvxMin));
+        }
     }
 
-    /**
-     * @notice Allow owner to deposit into Preminter
-     * @param _afEthAmount amount of afEth to deposit
-     */
-    function premintDeposit(uint256 _afEthAmount) public payable onlyOwner {
-        if (_afEthAmount > 0) {
-            _transfer(msg.sender, address(this), _afEthAmount);
-            preminterAfEthBalance += _afEthAmount;
-        }
-        if (msg.value > 0) {
-            preminterEthBalance += msg.value;
-        }
-        emit PremintDeposit(_afEthAmount, msg.value);
+    function depositForQuickActions(uint256 afEthAmount) external payable onlyOwner {
+        _transfer(msg.sender, address(this), afEthAmount == 0 ? balanceOf(msg.sender) : afEthAmount);
     }
 
-    /**
-     * @notice Sets sell fee used in selling afEth afEth (Immediate Unstake Premium)
-     * @param _minSellFee minimum sell fee % to charge if there is 0 weeks to unstake
-     * @param _minSellFee maximum sell fee % to charge if there is 16 weeks to unstake
-     */
-    function premintSetFees(uint256 _minSellFee, uint256 _maxSellFee) public onlyOwner {
-        if (_minSellFee > _maxSellFee) revert InvalidFee();
-        if (_maxSellFee > 1e18) revert InvalidFee();
-
-        preminterMinFee = _minSellFee;
-        preminterMaxFee = _maxSellFee;
-        emit PremintSetFees(_minSellFee, _maxSellFee);
-    }
-
-    /**
-     * @notice Sets max amounts for premint buying / selling
-     * @param _maxBuy max amount of eth that can be spent at once buying afEth
-     * @param _maxSell max afEth that can be sold at once
-     */
-    function setPremintMaxAmounts(uint256 _maxBuy, uint256 _maxSell) public onlyOwner {
-        preminterMaxBuy = _maxBuy;
-        preminterMaxSell = _maxSell;
-        emit PremintSetMaxAmounts(_maxBuy, _maxSell);
-    }
-
-    /**
-     * @notice Buy afEth from Preminter
-     * @param _minOut minimum afEth to receive or revert
-     * @param _deadline - Sets a deadline for the deposit
-     */
-    function premintBuy(uint256 _minOut, uint256 _deadline) public payable {
-        if (pauseDeposit) revert Paused();
-
-        if (msg.value > preminterMaxBuy) revert PreminterMaxBuy();
-        if (block.timestamp > _deadline) revert StaleAction();
-
-        uint256 afEthOut = premintBuyAmount(msg.value);
-        uint256 _preminterAfEthBalance = preminterAfEthBalance;
-
-        if (afEthOut < _minOut) revert PreminterMinout();
-        if (afEthOut > _preminterAfEthBalance) revert InsufficientBalance();
-        unchecked {
-            preminterAfEthBalance = _preminterAfEthBalance - afEthOut;
+    function withdrawFromQuickActions(uint256 afEthAmount, uint256 ethAmount) external onlyOwner {
+        _transfer(address(this), msg.sender, afEthAmount == 0 ? balanceOf(address(this)) : afEthAmount);
+        uint256 maxEthAmount = ethOwedToOwner();
+        if (ethAmount == 0) {
+            ethAmount = maxEthAmount;
+        } else if (ethAmount > maxEthAmount) {
+            revert WithdrawingLockedRewards();
         }
-        preminterEthBalance += msg.value;
+        msg.sender.safeTransferETH(ethAmount);
+    }
+
+    function configureQuickActions(
+        uint16 stakeFeeBps,
+        uint16 unstakeFeeBps,
+        uint128 maxQuickStake,
+        uint128 maxQuickUnstake
+    ) external onlyOwner {
+        if (stakeFeeBps >= ONE_BPS) revert InvalidFee();
+        if (unstakeFeeBps >= ONE_BPS) revert InvalidFee();
+        quickStakeFeeBps = stakeFeeBps;
+        maxSingleQuickStake = maxQuickStake;
+        quickUnstakeFeeBps = unstakeFeeBps;
+        maxSingleQuickUnstake = maxQuickUnstake;
+        emit QuickActionsConfigured(stakeFeeBps, unstakeFeeBps, maxQuickStake, maxQuickUnstake);
+    }
+
+    function quickStake(uint256 minOut) external payable whileNotPaused {
+        if (msg.value > maxSingleQuickStake) revert AboveActionMax();
+        uint256 afEthOut = mulBps(minOut.divWad(price()), quickStakeFeeBps);
+        if (afEthOut < minOut) revert BelowMinOut();
         _transfer(address(this), msg.sender, afEthOut);
-        emit PremintBuy(afEthOut, msg.value);
+    }
+
+    function quickUnstake(uint256 amount, uint256 minOut) external whileNotPaused {
+        _transfer(msg.sender, address(this), amount);
+        if (amount > maxSingleQuickUnstake) revert AboveActionMax();
+        uint256 ethOut = mulBps(minOut.mulWad(price()), quickUnstakeFeeBps);
+        if (ethOut < minOut) revert BelowMinOut();
+        if (ethOut > ethOwedToOwner()) revert WithdrawingLockedRewards();
+        msg.sender.safeTransferETH(amount);
     }
 
     /**
-     * Sell afEth to preminter
-     * @param _afEthToSell amount of afEth to sell
-     * @param _ethMinOut minimum eth to receive or revert
-     * @param _deadline - Sets a deadline for the deposit
+     * @notice Get's the price of afEth
+     * @dev Checks each strategy and calculates the total value in ETH divided by supply of afETH tokens
+     * @return Price of afEth
      */
-    function premintSell(uint256 _afEthToSell, uint256 _ethMinOut, uint256 _deadline) public {
-        if (pauseWithdraw) revert Paused();
-        if (_afEthToSell > preminterMaxSell) revert PreminterMaxSell();
-        if (block.timestamp > _deadline) revert StaleAction();
+    function price() public view returns (uint256) {
+        uint256 totalSupply_ = totalSupply();
+        if (totalSupply_ == 0) return 1e18;
 
-        uint256 ethOut = premintSellAmount(_afEthToSell);
-        if (ethOut < _ethMinOut) revert PreminterMinout();
-        uint256 _preminterEthBalance = preminterEthBalance;
-
-        if (ethOut > _preminterEthBalance) revert InsufficientBalance();
-        preminterAfEthBalance += _afEthToSell;
-        unchecked {
-            preminterEthBalance = _preminterEthBalance - ethOut;
-        }
-        _transfer(msg.sender, address(this), _afEthToSell);
-        // solhint-disable-next-line
-        (bool sent,) = address(msg.sender).call{value: ethOut}("");
-        if (!sent) revert FailedToSend();
-        emit PremintSell(_afEthToSell, ethOut);
+        return _totalEthValue().divWad(totalSupply_);
     }
 
-    /**
-     * @notice Returns expected afEth out for a given eth amount
-     * @param _ethAmount amount of eth simulate buy with
-     * @return afEth out for a given eth amount
-     */
-    function premintBuyAmount(uint256 _ethAmount) public view returns (uint256) {
-        return ((_ethAmount * 1e18) / price(true));
+    function paused() public view returns (bool) {
+        return _erc1967Slot().hotData.paused();
     }
 
-    /**
-     * @notice Returns expected eth out for a given afEth amount
-     * @param _afEthToSell amount of afEth simulate sell with
-     * @return eth amount out for a given eth amount
-     */
-    function premintSellAmount(uint256 _afEthToSell) public view returns (uint256) {
-        uint256 sellAmount = (_afEthToSell * price(true)) / 1e18;
-        uint256 sellAmountMinusFee = (sellAmount * (1e18 - premintSellFeePercent(_afEthToSell))) / 1e18;
-        return sellAmountMinusFee;
+    function ethOwedToOwner() public view returns (uint256) {
+        return address(this).balance - _erc1967Slot().hotData.getLastLockedRewards();
     }
 
-    /**
-     * @notice calculates fee percent to be charged on selling afEth instantly instead of unstaking normally
-     * @param _afEthToSell amount of afEth to sell
-     * @return fee % to charge for selling afEth instantly instead of unstaking normally
-     */
-    function premintSellFeePercent(uint256 _afEthToSell) public view returns (uint256) {
-        uint256 maxFeeTime = 24 * 60 * 60 * 7 * 17; // 17 weeks out is when max fee applies
-        uint256 minFeeTime = 24 * 60 * 60 * 7 * 2; // 2 weeks or less is when min fee applies
-        uint256 feeTimeDiff = maxFeeTime - minFeeTime;
-        uint256 _preminterMinFee = preminterMinFee;
-        uint256 feeDiff = preminterMaxFee - _preminterMinFee;
+    function _totalEthValue() internal view returns (uint256) {
+        (uint256 sfrxStrategyValue,) = SfrxEthStrategy.totalEthValue();
+        (uint256 votiumValue,) = VOTIUM.totalEthValue();
+        (, uint256 unlockedRewards) = _unlockedRewards();
+        return sfrxStrategyValue + votiumValue + unlockedRewards;
+    }
 
-        // how long until they could normally unstake
-        uint256 withdrawRatio = (_afEthToSell * 1e18) / totalSupply();
-        uint256 votiumWithdrawAmount = (withdrawRatio * trackedvStrategyBalance) / 1e18;
-        uint256 withdrawTimeRemaining = withdrawTime(votiumWithdrawAmount) - block.timestamp;
+    function _unlockedRewards() internal view returns (uint256 lastLocked, uint256 unlocked) {
+        HotData data = _erc1967Slot().hotData;
+        uint256 timeElapsed = block.timestamp - data.getLastUpdated();
 
-        if (withdrawTimeRemaining <= minFeeTime) {
-            return _preminterMinFee;
-        } else {
-            uint256 timeRemainingAboveMinFeeTime;
-            unchecked {
-                timeRemainingAboveMinFeeTime = withdrawTimeRemaining - minFeeTime;
-            }
+        lastLocked = data.getLastLockedRewards();
+        if (timeElapsed >= UNLOCK_REWARDS_OVER) unlocked = lastLocked;
+        else unlocked = lastLocked * timeElapsed / UNLOCK_REWARDS_OVER;
+    }
 
-            return _preminterMinFee + (feeDiff * timeRemainingAboveMinFeeTime) / feeTimeDiff;
+    function _lockRewards(uint256 newLockedRewards) internal {
+        ERC1967Slot storage slot = _erc1967Slot();
+        /// forgefmt: disable-next-item
+        slot.hotData = slot.hotData
+            .setLastLockedRewards(newLockedRewards)
+            .setLastUpdated(block.timestamp);
+    }
+
+    function mulBps(uint256 value, uint256 bps) internal pure returns (uint256) {
+        return value * bps / ONE_BPS;
+    }
+
+    function _erc1967Slot() internal pure returns (ERC1967Slot storage slot) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot.slot := ERC1967_IMPL_SLOT
         }
     }
 }

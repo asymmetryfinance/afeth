@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+IVotiumMerkleStash constant VOTIUM_MERKLE_STASH = IVotiumMerkleStash(0x378Ba9B73309bE80BF4C2c027aAD799766a7ED5A);
+
 interface IVotiumMerkleStash {
     struct ClaimParam {
         address token;

@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-interface ICrvEthPool {
+ICvxEthPool constant CVX_ETH_POOL = ICvxEthPool(payable(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4));
+
+uint256 constant ETH_COIN_INDEX = 0;
+uint256 constant CVX_COIN_INDEX = 1;
+
+interface ICvxEthPool {
     event AddLiquidity(address indexed provider, uint256[2] token_amounts, uint256 fee, uint256 token_supply);
     event ClaimAdminFee(address indexed admin, uint256 tokens);
     event CommitNewAdmin(uint256 indexed deadline, address indexed admin);
