@@ -1,5 +1,5 @@
 [profile.default]
 libs = ["node_modules", "lib"]
-src = "contracts"
-test = "test/forge"
+src = "src"
+test = "test"
 solc_version = "0.8.19"

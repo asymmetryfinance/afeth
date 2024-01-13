@@ -159,7 +159,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
         uint sfrxEthOut = SfrxEthStrategy.withdraw(withdrawShare);
         uint256 totalEthOut;
         (locked, totalEthOut, cumulativeUnlockThreshold) = VOTIUM.requestWithdraw(withdrawShare, msg.sender);
-        totalEthOut += sfrxEthOut
+        totalEthOut += sfrxEthOut;
         uint256 minOut = locked ? minOutOnlySfrx : minOutAll;
 
         if (totalEthOut < minOut) revert BelowMinOut();
