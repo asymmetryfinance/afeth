@@ -147,8 +147,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         uint256 unlockedCvx = _unlockAvailable();
         uint256 lockedCvx = LOCKED_CVX.lockedBalanceOf(address(this));
 
-        uint256 availableCvx = lockedCvx + unlockedCvx - totalUnlockObligations;
-        uint256 cvxAmount = availableCvx.mulWad(share);
+        uint256 netCvx = lockedCvx + unlockedCvx - totalUnlockObligations;
+        uint256 cvxAmount = netCvx.mulWad(share);
         totalUnlockObligations += cvxAmount;
 
         if (unlockedCvx > totalUnlockObligations) {
@@ -271,16 +271,16 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      * @notice The amount of cvx in the entire system
      * @return Amount of cvx in the entire system
      */
-    function totalCvx() public view returns (uint256) {
+    function availableCvx() public view returns (uint256) {
         (,, uint256 totalUnlockObligations) = _getObligations();
         uint256 lockedCvx = LOCKED_CVX.lockedBalanceOf(address(this));
         uint256 unlockedCvx = CVX.balanceOf(address(this));
         return lockedCvx + unlockedCvx - totalUnlockObligations;
     }
 
-    function totalEthValue() public view returns (uint256 value, uint256 price) {
+    function totalEthValue() external view returns (uint256 value, uint256 price) {
         price = CvxEthOracleLib.ethCvxPrice();
-        value = totalCvx().mulWad(price);
+        value = availableCvx().mulWad(price);
     }
 
     /**
@@ -312,21 +312,6 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         cumCvxUnlocked = cumulativeCvxUnlocked;
         cumCvxUnlockObligations = cumulativeCvxUnlockObligations;
         totalUnlockObligations = cumCvxUnlockObligations - cumCvxUnlocked;
-    }
-
-    function _relock(uint256 unlockObligations) internal {
-        if (unlockObligations == 0) {
-            LOCKED_CVX.processExpiredLocks({relock: true});
-        } else {
-            LOCKED_CVX.processExpiredLocks({relock: false});
-            uint256 unlockedCvx = CVX.balanceOf(address(this));
-            if (unlockedCvx > unlockObligations) {
-                unchecked {
-                    uint256 amountToRelock = unlockedCvx - unlockObligations;
-                    LOCKED_CVX.lock(address(this), amountToRelock, 0);
-                }
-            }
-        }
     }
 
     function _unlockAvailable() internal returns (uint256 totalUnlocked) {

@@ -12,7 +12,7 @@ import {SfrxEthStrategy} from "./strategies/SfrxEthStrategy.sol";
 import {ERC1967, ERC1967_IMPL_SLOT} from "./utils/ERC1967.sol";
 import {HotData} from "./utils/HotDataLib.sol";
 
-// AfEth is the strategy manager for the sfrxETH and votium strategies
+/// @dev AfEth is the strategy manager for the sfrxETH and votium strategies
 contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
@@ -156,9 +156,10 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
         uint256 withdrawShare = amount.divWad(totalSupply());
         _burn(msg.sender, amount);
 
+        uint sfrxEthOut = SfrxEthStrategy.withdraw(withdrawShare);
         uint256 totalEthOut;
         (locked, totalEthOut, cumulativeUnlockThreshold) = VOTIUM.requestWithdraw(withdrawShare, msg.sender);
-        totalEthOut += SfrxEthStrategy.withdraw(withdrawShare);
+        totalEthOut += sfrxEthOut
         uint256 minOut = locked ? minOutOnlySfrx : minOutAll;
 
         if (totalEthOut < minOut) revert BelowMinOut();

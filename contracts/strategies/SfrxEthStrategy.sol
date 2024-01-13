@@ -17,15 +17,6 @@ library SfrxEthStrategy {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
 
-    uint256 internal constant MIN_WITHDRAW_OUT_SHARE = 0.98e18; // 98%
-
-    struct Storage {
-        uint256 totalBalance;
-    }
-
-    /// @dev keccak256("af-eth.sfrx-eth-strategy.storage")
-    uint256 internal constant BASE_SLOT = 0x32dc96791416fa9ff024fb4392a7e2130e320ad41ea55b8e4884f2b9235ba9ba;
-
     error UnexpectedExhangeError();
 
     function init() internal {
@@ -85,12 +76,5 @@ library SfrxEthStrategy {
 
     function _unsafeSellFrxEth(uint256 frxEthAmount) internal returns (uint256 ethOut) {
         ethOut = FRX_ETH_POOL.exchange(FRX_ETH_COIN_INDEX, ETH_COIN_INDEX, frxEthAmount, 0);
-    }
-
-    function store() internal pure returns (Storage storage s) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            s.slot := BASE_SLOT
-        }
     }
 }
