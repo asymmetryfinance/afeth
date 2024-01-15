@@ -10,6 +10,7 @@ interface IVotiumStrategy {
     error ExchangeOutputBelowMin();
     error StaleAction();
     error WithdrawalStillLocked();
+    error UnexpectedLockedCvxError();
 
     function emergencyShutdown() external;
 

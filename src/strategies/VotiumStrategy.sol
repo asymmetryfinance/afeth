@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {Ownable} from "solady/src/auth/Ownable.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {TrackedAllowances, Allowance} from "../utils/TrackedAllowances.sol";
 import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
@@ -31,6 +31,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     bytes32 internal constant VOTE_DELEGATION_ID = 0x6376782e65746800000000000000000000000000000000000000000000000000;
     address internal constant VOTE_PROXY = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
 
+    bytes32 internal constant LCVX_NO_EXP_LOCKS_ERROR_HASH = keccak256("no exp locks");
+
     /// @dev How the minimum out threshold is set relative to
     uint256 internal constant MIN_OUT_SHARE = 0.97e18;
 
@@ -40,7 +42,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     }
 
     address public rewarder;
-    address public manager;
+
+    address public immutable manager;
 
     uint128 public cumulativeCvxUnlockObligations;
     uint128 public cumulativeCvxUnlocked;
@@ -64,35 +67,36 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(address afEth) {
         _disableInitializers();
+        manager = afEth;
     }
 
     /**
      * @notice - Function to initialize values for the contracts
-     * @dev - This replaces the constructor for upgradeable contracts
-     * @param _owner Address of the owner of the contract (asym multisig)
-     * @param _rewarder Address of the rewarder contract (reward oracle)
-     * @param _manager Address of the manager contract (afEth)
+     * @dev - This replaces-  the constructor for upgradeable contracts
+     * @param initialOwner Address of the owner of the contract (asym multisig)
+     * @param initialRewarder Address of the rewarder contract (reward oracle)
      */
-    function initialize(address _owner, address _rewarder, address _manager) external initializer {
+    function initialize(address initialOwner, address initialRewarder) external initializer {
         ISnapshotDelegationRegistry(SNAPSHOT_DELEGATE_REGISTRY).setDelegate(VOTE_DELEGATION_ID, VOTE_PROXY);
-        rewarder = _rewarder;
-        manager = _manager;
-        _initializeOwner(_owner);
+        rewarder = initialRewarder;
+        _initializeOwner(initialOwner);
 
         // Approve once to save gas later by avoiding having to re-approve every time.
         _grantAndTrackInfiniteAllowance(Allowance({spender: address(LOCKED_CVX), token: CVX}));
         _grantAndTrackInfiniteAllowance(Allowance({spender: address(CVX_ETH_POOL), token: CVX}));
+
+        emit RewarderSet(initialRewarder);
     }
 
     /**
      * @notice - Function to set the address of the rewarder account that periodically claims rewards
-     * @param _rewarder - Address of the rewarder account
+     * @param newRewarder Address of the rewarder account
      */
-    function setRewarder(address _rewarder) external onlyOwner {
-        rewarder = _rewarder;
-        emit RewarderSet(_rewarder);
+    function setRewarder(address newRewarder) external onlyOwner {
+        rewarder = newRewarder;
+        emit RewarderSet(newRewarder);
     }
 
     /**
@@ -100,7 +104,6 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      */
     function emergencyShutdown() external {
         if (!(msg.sender == owner() || msg.sender == manager)) revert Unauthorized();
-        manager = address(0);
         _emergencyRevokeAllAllowances();
         emit EmergencyShutdown();
     }
@@ -315,7 +318,10 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     }
 
     function _unlockAvailable() internal returns (uint256 totalUnlocked) {
-        LOCKED_CVX.processExpiredLocks({relock: false});
+        try LOCKED_CVX.processExpiredLocks({relock: false}) {}
+        catch Error(string memory err) {
+            if (keccak256(bytes(err)) != LCVX_NO_EXP_LOCKS_ERROR_HASH) revert UnexpectedLockedCvxError();
+        }
         return CVX.balanceOf(address(this));
     }
 

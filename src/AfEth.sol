@@ -9,11 +9,9 @@ import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {SafeCastLib} from "solady/src/utils/SafeCastLib.sol";
 import {IVotiumStrategy} from "./interfaces/afeth/IVotiumStrategy.sol";
 import {SfrxEthStrategy} from "./strategies/SfrxEthStrategy.sol";
-import {ERC1967, ERC1967_IMPL_SLOT} from "./utils/ERC1967.sol";
-import {HotData} from "./utils/HotDataLib.sol";
 
 /// @dev AfEth is the strategy manager for the sfrxETH and votium strategies
-contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
+contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
     using SafeCastLib for uint256;
@@ -27,6 +25,10 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
     uint16 public protocolFeeBps;
     uint16 public sfrxStrategyShareBps;
 
+    uint128 internal lastLockedRewards;
+    uint32 internal lastUpdatedLocked;
+    bool public paused;
+
     /// @dev Maximum amount that can be staked in a single quick stake. Can be bypassed via multiple
     /// quick stakes, mainly to protect owner from large stakes that would gain on slippage.
     uint128 public maxSingleQuickStake;
@@ -34,11 +36,6 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
     /// @dev Maximum amount that can be unstaked in a single quick unstake. Similar
     uint128 public maxSingleQuickUnstake;
     uint16 public quickUnstakeFeeBps;
-
-    struct ERC1967Slot {
-        address implementation;
-        HotData hotData;
-    }
 
     receive() external payable {}
 
@@ -50,27 +47,22 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
     }
 
     /**
-     * @notice - Initialize values for the contracts
-     * @dev - This replaces the constructor for upgradeable contracts
+     * @notice Initialize values for the contracts
+     * @dev This replaces the constructor for upgradeable contracts
      */
-    function initialize() external initializer {
+    function initialize(address initialOwner) external initializer {
         __ERC20_init("Asymmetry Finance AfEth", "afETH");
-        _initializeOwner(msg.sender);
+        _initializeOwner(initialOwner);
+
+        SfrxEthStrategy.init();
 
         // Configure default ratio to of sfrxETH to locked CVX to 70/30.
         sfrxStrategyShareBps = 0.7e4;
     }
 
     modifier whileNotPaused() {
-        if (paused()) revert Paused();
+        if (paused) revert Paused();
         _;
-    }
-
-    /**
-     * @dev Upgrades the underlying proxy to a new implementation according to the ERC1967 standard.
-     */
-    function upgradeTo(address newImplementation, bytes memory reinitializationData) external onlyOwner {
-        _upgradeTo(newImplementation, reinitializationData);
     }
 
     /**
@@ -104,8 +96,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
     }
 
     function emergencyShutdown() external onlyOwner {
-        ERC1967Slot storage slot = _erc1967Slot();
-        slot.hotData = slot.hotData.setPaused(true);
+        paused = true;
         VOTIUM.emergencyShutdown();
         emit EmergencyShutdown();
     }
@@ -113,28 +104,33 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
     /**
      * @notice Deposits into each strategy
      * @dev This is the entry into the protocol
-     * @param minOut Minimum amount of afEth to mint
+     * @param minOut Minimum afETH to receive (1:1 to measured value of output if first mint).
      * @param deadline Sets a deadline for the deposit
      * @return amount afETH shares minted.
      */
     function deposit(uint256 minOut, uint256 deadline) external payable whileNotPaused returns (uint256 amount) {
         if (block.timestamp > deadline) revert StaleAction();
 
+        uint256 sfrxDepositValue = mulBps(msg.value, sfrxStrategyShareBps);
+        uint256 mintedSfrxEth = SfrxEthStrategy.deposit(sfrxDepositValue);
+
+        uint256 votiumDepositValue = msg.value - sfrxDepositValue;
+        uint256 mintedCvx = VOTIUM.deposit{value: votiumDepositValue}();
+
         // Assumes that the price sources doesn't change atomically based on on-chain conditions
         // e.g. a chainlink price oracle.
         (uint256 sfrxStrategyValue, uint256 ethSfrxPrice) = SfrxEthStrategy.totalEthValue();
         (uint256 votiumValue, uint256 cvxEthPrice) = VOTIUM.totalEthValue();
-
-        uint256 mintedSfrxEth = SfrxEthStrategy.deposit(sfrxStrategyValue);
-        uint256 mintedCvx = VOTIUM.deposit{value: votiumValue}();
-
         (, uint256 unlockedRewards) = _unlockedRewards();
         uint256 totalValue = sfrxStrategyValue + votiumValue + unlockedRewards;
+
         // Calculate the user's deposit value, makes system slippage agnostic (depositor responsible
         // for slippage based on their set `minOut`).
         uint256 depositValue = mintedSfrxEth.mulWad(ethSfrxPrice) + mintedCvx.mulWad(cvxEthPrice);
 
-        amount = depositValue * totalSupply() / totalValue;
+        uint256 supply = totalSupply();
+
+        amount = supply == 0 ? depositValue : depositValue * supply / totalValue;
 
         if (amount < minOut) revert BelowMinOut();
         _mint(msg.sender, amount);
@@ -156,7 +152,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
         uint256 withdrawShare = amount.divWad(totalSupply());
         _burn(msg.sender, amount);
 
-        uint sfrxEthOut = SfrxEthStrategy.withdraw(withdrawShare);
+        uint256 sfrxEthOut = SfrxEthStrategy.withdraw(withdrawShare);
         uint256 totalEthOut;
         (locked, totalEthOut, cumulativeUnlockThreshold) = VOTIUM.requestWithdraw(withdrawShare, msg.sender);
         totalEthOut += sfrxEthOut;
@@ -292,18 +288,14 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
         uint256 totalSupply_ = totalSupply();
         if (totalSupply_ == 0) return 1e18;
 
-        return _totalEthValue().divWad(totalSupply_);
-    }
-
-    function paused() public view returns (bool) {
-        return _erc1967Slot().hotData.paused();
+        return totalEthValue().divWad(totalSupply_);
     }
 
     function ethOwedToOwner() public view returns (uint256) {
-        return address(this).balance - _erc1967Slot().hotData.getLastLockedRewards();
+        return address(this).balance - uint256(lastLockedRewards);
     }
 
-    function _totalEthValue() internal view returns (uint256) {
+    function totalEthValue() public view returns (uint256) {
         (uint256 sfrxStrategyValue,) = SfrxEthStrategy.totalEthValue();
         (uint256 votiumValue,) = VOTIUM.totalEthValue();
         (, uint256 unlockedRewards) = _unlockedRewards();
@@ -311,30 +303,22 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable, ERC1967 {
     }
 
     function _unlockedRewards() internal view returns (uint256 lastLocked, uint256 unlocked) {
-        HotData data = _erc1967Slot().hotData;
-        uint256 timeElapsed = block.timestamp - data.getLastUpdated();
+        // Purposefully truncate time delta so that the time calculations will continue working
+        // beyond 2106 years (end of 32-bit unix time) as long as you update the contract once every
+        // ~136 years. (Not a requirement but nice to have).
+        uint256 timeElapsed = uint32(block.timestamp - uint256(lastUpdatedLocked));
 
-        lastLocked = data.getLastLockedRewards();
+        lastLocked = lastLockedRewards;
         if (timeElapsed >= UNLOCK_REWARDS_OVER) unlocked = lastLocked;
         else unlocked = lastLocked * timeElapsed / UNLOCK_REWARDS_OVER;
     }
 
     function _lockRewards(uint256 newLockedRewards) internal {
-        ERC1967Slot storage slot = _erc1967Slot();
-        /// forgefmt: disable-next-item
-        slot.hotData = slot.hotData
-            .setLastLockedRewards(newLockedRewards)
-            .setLastUpdated(block.timestamp);
+        lastLockedRewards = newLockedRewards.toUint128();
+        lastUpdatedLocked = uint32(block.timestamp);
     }
 
     function mulBps(uint256 value, uint256 bps) internal pure returns (uint256) {
         return value * bps / ONE_BPS;
-    }
-
-    function _erc1967Slot() internal pure returns (ERC1967Slot storage slot) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            slot.slot := ERC1967_IMPL_SLOT
-        }
     }
 }
