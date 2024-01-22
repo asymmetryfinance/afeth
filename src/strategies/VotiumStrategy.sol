@@ -107,7 +107,9 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      */
     function emergencyShutdown() external {
         if (!(msg.sender == owner() || msg.sender == manager)) revert Unauthorized();
+        rewarder = address(0);
         _emergencyRevokeAllAllowances();
+        emit RewarderSet(address(0));
         emit EmergencyShutdown();
     }
 

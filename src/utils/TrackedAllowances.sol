@@ -34,7 +34,7 @@ abstract contract TrackedAllowances {
             allowance.token.safeApproveWithRetry(allowance.spender, 0);
         }
         // Could remove keys now that allowance is revoked but want to reduce gas to be spend in
-        // emergencies.
+        // emergencies beyond what is directly needed for ease-of-use.
     }
 
     function _revokeSingleAllowance(Allowance memory allowance) internal {
