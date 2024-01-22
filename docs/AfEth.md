@@ -83,3 +83,9 @@ The votium strategy uses the CVX-ETH pool to swap in and out and uses a chainlin
 price and value held CVX. Locked CVX is valued at face value with no discount for the lock-up period.
 
 
+## Reward Locking
+
+Similar to Yearn's vaults new ETH rewards are locked up and only gradually accrue to the total value
+of the vault over time. This is to prevent large discrete jumps in the ETH/afETH price such that
+a searcher or other MEV extractor could sandwich reward distributions to capture most of their
+value.
