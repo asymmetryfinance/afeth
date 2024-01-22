@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
+import {HashLib} from "../utils/HashLib.sol";
 import {FRX_ETH_POOL, ETH_COIN_INDEX, FRX_ETH_COIN_INDEX} from "../interfaces/frax/IFrxEthPool.sol";
 import {FRAX_ETH_MINTER} from "../interfaces/frax/IFraxEthMinter.sol";
 import {SFRX_ETH} from "../interfaces/frax/ISfrxETH.sol";
@@ -16,8 +17,11 @@ import {FRX_ETH} from "../interfaces/frax/frxETH.sol";
 library SfrxEthStrategy {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
+    using HashLib for string;
 
     error UnexpectedExhangeError();
+
+    bytes32 internal constant FEWER_COINS_ERROR_HASH = keccak256("Exchange resulted in fewer coins than expected");
 
     function init() internal {
         FRX_ETH.safeApproveWithRetry(address(SFRX_ETH), type(uint256).max);
@@ -44,11 +48,8 @@ library SfrxEthStrategy {
         ) {
             value = betterValue;
         } catch Error(string memory reason) {
-            if (
-                keccak256(abi.encodePacked(reason))
-                    != keccak256(abi.encodePacked("Exchange resulted in fewer coins than expected"))
-            ) revert UnexpectedExhangeError();
-
+            if (reason.hash() != FEWER_COINS_ERROR_HASH) revert UnexpectedExhangeError();
+            // Didn't get enough from swap, exhange directly for frxETH.
             address(FRAX_ETH_MINTER).safeTransferETH(value);
         }
         shares = SFRX_ETH.deposit(value, address(this));

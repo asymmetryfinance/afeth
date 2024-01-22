@@ -8,6 +8,7 @@ import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {CvxEthOracleLib} from "../utils/CvxEthOracleLib.sol";
 import {SafeCastLib} from "solady/src/utils/SafeCastLib.sol";
+import {HashLib} from "../utils/HashLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ILockedCvx, LOCKED_CVX} from "../interfaces/curve-convex/ILockedCvx.sol";
 import {IVotiumStrategy} from "../interfaces/afeth/IVotiumStrategy.sol";
@@ -24,8 +25,8 @@ import {IAfEth} from "../interfaces/afeth/IAfEth.sol";
 contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initializable {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
-
     using SafeCastLib for uint256;
+    using HashLib for string;
 
     address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     bytes32 internal constant VOTE_DELEGATION_ID = 0x6376782e65746800000000000000000000000000000000000000000000000000;
@@ -45,7 +46,9 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
 
     address public immutable manager;
 
+    /// @dev Tracks the total amount of CVX unlock obligations the contract has ever had.
     uint128 public cumulativeCvxUnlockObligations;
+    /// @dev Tracks the total amount of CVX that has ever been unlocked.
     uint128 public cumulativeCvxUnlocked;
 
     mapping(address => mapping(uint256 => uint256)) public withdrawableAfterUnlocked;
@@ -126,7 +129,17 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     function deposit(uint256 amount, uint256 cvxMinOut) public payable onlyManager returns (uint256 cvxAmount) {
         cvxAmount = unsafeBuyCvx(amount);
         if (cvxAmount < cvxMinOut) revert ExchangeOutputBelowMin();
-        LOCKED_CVX.lock(address(this), cvxAmount, 0);
+        (,, uint256 totalUnlockObligations) = _getObligations();
+        if (cvxAmount > totalUnlockObligations) {
+            _processExpiredLocks(true);
+            unchecked {
+                uint256 netExtraLock = cvxAmount - totalUnlockObligations;
+                if (netExtraLock > 0) _lock(netExtraLock);
+            }
+        } else {
+            uint256 unlocked = _unlockAvailable();
+            _lock(unlocked - totalUnlockObligations);
+        }
     }
 
     /**
@@ -162,9 +175,11 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         } else {
             locked = true;
             cumulativeUnlockThreshold = uint128(cumCvxUnlockObligations) + cvxAmount.toUint128();
+            // Don't have to worry about withdrawable being overwritten as
+            // `cumulativeCvxUnlockObligations` is stritcly increasing. Only edge case is repeated
+            // withdrawals with a `cvxAmount` of 0 in which case you'd be overwriting 0 with 0.
             withdrawableAfterUnlocked[to][cumulativeUnlockThreshold] = cvxAmount;
             cumulativeCvxUnlockObligations = uint128(cumulativeUnlockThreshold);
-            // TODO: Event
         }
     }
 
@@ -197,17 +212,18 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         delete withdrawableAfterUnlocked[msg.sender][cumulativeUnlockThreshold];
         cumulativeCvxUnlocked = uint128(cumCvxUnlocked) + cvxAmount.toUint128();
 
+        if (unlockedCvx > totalUnlockObligations) {
+            unchecked {
+                _lock(unlockedCvx - totalUnlockObligations);
+            }
+        }
+
         if (minOut == 0) {
             CVX.safeTransfer(msg.sender, cvxAmount);
         } else {
             ethReceived = unsafeSellCvx(cvxAmount);
             if (ethReceived < minOut) revert ExchangeOutputBelowMin();
 
-            if (unlockedCvx > totalUnlockObligations) {
-                unchecked {
-                    _lock(unlockedCvx - totalUnlockObligations);
-                }
-            }
             if (ethReceived > 0) msg.sender.safeTransferETH(ethReceived);
         }
     }
@@ -242,16 +258,16 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      * @notice Function for rewarder to sell all claimed token rewards and buy & lock more cvx
      * @dev Causes price to go up
      * @param swaps Array of Swap structs for 0x swaps.
-     * @param ethPerCvxMin Minimum accepted ETH/CVX price when converting ETH to CVX.
-     * @param ethPerSfrxMin Minimum accepted ETH/sfrxETH price when converting ETH to sfrxETH.
-     * @param ethPerSfrxMax Maximum accepted ETH/sfrxETH price when converting sfrxETH to ETH.
+     * @param cvxPerEthMin Minimum accepted ETH/CVX price when converting ETH to CVX.
+     * @param sfrxPerEthMin Minimum accepted ETH/sfrxETH price when converting ETH to sfrxETH.
+     * @param ethPerSfrxMin Maximum accepted ETH/sfrxETH price when converting sfrxETH to ETH.
      * @param deadline Minimum amount of cvx to mint from rewards
      */
     function swapRewards(
         Swap[] calldata swaps,
-        uint256 ethPerCvxMin,
+        uint256 cvxPerEthMin,
+        uint256 sfrxPerEthMin,
         uint256 ethPerSfrxMin,
-        uint256 ethPerSfrxMax,
         uint256 deadline
     ) external onlyRewarder {
         if (block.timestamp > deadline) revert StaleAction();
@@ -260,13 +276,16 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         for (uint256 i = 0; i < totalSwaps; i++) {
             Swap calldata swap = swaps[i];
             (bool success,) = swap.swapTarget.call(swap.swapCallData);
-            if (!success) {
-                emit FailedToSell(i);
-            }
+            if (!success) emit FailedToSell(i);
         }
 
         IAfEth(manager).depositRewardsAndRebalance{value: address(this).balance}(
-            ethPerCvxMin, ethPerSfrxMin, ethPerSfrxMax, block.timestamp
+            IAfEth.RebalanceParams({
+                cvxPerEthMin: cvxPerEthMin,
+                sfrxPerEthMin: sfrxPerEthMin,
+                ethPerSfrxMin: ethPerSfrxMin,
+                deadline: block.timestamp
+            })
         );
     }
 
@@ -318,14 +337,20 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     }
 
     function _unlockAvailable() internal returns (uint256 totalUnlocked) {
-        try LOCKED_CVX.processExpiredLocks({relock: false}) {}
-        catch Error(string memory err) {
-            if (keccak256(bytes(err)) != LCVX_NO_EXP_LOCKS_ERROR_HASH) revert UnexpectedLockedCvxError();
-        }
-        return CVX.balanceOf(address(this));
+        _processExpiredLocks(false);
+        totalUnlocked = CVX.balanceOf(address(this));
     }
 
     function _lock(uint256 amount) internal {
-        LOCKED_CVX.lock(address(this), amount, 0);
+        if (amount > 0) LOCKED_CVX.lock(address(this), amount, 0);
+    }
+
+    function _processExpiredLocks(bool relock) internal {
+        if (LOCKED_CVX.lockedBalanceOf(address(this)) > 0) {
+            try LOCKED_CVX.processExpiredLocks({relock: relock}) {}
+            catch Error(string memory err) {
+                if (err.hash() != LCVX_NO_EXP_LOCKS_ERROR_HASH) revert UnexpectedLockedCvxError();
+            }
+        }
     }
 }

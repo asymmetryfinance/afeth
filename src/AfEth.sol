@@ -31,11 +31,11 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
 
     /// @dev Maximum amount that can be staked in a single quick stake. Can be bypassed via multiple
     /// quick stakes, mainly to protect owner from large stakes that would gain on slippage.
-    uint128 public maxSingleQuickStake;
-    uint16 public quickStakeFeeBps;
+    uint128 public maxSingleQuickDeposit;
+    uint16 public quickDepositFeeBps;
     /// @dev Maximum amount that can be unstaked in a single quick unstake. Similar
-    uint128 public maxSingleQuickUnstake;
-    uint16 public quickUnstakeFeeBps;
+    uint128 public maxSingleQuickWithdraw;
+    uint16 public quickWithdrawFeeBps;
 
     receive() external payable {}
 
@@ -50,14 +50,21 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
      * @notice Initialize values for the contracts
      * @dev This replaces the constructor for upgradeable contracts
      */
-    function initialize(address initialOwner) external initializer {
+    function initialize(address initialOwner, address initialRewarder) external initializer {
         __ERC20_init("Asymmetry Finance AfEth", "afETH");
         _initializeOwner(initialOwner);
+        rewarder = initialRewarder;
 
+        // SfrxEthStrategy is library, needs to be initialized as part of afETH.
         SfrxEthStrategy.init();
 
         // Configure default ratio to of sfrxETH to locked CVX to 70/30.
         sfrxStrategyShareBps = 0.7e4;
+    }
+
+    modifier latestAt(uint256 deadline) {
+        if (block.timestamp > deadline) revert StaleAction();
+        _;
     }
 
     modifier whileNotPaused() {
@@ -108,9 +115,13 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
      * @param deadline Sets a deadline for the deposit
      * @return amount afETH shares minted.
      */
-    function deposit(uint256 minOut, uint256 deadline) external payable whileNotPaused returns (uint256 amount) {
-        if (block.timestamp > deadline) revert StaleAction();
-
+    function deposit(uint256 minOut, uint256 deadline)
+        external
+        payable
+        whileNotPaused
+        latestAt(deadline)
+        returns (uint256 amount)
+    {
         uint256 sfrxDepositValue = mulBps(msg.value, sfrxStrategyShareBps);
         uint256 mintedSfrxEth = SfrxEthStrategy.deposit(sfrxDepositValue);
 
@@ -145,10 +156,9 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     function requestWithdraw(uint256 amount, uint256 minOutOnlySfrx, uint256 minOutAll, uint256 deadline)
         external
         whileNotPaused
+        latestAt(deadline)
         returns (bool locked, uint256 cumulativeUnlockThreshold)
     {
-        if (block.timestamp > deadline) revert StaleAction();
-
         uint256 withdrawShare = amount.divWad(totalSupply());
         _burn(msg.sender, amount);
 
@@ -168,68 +178,60 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     /**
      * @notice Allows rewarder to deposit external rewards and process unlocked rewards. Rebalances
      * by routing value to underweight strategy.
-     * @param ethPerCvxMin Minimum accepted ETH/CVX price when converting ETH to CVX.
-     * @param ethPerSfrxMin Minimum accepted ETH/sfrxETH price when converting ETH to sfrxETH.
-     * @param ethPerSfrxMax Maximum accepted ETH/sfrxETH price when converting sfrxETH to ETH.
-     * @param deadline Last timestamp at which this call will be valid.
      */
-    function depositRewardsAndRebalance(
-        uint256 ethPerCvxMin,
-        uint256 ethPerSfrxMin,
-        uint256 ethPerSfrxMax,
-        uint256 deadline
-    ) public payable whileNotPaused {
-        if (msg.sender != address(VOTIUM) && msg.sender != rewarder) {
+    function depositRewardsAndRebalance(IAfEth.RebalanceParams calldata params)
+        public
+        payable
+        whileNotPaused
+        latestAt(params.deadline)
+    {
+        if (msg.sender != address(VOTIUM) && msg.sender != rewarder && msg.sender != owner()) {
             revert NotAuthorizedToRebalance();
         }
-        if (block.timestamp > deadline) revert StaleAction();
 
         (uint256 sfrxStrategyValue,) = SfrxEthStrategy.totalEthValue();
         (uint256 votiumValue,) = VOTIUM.totalEthValue();
 
-        uint256 unlockedRewards;
+        (uint256 lastLocked, uint256 unlockedRewards) = _unlockedRewards();
+        // Fee accrues implicitly via the accounting (any ETH balance not locked is considered to be a "fee").
+        uint256 fee = mulBps(msg.value, protocolFeeBps);
 
-        {
-            uint256 lastLocked;
-            (lastLocked, unlockedRewards) = _unlockedRewards();
-            // Fee accrues implicitly via the accounting (any ETH balance not locked is considered to be a "fee").
-            uint256 fee = mulBps(msg.value, protocolFeeBps);
-
-            _lockRewards(lastLocked - unlockedRewards + msg.value - fee);
-        }
+        _lockRewards(lastLocked - unlockedRewards + msg.value - fee);
 
         uint256 totalValue = sfrxStrategyValue + votiumValue + unlockedRewards;
 
         uint256 targetSfrxValue = mulBps(totalValue, sfrxStrategyShareBps);
 
-        uint256 sfrxDepositAmount = 0;
-        uint256 votiumDepositAmount = 0;
+        uint256 sfrxDepositAmountEth = 0;
+        uint256 votiumDepositAmountEth = 0;
         if (sfrxStrategyValue > targetSfrxValue) {
             uint256 valueDelta;
             unchecked {
                 valueDelta = sfrxStrategyValue - targetSfrxValue;
             }
             (uint256 ethReceived, uint256 sfrxEthRedeemed) = SfrxEthStrategy.withdrawEth(valueDelta);
-            if (ethReceived.divWad(sfrxEthRedeemed) > ethPerSfrxMax) revert AboveMaxOut();
-            votiumDepositAmount = unlockedRewards + ethReceived;
+            if (ethReceived.divWad(sfrxEthRedeemed) < params.ethPerSfrxMin) revert BelowMinOut();
+            votiumDepositAmountEth = unlockedRewards + ethReceived;
         } else {
             uint256 targetVotiumValue = totalValue - targetSfrxValue;
             if (targetVotiumValue > votiumValue) {
                 unchecked {
-                    sfrxDepositAmount = targetSfrxValue - sfrxStrategyValue;
-                    votiumDepositAmount = targetVotiumValue - votiumValue;
+                    sfrxDepositAmountEth = targetSfrxValue - sfrxStrategyValue;
+                    votiumDepositAmountEth = targetVotiumValue - votiumValue;
                 }
             } else {
-                sfrxDepositAmount = unlockedRewards;
+                sfrxDepositAmountEth = unlockedRewards;
             }
         }
 
-        if (sfrxDepositAmount > 0) {
-            uint256 sfrxEthOut = SfrxEthStrategy.deposit(sfrxDepositAmount);
-            if (sfrxDepositAmount.divWad(sfrxEthOut) < ethPerSfrxMin) revert BelowMinOut();
+        if (sfrxDepositAmountEth > 0) {
+            uint256 sfrxOut = SfrxEthStrategy.deposit(sfrxDepositAmountEth);
+            if (sfrxDepositAmountEth.divWad(sfrxOut) < params.sfrxPerEthMin) revert BelowMinOut();
         }
-        if (votiumDepositAmount > 0) {
-            VOTIUM.deposit{value: votiumDepositAmount}(votiumDepositAmount, votiumDepositAmount.divWad(ethPerCvxMin));
+        if (votiumDepositAmountEth > 0) {
+            VOTIUM.deposit{value: votiumDepositAmountEth}(
+                votiumDepositAmountEth, votiumDepositAmountEth.mulWad(params.cvxPerEthMin)
+            );
         }
     }
 
@@ -237,7 +239,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         _transfer(msg.sender, address(this), afEthAmount == 0 ? balanceOf(msg.sender) : afEthAmount);
     }
 
-    function withdrawFromQuickActions(uint256 afEthAmount, uint256 ethAmount) external onlyOwner {
+    function withdrawOwnerFunds(uint256 afEthAmount, uint256 ethAmount) external onlyOwner {
         _transfer(address(this), msg.sender, afEthAmount == 0 ? balanceOf(address(this)) : afEthAmount);
         uint256 maxEthAmount = ethOwedToOwner();
         if (ethAmount == 0) {
@@ -249,34 +251,55 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     }
 
     function configureQuickActions(
-        uint16 stakeFeeBps,
-        uint16 unstakeFeeBps,
-        uint128 maxQuickStake,
-        uint128 maxQuickUnstake
+        uint16 depositFeeBps,
+        uint16 withdrawFeeBps,
+        uint128 maxQuickDeposit,
+        uint128 maxQuickWithdraw
     ) external onlyOwner {
-        if (stakeFeeBps >= ONE_BPS) revert InvalidFee();
-        if (unstakeFeeBps >= ONE_BPS) revert InvalidFee();
-        quickStakeFeeBps = stakeFeeBps;
-        maxSingleQuickStake = maxQuickStake;
-        quickUnstakeFeeBps = unstakeFeeBps;
-        maxSingleQuickUnstake = maxQuickUnstake;
-        emit QuickActionsConfigured(stakeFeeBps, unstakeFeeBps, maxQuickStake, maxQuickUnstake);
+        if (depositFeeBps >= ONE_BPS) revert InvalidFee();
+        if (withdrawFeeBps >= ONE_BPS) revert InvalidFee();
+        quickDepositFeeBps = depositFeeBps;
+        maxSingleQuickDeposit = maxQuickDeposit;
+        quickWithdrawFeeBps = withdrawFeeBps;
+        maxSingleQuickWithdraw = maxQuickWithdraw;
+        emit QuickActionsConfigured(depositFeeBps, withdrawFeeBps, maxQuickDeposit, maxQuickWithdraw);
     }
 
-    function quickStake(uint256 minOut) external payable whileNotPaused {
-        if (msg.value > maxSingleQuickStake) revert AboveActionMax();
-        uint256 afEthOut = mulBps(minOut.divWad(price()), quickStakeFeeBps);
+    function quickDeposit(uint256 minOut, uint256 deadline) public payable override returns (uint256 afEthOut) {
+        afEthOut = quickDeposit(msg.sender, minOut, deadline);
+    }
+
+    function quickDeposit(address to, uint256 minOut, uint256 deadline)
+        public
+        payable
+        override
+        whileNotPaused
+        latestAt(deadline)
+        returns (uint256 afEthOut)
+    {
+        if (msg.value > maxSingleQuickDeposit) revert AboveActionMax();
+        afEthOut = mulBps(minOut.divWad(price()), quickDepositFeeBps);
         if (afEthOut < minOut) revert BelowMinOut();
-        _transfer(address(this), msg.sender, afEthOut);
+        _transfer(address(this), to, afEthOut);
     }
 
-    function quickUnstake(uint256 amount, uint256 minOut) external whileNotPaused {
+    function quickWithdraw(uint256 amount, uint256 minOut, uint256 deadline) public override returns (uint256 ethOut) {
+        ethOut = quickWithdraw(msg.sender, amount, minOut, deadline);
+    }
+
+    function quickWithdraw(address to, uint256 amount, uint256 minOut, uint256 deadline)
+        public
+        override
+        whileNotPaused
+        latestAt(deadline)
+        returns (uint256 ethOut)
+    {
+        if (amount > maxSingleQuickWithdraw) revert AboveActionMax();
         _transfer(msg.sender, address(this), amount);
-        if (amount > maxSingleQuickUnstake) revert AboveActionMax();
-        uint256 ethOut = mulBps(minOut.mulWad(price()), quickUnstakeFeeBps);
+        ethOut = mulBps(minOut.mulWad(price()), quickWithdrawFeeBps);
         if (ethOut < minOut) revert BelowMinOut();
         if (ethOut > ethOwedToOwner()) revert WithdrawingLockedRewards();
-        msg.sender.safeTransferETH(amount);
+        to.safeTransferETH(amount);
     }
 
     /**
@@ -293,6 +316,26 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
 
     function ethOwedToOwner() public view returns (uint256) {
         return address(this).balance - uint256(lastLockedRewards);
+    }
+
+    function reportValue()
+        external
+        view
+        returns (
+            uint256 activeSfrxRatio,
+            uint256 sfrxStrategyValue,
+            uint256 votiumValue,
+            uint256 unlockedInactiveRewards,
+            uint256 lockedRewards
+        )
+    {
+        (sfrxStrategyValue,) = SfrxEthStrategy.totalEthValue();
+        (votiumValue,) = VOTIUM.totalEthValue();
+        uint256 totalActiveValue = sfrxStrategyValue + votiumValue;
+        activeSfrxRatio = sfrxStrategyValue.divWad(totalActiveValue);
+        uint256 lastLocked;
+        (lastLocked, unlockedInactiveRewards) = _unlockedRewards();
+        lockedRewards = lastLocked - unlockedInactiveRewards;
     }
 
     function totalEthValue() public view returns (uint256) {

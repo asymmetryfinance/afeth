@@ -2,31 +2,29 @@
 pragma solidity 0.8.19;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IAfEth} from "./interfaces/afeth/IAfEth.sol";
 import {ISafEth} from "./interfaces/safeth/ISafEth.sol";
 import {WETH} from "./interfaces/IWETH.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEthRelayer is Initializable {
-    using SafeERC20 for IERC20;
+    using SafeTransferLib for address;
 
-    address public constant SAF_ETH_ADDRESS = 0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5;
-    address public constant AF_ETH_ADDRESS = 0x5F10B16F0959AaC2E33bEdc9b0A4229Bb9a83590;
+    ISafEth public constant SAF_ETH = ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5);
+    IAfEth public immutable AF_ETH;
 
     address internal constant ZERO_X_EXCHANGE = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
     address internal constant ZERO_X_ERC20_PROXY = 0x95E6F48254609A6ee006F7D493c8e5fB97094ceF;
 
-    event DepositSafEth(address indexed sellToken, uint256 sellAmount, uint256 safEthAmount, address indexed recipient);
-    event DepositAfEth(address indexed sellToken, uint256 sellAmount, uint256 afEthAmount, address indexed recipient);
-
     error NotWhitelisted();
+    error SwapFailed();
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(address afEth) {
         _disableInitializers();
+        AF_ETH = IAfEth(afEth);
     }
 
     // Payable fallback to allow this contract to receive protocol fee refunds.
@@ -34,63 +32,43 @@ contract AfEthRelayer is Initializable {
 
     /**
      * @notice - Initialize values for the contracts
-     *     @dev - This replaces the constructor for upgradeable contracts
+     * @dev - This replaces the constructor for upgradeable contracts
      */
     function initialize() external initializer {}
 
-    // Swaps ERC20->ERC20 tokens held by this contract using a 0x-API quote.
-    function fillQuote(
-        IERC20 sellToken,
-        uint256 amount,
-        address spender,
-        address payable swapTarget,
-        bytes calldata swapCallData
-    ) private {
-        if (!whitelisted(swapTarget) || !whitelisted(spender)) {
-            revert NotWhitelisted();
-        }
-        sellToken.transferFrom(msg.sender, address(this), amount);
-
-        _setTokenAllowance(sellToken, spender, amount);
-
-        (bool success,) = swapTarget.call(swapCallData);
-        require(success, "Swap Failed");
-    }
-
     /**
      * @notice - Deposits into the SafEth contract and relay to owner address
-     *     @param _minout - Minimum amount of SafEth to mint
-     *     @param _owner - Owner of the SafEth
+     * @param minOut - Minimum amount of SafEth to mint
+     * @param to - Owner of the SafEth
      */
     function depositSafEth(
-        uint256 _minout,
-        address _owner,
-        address _sellToken,
-        uint256 _amount,
-        address _allowanceTarget,
-        address payable _to,
-        bytes calldata _swapCallData
+        uint256 minOut,
+        address to,
+        address sellToken,
+        uint256 sellAmount,
+        address allowanceTarget,
+        address swapTarget,
+        bytes calldata swapData
     ) external {
         uint256 balanceBefore = WETH.balanceOf(address(this));
-        fillQuote(IERC20(_sellToken), _amount, _allowanceTarget, _to, _swapCallData);
+        fillQuote(sellToken, sellAmount, allowanceTarget, swapTarget, swapData);
         uint256 balanceAfter = WETH.balanceOf(address(this));
         uint256 amountToStake = balanceAfter - balanceBefore;
         WETH.withdraw(amountToStake);
 
-        uint256 amountToTransfer = ISafEth(SAF_ETH_ADDRESS).stake{value: amountToStake}(_minout);
-        IERC20(SAF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
-        emit DepositSafEth(_sellToken, _amount, amountToTransfer, _owner);
+        uint256 amountToTransfer = SAF_ETH.stake{value: amountToStake}(minOut);
+        address(SAF_ETH).safeTransfer(to, amountToTransfer);
     }
 
     /**
      * @notice - Deposits into the AfEth contract and relay to owner address
-     *     @param _minout - Minimum amount of AfEth to mint
-     *     @param _deadline - Time before transaction expires
-     *     @param _owner - Owner of the AfEth
+     * @param minOut - Minimum amount of AfEth to mint
+     * @param deadline - Time before transaction expires
+     * @param _owner - Owner of the AfEth
      */
     function depositAfEth(
-        uint256 _minout,
-        uint256 _deadline,
+        uint256 minOut,
+        uint256 deadline,
         address _owner,
         address _sellToken,
         uint256 _amount,
@@ -99,33 +77,37 @@ contract AfEthRelayer is Initializable {
         bytes calldata _swapCallData
     ) external {
         uint256 balanceBefore = WETH.balanceOf(address(this));
-        fillQuote(IERC20(_sellToken), _amount, _allowanceTarget, _to, _swapCallData);
+        fillQuote(_sellToken, _amount, _allowanceTarget, _to, _swapCallData);
         uint256 balanceAfter = WETH.balanceOf(address(this));
         uint256 amountToStake = balanceAfter - balanceBefore;
 
         WETH.withdraw(amountToStake);
 
-        uint256 amountToTransfer = IAfEth(AF_ETH_ADDRESS).deposit{value: amountToStake}(_minout, _deadline);
-        IERC20(AF_ETH_ADDRESS).transfer(_owner, amountToTransfer);
-        emit DepositAfEth(_sellToken, _amount, amountToTransfer, _owner);
+        uint256 amountToTransfer = AF_ETH.deposit{value: amountToStake}(minOut, deadline);
+        AF_ETH.transfer(_owner, amountToTransfer);
     }
 
     function whitelisted(address addr) public pure returns (bool) {
         return addr == ZERO_X_EXCHANGE || addr == ZERO_X_ERC20_PROXY;
     }
 
-    /**
-     * @notice - Supports tokens that need to reset approval to 0 before setting to desired amount
-     */
-    function _setTokenAllowance(IERC20 token, address spender, uint256 desiredAllowance) internal {
-        uint256 currentAllowance = token.allowance(address(this), spender);
-        if (currentAllowance != desiredAllowance) {
-            // Reset first to zero, if not zero already
-            if (currentAllowance > 0) {
-                token.safeApprove(spender, 0);
-            }
-            // set approval
-            token.safeApprove(spender, desiredAllowance);
+    /// @dev Swaps ERC20->ERC20 tokens held by this contract using a 0x-API quote.
+    function fillQuote(
+        address sellToken,
+        uint256 amount,
+        address spender,
+        address swapTarget,
+        bytes calldata swapCallData
+    ) private {
+        if (!whitelisted(swapTarget) || !whitelisted(spender)) {
+            revert NotWhitelisted();
         }
+        sellToken.safeTransferFrom(msg.sender, address(this), amount);
+        sellToken.safeApproveWithRetry(spender, amount);
+
+        // Arbitrary call ok because `swapTarget` needs to be one of the hardcoded whitelisted
+        // addresses.
+        (bool success,) = swapTarget.call(swapCallData);
+        if (!success) revert SwapFailed();
     }
 }

@@ -2,7 +2,6 @@
 pragma solidity 0.8.19;
 
 interface IVotiumStrategy {
-    event WithdrawRequested(uint256 amount, uint256 unlockableAt);
     event FailedToSell(uint256 failedSwapIndex);
     event RewarderSet(address indexed newRewarder);
     event EmergencyShutdown();

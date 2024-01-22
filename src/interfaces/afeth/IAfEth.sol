@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-interface IAfEth {
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+
+interface IAfEth is IERC20Upgradeable {
     error StrategyAlreadyAdded();
     error InvalidFee();
     error Paused();
     error WithdrawingLockedRewards();
     error BelowMinOut();
-    error AboveMaxOut();
+    error AboveMaxIn();
     error StaleAction();
     error NotAuthorizedToRebalance();
     error InvalidShare();
@@ -30,10 +32,39 @@ interface IAfEth {
 
     function deposit(uint256, uint256) external payable returns (uint256);
 
-    function depositRewardsAndRebalance(
-        uint256 ethPerCvxMin,
-        uint256 ethPerSfrxMin,
-        uint256 ethPerSfrxMax,
-        uint256 deadline
-    ) external payable;
+    /**
+     * @param cvxPerEthMin Minimum accepted CVX/ETH price when converting ETH to CVX.
+     * @param sfrxPerEthMin Minimum accepted sfrxETH/ETH price when converting ETH to sfrxETH.
+     * @param ethPerSfrxMin Minimum accepted ETH/sfrxETH price when converting sfrxETH to ETH.
+     * @param deadline Last timestamp at which this call will be valid.
+     */
+    struct RebalanceParams {
+        uint256 cvxPerEthMin;
+        uint256 sfrxPerEthMin;
+        uint256 ethPerSfrxMin;
+        uint256 deadline;
+    }
+
+    function depositRewardsAndRebalance(RebalanceParams calldata params) external payable;
+
+    function quickDeposit(uint256 minOut, uint256 deadline) external payable returns (uint256 afEthOut);
+
+    function quickDeposit(address to, uint256 minOut, uint256 deadline) external payable returns (uint256 afEthOut);
+
+    function quickWithdraw(uint256 amount, uint256 minOut, uint256 deadline) external returns (uint256 ethOut);
+
+    function quickWithdraw(address to, uint256 amount, uint256 minOut, uint256 deadline)
+        external
+        returns (uint256 ethOut);
+
+    function reportValue()
+        external
+        view
+        returns (
+            uint256 activeSfrxRatio,
+            uint256 sfrxStrategyValue,
+            uint256 votiumValue,
+            uint256 unlockedInactiveRewards,
+            uint256 lockedRewards
+        );
 }

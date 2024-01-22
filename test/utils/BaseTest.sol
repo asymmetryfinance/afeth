@@ -5,6 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Factory} from "solady/src/utils/ERC1967Factory.sol";
 import {VotiumStrategy} from "../../src/strategies/VotiumStrategy.sol";
 import {AfEth} from "../../src/AfEth.sol";
+import {MockOracle} from "../mocks/MockOracle.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /// @author philogy <https://github.com/philogy>
 abstract contract BaseTest is Test {
@@ -12,6 +14,7 @@ abstract contract BaseTest is Test {
     address internal immutable owner = makeAddr("OWNER");
     address internal immutable rewarder = makeAddr("REWARDER");
 
+    MockOracle internal immutable baseOracle = new MockOracle();
     ERC1967Factory internal immutable factory = new ERC1967Factory();
 
     VotiumStrategy private _votiumImplementation;
@@ -45,10 +48,21 @@ abstract contract BaseTest is Test {
         afEth = AfEth(
             payable(
                 factory.deployDeterministicAndCall(
-                    address(_afEthImplementation), owner, afEthSalt, abi.encodeCall(AfEth.initialize, (owner))
+                    address(_afEthImplementation), owner, afEthSalt, abi.encodeCall(AfEth.initialize, (owner, rewarder))
                 )
             )
         );
         vm.stopPrank();
+    }
+
+    function overwriteOracle(address oracle) internal returns (MockOracle overwritten) {
+        (, int256 lastPrice,,,) = AggregatorV3Interface(oracle).latestRoundData();
+        vm.etch(oracle, address(baseOracle).code);
+        overwritten = MockOracle(oracle);
+        overwritten.update(lastPrice);
+    }
+
+    function lockedRewards() internal view returns (uint256 locked) {
+        (,,,, locked) = afEth.reportValue();
     }
 }
