@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
 ILockedCvx constant LOCKED_CVX = ILockedCvx(0x72a19342e8F1838460eBFCCEf09F6585e32db86E);
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
 IClaimZap constant ZAP_CLAIM = IClaimZap(0x3f29cB4111CbdA8081642DA1f75B3c12DECf2516);
 
