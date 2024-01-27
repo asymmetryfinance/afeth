@@ -32,7 +32,32 @@ contract AfEthTest is BaseTest {
         vm.stopPrank();
 
         assertEq(afterBal - preBal, amountOut, "Did not reported afETH");
-        assertEq(afEth.totalEthValue(), amountOut);
+
+        assertApproxEqRel(
+            afEth.totalEthValue(), amountOut, 0.0001e18, "total value not equal to amount of shares (within 1 bps)"
+        );
+    }
+
+    function testMintedSharesOnDepositProportionalToValue() public {
+        address user1 = makeAddr("user_1");
+        uint256 amount1 = 2 ether;
+        startHoax(user1, amount1);
+        afEth.deposit{value: amount1}(0, block.timestamp);
+
+        address user2 = makeAddr("user_2");
+        uint256 amount2 = 1.829 ether;
+        startHoax(user2, amount2);
+        uint256 sharesOut = afEth.deposit{value: amount2}(0, block.timestamp);
+
+        uint256 totalShares = afEth.totalSupply();
+        uint256 totalValue = afEth.totalEthValue();
+
+        assertApproxEqRel(
+            sharesOut * 1e18 / totalShares,
+            amount2 * 1e18 / totalValue,
+            0.005e18,
+            "ownership % in shares not approx. equal % share in contributed value"
+        );
     }
 
     function testRevertsIfOutputBelowMin() public {

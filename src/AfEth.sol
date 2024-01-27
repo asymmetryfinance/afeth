@@ -111,39 +111,38 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     /**
      * @notice Deposits into each strategy
      * @dev This is the entry into the protocol
-     * @param minOut Minimum afETH to receive (1:1 to measured value of output if first mint).
+     * @param minDepositValue Minimum ETH value of deposit (in sfrxETH & CVX), defacto slippage.
      * @param deadline Sets a deadline for the deposit
      * @return amount afETH shares minted.
      */
-    function deposit(uint256 minOut, uint256 deadline)
+    function deposit(uint256 minDepositValue, uint256 deadline)
         external
         payable
         whileNotPaused
         latestAt(deadline)
         returns (uint256 amount)
     {
+        // Assumes that the price sources doesn't change atomically based on on-chain conditions
+        // e.g. a chainlink price oracle. Determine value *before* actual deposit to avoid
+        // miscalculating deposit shares.
+        (uint256 sfrxStrategyValue, uint256 ethSfrxPrice) = SfrxEthStrategy.totalEthValue();
+        (uint256 votiumValue, uint256 cvxEthPrice) = VOTIUM.totalEthValue();
+        (, uint256 unlockedRewards) = _unlockedRewards();
+        uint256 totalValue = sfrxStrategyValue + votiumValue + unlockedRewards;
+
         uint256 sfrxDepositValue = mulBps(msg.value, sfrxStrategyShareBps);
         uint256 mintedSfrxEth = SfrxEthStrategy.deposit(sfrxDepositValue);
 
         uint256 votiumDepositValue = msg.value - sfrxDepositValue;
         uint256 mintedCvx = VOTIUM.deposit{value: votiumDepositValue}();
 
-        // Assumes that the price sources doesn't change atomically based on on-chain conditions
-        // e.g. a chainlink price oracle.
-        (uint256 sfrxStrategyValue, uint256 ethSfrxPrice) = SfrxEthStrategy.totalEthValue();
-        (uint256 votiumValue, uint256 cvxEthPrice) = VOTIUM.totalEthValue();
-        (, uint256 unlockedRewards) = _unlockedRewards();
-        uint256 totalValue = sfrxStrategyValue + votiumValue + unlockedRewards;
-
         // Calculate the user's deposit value, makes system slippage agnostic (depositor responsible
         // for slippage based on their set `minOut`).
         uint256 depositValue = mintedSfrxEth.mulWad(ethSfrxPrice) + mintedCvx.mulWad(cvxEthPrice);
+        if (depositValue < minDepositValue) revert BelowMinOut();
 
         uint256 supply = totalSupply();
-
         amount = supply == 0 ? depositValue : depositValue * supply / totalValue;
-
-        if (amount < minOut) revert BelowMinOut();
         _mint(msg.sender, amount);
 
         emit Deposit(msg.sender, amount, msg.value);
