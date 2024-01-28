@@ -225,7 +225,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
 
         if (sfrxDepositAmountEth > 0) {
             uint256 sfrxOut = SfrxEthStrategy.deposit(sfrxDepositAmountEth);
-            if (sfrxDepositAmountEth.divWad(sfrxOut) < params.sfrxPerEthMin) revert BelowMinOut();
+            if (sfrxOut.divWad(sfrxDepositAmountEth) < params.sfrxPerEthMin) revert BelowMinOut();
         }
         if (votiumDepositAmountEth > 0) {
             VOTIUM.deposit{value: votiumDepositAmountEth}(

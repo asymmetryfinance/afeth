@@ -114,12 +114,7 @@ contract AfEthTest is BaseTest {
     }
 
     function testRewardDistributionLocksReward() public {
-        {
-            address user = makeAddr("user");
-            uint256 value = 1.45 ether;
-            hoax(user, value);
-            afEth.deposit{value: value}(0, block.timestamp);
-        }
+        _deposit("user", 1.45 ether);
 
         uint256 reward = 31.98 ether;
         hoax(rewarder, reward);
@@ -149,12 +144,7 @@ contract AfEthTest is BaseTest {
     }
 
     function testRewardDistributionAccruesFees() public {
-        {
-            address user = makeAddr("user");
-            uint256 value = 13.21 ether;
-            hoax(user, value);
-            afEth.deposit{value: value}(0, block.timestamp);
-        }
+        _deposit("user", 13.21 ether);
 
         vm.prank(owner);
         uint16 fee = 0.05e4;
@@ -172,5 +162,10 @@ contract AfEthTest is BaseTest {
         afEth.withdrawOwnerFunds(0, 0);
         uint256 received = owner.balance - balanceBefore;
         assertEq(received, accruedFee);
+    }
+
+    function _deposit(string memory label, uint256 amount) internal returns (uint256 amountOut) {
+        hoax(makeAddr(label), amount);
+        amountOut = afEth.deposit{value: amount}(0, block.timestamp);
     }
 }
