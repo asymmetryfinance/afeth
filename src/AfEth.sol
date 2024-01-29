@@ -234,11 +234,15 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     }
 
     function depositForQuickActions(uint256 afEthAmount) external payable onlyOwner {
-        _transfer(msg.sender, address(this), afEthAmount == 0 ? balanceOf(msg.sender) : afEthAmount);
+        /// @dev Use uint248 max to save on calldata cost. Owner can pass 0xff00000.... to indicate
+        /// max amount while only paying for 1 non-zero calldata byte.
+        _transfer(msg.sender, address(this), afEthAmount > type(uint248).max ? balanceOf(msg.sender) : afEthAmount);
     }
 
     function withdrawOwnerFunds(uint256 afEthAmount, uint256 ethAmount) external onlyOwner {
-        _transfer(address(this), msg.sender, afEthAmount == 0 ? balanceOf(address(this)) : afEthAmount);
+        /// @dev Use uint248 max to save on calldata cost. Owner can pass 0xff00000.... to indicate
+        /// max amount while only paying for 1 non-zero calldata byte.
+        _transfer(address(this), msg.sender, afEthAmount > type(uint248).max ? balanceOf(address(this)) : afEthAmount);
         uint256 maxEthAmount = ethOwedToOwner();
         if (ethAmount == 0) {
             ethAmount = maxEthAmount;
