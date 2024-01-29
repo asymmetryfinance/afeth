@@ -34,17 +34,14 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
 
     bytes32 internal constant LCVX_NO_EXP_LOCKS_ERROR_HASH = keccak256("no exp locks");
 
-    /// @dev How the minimum out threshold is set relative to
-    uint256 internal constant MIN_OUT_SHARE = 0.97e18;
-
     struct Swap {
         address target;
         bytes callData;
     }
 
-    address public rewarder;
-
     address public immutable manager;
+
+    address public rewarder;
 
     /// @dev Tracks the total amount of CVX unlock obligations the contract has ever had.
     uint128 public cumulativeCvxUnlockObligations;
@@ -52,9 +49,6 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     uint128 public cumulativeCvxUnlocked;
 
     mapping(address => mapping(uint256 => uint256)) public withdrawableAfterUnlocked;
-
-    // used to add storage variables in the future
-    uint256[18] private __gap;
 
     receive() external payable {}
 
