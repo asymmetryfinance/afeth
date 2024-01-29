@@ -29,7 +29,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     using HashLib for string;
 
     address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
-    bytes32 internal constant VOTE_DELEGATION_ID = 0x6376782e65746800000000000000000000000000000000000000000000000000;
+    bytes32 internal constant VOTE_DELEGATION_ID = "cvx.eth";
     address internal constant VOTE_PROXY = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
 
     bytes32 internal constant LCVX_NO_EXP_LOCKS_ERROR_HASH = keccak256("no exp locks");
@@ -161,7 +161,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         (, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations) = _getObligations();
 
         uint256 unlockedCvx = _unlockAvailable();
-        uint256 lockedCvx = LOCKED_CVX.lockedBalanceOf(address(this));
+        uint256 lockedCvx = _lockedBalance();
 
         uint256 netCvx = lockedCvx + unlockedCvx - totalUnlockObligations;
         uint256 cvxAmount = netCvx.mulWad(share);
@@ -229,6 +229,21 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     }
 
     /**
+     * @notice Relock on behalf of entire lock.
+     * @dev Needs to be called every few weeks if regular deposits / withdrawals aren't
+     * happening to prevent receiving losses from kick penalties.
+     */
+    function processAndRelock() external {
+        (,, uint256 totalUnlockObligations) = _getObligations();
+        uint256 unlockedCvx = _unlockAvailable();
+        if (unlockedCvx > totalUnlockObligations) {
+            unchecked {
+                _lock(unlockedCvx - totalUnlockObligations);
+            }
+        }
+    }
+
+    /**
      * @notice Allow rewarder oracle account to claim rewards
      * @param claimProofs - Array of claim proofs
      */
@@ -274,7 +289,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
 
         address manager_ = manager;
 
-        uint cvxBalanceBefore = CVX.balanceOf(address(this));
+        uint256 cvxBalanceBefore = CVX.balanceOf(address(this));
 
         uint256 totalSwaps = swaps.length;
         for (uint256 i = 0; i < totalSwaps; i++) {
@@ -307,7 +322,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      */
     function availableCvx() public view returns (uint256) {
         (,, uint256 totalUnlockObligations) = _getObligations();
-        uint256 lockedCvx = LOCKED_CVX.lockedBalanceOf(address(this));
+        uint256 lockedCvx = _lockedBalance();
         uint256 unlockedCvx = CVX.balanceOf(address(this));
         return lockedCvx + unlockedCvx - totalUnlockObligations;
     }
@@ -357,8 +372,12 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         if (amount > 0) LOCKED_CVX.lock(address(this), amount, 0);
     }
 
+    function _lockedBalance() internal view returns (uint256) {
+        return LOCKED_CVX.lockedBalanceOf(address(this));
+    }
+
     function _processExpiredLocks(bool relock) internal {
-        if (LOCKED_CVX.lockedBalanceOf(address(this)) > 0) {
+        if (_lockedBalance() > 0) {
             try LOCKED_CVX.processExpiredLocks({relock: relock}) {}
             catch Error(string memory err) {
                 if (err.hash() != LCVX_NO_EXP_LOCKS_ERROR_HASH) revert UnexpectedLockedCvxError();
