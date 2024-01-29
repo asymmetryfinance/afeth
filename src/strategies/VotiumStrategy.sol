@@ -32,7 +32,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     bytes32 internal constant VOTE_DELEGATION_ID = "cvx.eth";
     address internal constant VOTE_PROXY = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
 
-    bytes32 internal constant LCVX_NO_EXP_LOCKS_ERROR_HASH = keccak256("no exp locks");
+    bytes32 internal immutable LCVX_NO_EXP_LOCKS_ERROR_HASH = keccak256("no exp locks");
+    bytes32 internal immutable LCVX_SHUTDOWN_ERROR_HASH = keccak256("shutdown");
 
     struct Swap {
         address target;
@@ -369,7 +370,12 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     }
 
     function _lock(uint256 amount) internal {
-        if (amount > 0) LOCKED_CVX.lock(address(this), amount, 0);
+        if (amount > 0) {
+            try LOCKED_CVX.lock(address(this), amount, 0) {}
+            catch Error(string memory err) {
+                if (err.hash() != LCVX_SHUTDOWN_ERROR_HASH) revert UnexpectedLockedCvxError();
+            }
+        }
     }
 
     function _lockedBalance() internal view returns (uint256) {
