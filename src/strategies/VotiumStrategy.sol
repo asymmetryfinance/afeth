@@ -38,8 +38,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     uint256 internal constant MIN_OUT_SHARE = 0.97e18;
 
     struct Swap {
-        address swapTarget;
-        bytes swapCallData;
+        address target;
+        bytes callData;
     }
 
     address public rewarder;
@@ -278,14 +278,26 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     ) external onlyRewarder {
         if (block.timestamp > deadline) revert StaleAction();
 
+        address manager_ = manager;
+
+        uint cvxBalanceBefore = CVX.balanceOf(address(this));
+
         uint256 totalSwaps = swaps.length;
         for (uint256 i = 0; i < totalSwaps; i++) {
             Swap calldata swap = swaps[i];
-            (bool success,) = swap.swapTarget.call(swap.swapCallData);
+            address target = swap.target;
+            // Ensure compromised rewarder can't directly steal CVX.
+            if (target == manager_ || target == address(LOCKED_CVX) || target == address(CVX)) {
+                revert UnauthorizedTarget();
+            }
+            (bool success,) = target.call(swap.callData);
             if (!success) emit FailedToSell(i);
         }
 
-        IAfEth(manager).depositRewardsAndRebalance{value: address(this).balance}(
+        // Ensure CVX isn't indirectly stolen via approved addresses.
+        if (CVX.balanceOf(address(this)) != cvxBalanceBefore) revert CvxBalanceChanged();
+
+        IAfEth(manager_).depositRewardsAndRebalance{value: address(this).balance}(
             IAfEth.RebalanceParams({
                 cvxPerEthMin: cvxPerEthMin,
                 sfrxPerEthMin: sfrxPerEthMin,
