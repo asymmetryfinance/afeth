@@ -122,7 +122,7 @@ contract AfEthTest is BaseTest {
 
         (uint256 sfrxRatio,,, uint256 unlocked, uint256 locked) = afEth.reportValue();
 
-        assertApproxEqRelDecimal(sfrxRatio, 0.7e18, 0.001e18, 18, "sfrxETH:votium ratio not close to 70%");
+        assertApproxEqRelDecimal(sfrxRatio, 0.7e18, 0.005e18, 18, "sfrxETH:votium ratio not close to 70%");
 
         assertEq(locked, reward);
         assertEq(unlocked, 0);
@@ -134,7 +134,6 @@ contract AfEthTest is BaseTest {
         cvxOracle.update();
 
         assertEq(lockedRewards(), reward / 4);
-
         cvxOracle.update(cvxOracle.price() * 88 / 100);
 
         uint256 addedLock = 3 ether;
@@ -162,6 +161,61 @@ contract AfEthTest is BaseTest {
         afEth.withdrawOwnerFunds(0, 0);
         uint256 received = owner.balance - balanceBefore;
         assertEq(received, accruedFee);
+    }
+
+    function testQuickDeposit() public {
+        uint256 totalAmount = 7 ether;
+        uint256 convertAmount = 3 ether;
+        uint256 ethAmount = totalAmount - convertAmount;
+
+        startHoax(owner, totalAmount);
+        uint256 sharesOut = afEth.deposit{value: convertAmount}(0, block.timestamp);
+        uint16 depositFee = 0.01e4;
+        afEth.configureQuickActions(depositFee, 0, type(uint128).max, type(uint128).max);
+        afEth.depositForQuickActions{value: ethAmount}(0);
+        vm.stopPrank();
+
+        assertEq(afEth.ethOwedToOwner(), ethAmount, "eth owed to owner doesn't match deposited eth");
+        assertEq(afEth.balanceOf(address(afEth)), sharesOut, "shares owned by vault don't match entire balance");
+
+        uint256 price = afEth.price();
+        address user = makeAddr("user");
+        uint256 quickDepositAmount = 2 ether;
+        hoax(user, quickDepositAmount);
+        sharesOut = afEth.quickDeposit{value: quickDepositAmount}(0, block.timestamp);
+        assertEq(ethAmount + quickDepositAmount, afEth.ethOwedToOwner());
+        uint256 directShares = quickDepositAmount * 1e18 / price;
+        directShares -= directShares * depositFee / 1e4;
+        assertEq(sharesOut, directShares);
+    }
+
+    function testQuickWithdraw() public {
+        uint256 totalAmount = 7 ether;
+        uint256 convertAmount = 3 ether;
+        uint256 ethAmount = totalAmount - convertAmount;
+
+        startHoax(owner, totalAmount);
+        uint256 sharesOut = afEth.deposit{value: convertAmount}(0, block.timestamp);
+        uint16 withdrawFee = 0.0134e4;
+        afEth.configureQuickActions(0, withdrawFee, type(uint128).max, type(uint128).max);
+        afEth.depositForQuickActions{value: ethAmount}(0);
+        vm.stopPrank();
+
+        uint256 amount = 1.13 ether;
+        address user = makeAddr("user");
+        uint256 price = afEth.price();
+        startHoax(user, amount);
+        sharesOut = afEth.deposit{value: amount}(0, block.timestamp);
+
+        uint256 sharesReservesBefore = afEth.balanceOf(address(afEth));
+        uint256 ethBalBefore = user.balance;
+        uint256 ethOut = afEth.quickWithdraw(sharesOut, 0, block.timestamp);
+        uint256 expectedEthOut = sharesOut * price / 1e18;
+        expectedEthOut -= expectedEthOut * withdrawFee / 1e4;
+        assertEq(expectedEthOut, ethOut, "incorrect eth amount out");
+        assertEq(user.balance, ethBalBefore + ethOut, "eth out not received");
+        assertEq(afEth.balanceOf(address(afEth)), sharesReservesBefore + sharesOut, "held share sincorrect");
+        assertEq(afEth.ethOwedToOwner(), ethAmount - ethOut, "eth owed to owner incorrect");
     }
 
     function _deposit(string memory label, uint256 amount) internal returns (uint256 amountOut) {

@@ -277,7 +277,9 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         returns (uint256 afEthOut)
     {
         if (msg.value > maxSingleQuickDeposit) revert AboveActionMax();
-        afEthOut = mulBps(minOut.divWad(price()), quickDepositFeeBps);
+        afEthOut = msg.value.divWad(price());
+        // Deduct fee.
+        afEthOut -= mulBps(afEthOut, quickDepositFeeBps);
         if (afEthOut < minOut) revert BelowMinOut();
         _transfer(address(this), to, afEthOut);
     }
@@ -295,10 +297,12 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     {
         if (amount > maxSingleQuickWithdraw) revert AboveActionMax();
         _transfer(msg.sender, address(this), amount);
-        ethOut = mulBps(minOut.mulWad(price()), quickWithdrawFeeBps);
+        ethOut = amount.mulWad(price());
+        // Deduct fee.
+        ethOut -= mulBps(ethOut, quickWithdrawFeeBps);
         if (ethOut < minOut) revert BelowMinOut();
         if (ethOut > ethOwedToOwner()) revert WithdrawingLockedRewards();
-        to.safeTransferETH(amount);
+        to.safeTransferETH(ethOut);
     }
 
     /**
