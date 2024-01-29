@@ -53,13 +53,13 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     function initialize(address initialOwner, address initialRewarder) external initializer {
         __ERC20_init("Asymmetry Finance AfEth", "afETH");
         _initializeOwner(initialOwner);
-        rewarder = initialRewarder;
+        emit SetRewarder(rewarder = initialRewarder);
 
         // SfrxEthStrategy is library, needs to be initialized as part of afETH.
         SfrxEthStrategy.init();
 
         // Configure default ratio to of sfrxETH to locked CVX to 70/30.
-        sfrxStrategyShareBps = 0.7e4;
+        emit SetSfrxStrategyShare(sfrxStrategyShareBps = 0.7e4);
     }
 
     modifier latestAt(uint256 deadline) {
