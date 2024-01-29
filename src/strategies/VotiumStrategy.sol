@@ -255,9 +255,9 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      * @param claimProofs - Array of claim proofs
      */
     function claimRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) external onlyRewarder {
-        VOTIUM_MERKLE_STASH.claimMulti(address(this), claimProofs);
+        try VOTIUM_MERKLE_STASH.claimMulti(address(this), claimProofs) {} catch {}
         address[] memory emptyArray;
-        ZAP_CLAIM.claimRewards(emptyArray, emptyArray, emptyArray, emptyArray, 0, 0, 0, 0, 8);
+        try ZAP_CLAIM.claimRewards(emptyArray, emptyArray, emptyArray, emptyArray, 0, 0, 0, 0, 8) {} catch {}
     }
 
     /**
