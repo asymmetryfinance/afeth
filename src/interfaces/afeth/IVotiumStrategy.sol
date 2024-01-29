@@ -22,7 +22,7 @@ interface IVotiumStrategy {
         external
         returns (bool locked, uint256 ethOutNow, uint256 cumulativeUnlockThreshold);
 
-    function deposit(uint256 amount, uint256 cvxMinOut) external payable returns (uint256 cvxAmount);
+    function deposit(uint256 cvxMinOut) external payable returns (uint256 cvxAmount);
 
     function totalEthValue() external view returns (uint256 totalValue, uint256 ethCvxPrice);
 }

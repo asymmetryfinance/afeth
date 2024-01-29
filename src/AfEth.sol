@@ -178,7 +178,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
      * by routing value to underweight strategy.
      */
     function depositRewardsAndRebalance(IAfEth.RebalanceParams calldata params)
-        public
+        external
         payable
         whileNotPaused
         latestAt(params.deadline)
@@ -227,9 +227,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
             if (sfrxOut.divWad(sfrxDepositAmountEth) < params.sfrxPerEthMin) revert BelowMinOut();
         }
         if (votiumDepositAmountEth > 0) {
-            VOTIUM.deposit{value: votiumDepositAmountEth}(
-                votiumDepositAmountEth, votiumDepositAmountEth.mulWad(params.cvxPerEthMin)
-            );
+            VOTIUM.deposit{value: votiumDepositAmountEth}(votiumDepositAmountEth.mulWad(params.cvxPerEthMin));
         }
     }
 
@@ -267,7 +265,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         emit QuickActionsConfigured(depositFeeBps, withdrawFeeBps, maxQuickDeposit, maxQuickWithdraw);
     }
 
-    function quickDeposit(uint256 minOut, uint256 deadline) public payable override returns (uint256 afEthOut) {
+    function quickDeposit(uint256 minOut, uint256 deadline) external payable override returns (uint256 afEthOut) {
         afEthOut = quickDeposit(msg.sender, minOut, deadline);
     }
 
@@ -287,7 +285,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         _transfer(address(this), to, afEthOut);
     }
 
-    function quickWithdraw(uint256 amount, uint256 minOut, uint256 deadline) public override returns (uint256 ethOut) {
+    function quickWithdraw(uint256 amount, uint256 minOut, uint256 deadline) external override returns (uint256 ethOut) {
         ethOut = quickWithdraw(msg.sender, amount, minOut, deadline);
     }
 

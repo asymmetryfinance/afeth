@@ -120,16 +120,15 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      * @return cvxAmount Amount of CVX bought
      */
     function deposit() external payable onlyManager returns (uint256 cvxAmount) {
-        cvxAmount = deposit(msg.value, 0);
+        cvxAmount = deposit(0);
     }
 
     /**
      * @notice Sells amount of ETH from votium contract for CVX.
-     * @param amount Amount of ETH to sell for CVX
      * @param cvxMinOut Minimum amount of CVX to receive
      */
-    function deposit(uint256 amount, uint256 cvxMinOut) public payable onlyManager returns (uint256 cvxAmount) {
-        cvxAmount = unsafeBuyCvx(amount);
+    function deposit(uint256 cvxMinOut) public payable onlyManager returns (uint256 cvxAmount) {
+        cvxAmount = unsafeBuyCvx(msg.value);
         if (cvxAmount < cvxMinOut) revert ExchangeOutputBelowMin();
         (,, uint256 totalUnlockObligations) = _getObligations();
         if (cvxAmount > totalUnlockObligations) {
