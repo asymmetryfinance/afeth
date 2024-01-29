@@ -12,6 +12,7 @@ interface IVotiumStrategy {
     error UnexpectedLockedCvxError();
     error UnauthorizedTarget();
     error CvxBalanceChanged();
+    error Shutdown();
 
     function emergencyShutdown() external;
 

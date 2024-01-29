@@ -63,6 +63,11 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         _;
     }
 
+    modifier notShutdown() {
+        if (rewarder == address(0)) revert Shutdown();
+        _;
+    }
+
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address afEth) {
@@ -193,6 +198,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      */
     function withdrawLocked(uint256 cumulativeUnlockThreshold, uint256 minOut, uint256 deadline)
         external
+        notShutdown
         returns (uint256 ethReceived)
     {
         if (block.timestamp > deadline) revert StaleAction();

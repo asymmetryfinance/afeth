@@ -174,7 +174,7 @@ contract AfEthTest is BaseTest {
         uint256 sharesOut = afEth.deposit{value: convertAmount}(0, block.timestamp);
         uint16 depositFee = 0.01e4;
         afEth.configureQuickActions(depositFee, 0, type(uint128).max, type(uint128).max);
-        afEth.depositForQuickActions{value: ethAmount}(0);
+        afEth.depositForQuickActions{value: ethAmount}(1 << 248);
         vm.stopPrank();
 
         assertEq(afEth.ethOwedToOwner(), ethAmount, "eth owed to owner doesn't match deposited eth");
@@ -200,7 +200,7 @@ contract AfEthTest is BaseTest {
         uint256 sharesOut = afEth.deposit{value: convertAmount}(0, block.timestamp);
         uint16 withdrawFee = 0.0134e4;
         afEth.configureQuickActions(0, withdrawFee, type(uint128).max, type(uint128).max);
-        afEth.depositForQuickActions{value: ethAmount}(0);
+        afEth.depositForQuickActions{value: ethAmount}(1 << 248);
         vm.stopPrank();
 
         uint256 amount = 1.13 ether;
