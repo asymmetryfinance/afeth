@@ -86,8 +86,10 @@ contract AfEthTest is BaseTest {
 
         vm.prank(user);
         uint256 balBefore = user.balance;
-        (bool locked, uint256 cumulativeUnlockThreshold) = afEth.requestWithdraw(redeemAmount, 0, 0, block.timestamp);
+        (uint256 ethOut, bool locked, uint256 cumulativeUnlockThreshold) =
+            afEth.requestWithdraw(redeemAmount, 0, 0, block.timestamp);
         uint256 ethReceived = user.balance - balBefore;
+        assertEq(ethOut, ethReceived);
 
         assertTrue(locked);
 
@@ -216,6 +218,23 @@ contract AfEthTest is BaseTest {
         assertEq(user.balance, ethBalBefore + ethOut, "eth out not received");
         assertEq(afEth.balanceOf(address(afEth)), sharesReservesBefore + sharesOut, "held share sincorrect");
         assertEq(afEth.ethOwedToOwner(), ethAmount - ethOut, "eth owed to owner incorrect");
+    }
+
+    function testFullDepositCycle() public {
+        address user = makeAddr("user");
+        uint256 amount = 1.31 ether;
+        startHoax(user, amount);
+        uint256 sharesOut = afEth.deposit{value: amount}(0, block.timestamp);
+        assertEq(afEth.balanceOf(user), sharesOut, "didn't receive shares");
+
+        skip(30 weeks);
+
+        (uint256 ethOut, bool locked, uint256 unlockThreshold) = afEth.requestWithdraw(sharesOut, 0, 0, block.timestamp);
+        assertEq(afEth.balanceOf(user), 0, "shares weren't redeemed");
+        assertFalse(locked, "locked");
+        assertEq(unlockThreshold, 0, "not locked but threshold: 0");
+
+        assertApproxEqRel(ethOut, amount, 0.005e18, "unlocked ETH not equal to amount");
     }
 
     function _deposit(string memory label, uint256 amount) internal returns (uint256 amountOut) {

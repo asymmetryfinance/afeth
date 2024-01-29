@@ -173,7 +173,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         uint256 cvxAmount = netCvx.mulWad(share);
         totalUnlockObligations += cvxAmount;
 
-        if (unlockedCvx > totalUnlockObligations) {
+        if (unlockedCvx >= totalUnlockObligations) {
             ethOutNow = unsafeSellCvx(cvxAmount);
             unchecked {
                 _lock(unlockedCvx - totalUnlockObligations);
@@ -187,6 +187,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
             withdrawableAfterUnlocked[to][cumulativeUnlockThreshold] = cvxAmount;
             cumulativeCvxUnlockObligations = uint128(cumulativeUnlockThreshold);
         }
+
+        if (ethOutNow > 0) msg.sender.safeTransferETH(ethOutNow);
     }
 
     /**
