@@ -17,20 +17,27 @@ abstract contract TrackedAllowances {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using SafeTransferLib for address;
 
-    /**
-     * @dev While using extra gas, the enumerable set allows all allowances to be enumerated
-     * atomatically without relying on any additional indexing or log querying. This can be
-     * particularly useful in emergencies when allowances need to be revoked en-mass with minimal
-     * effort.
-     */
-    EnumerableSet.Bytes32Set internal allowanceKeys;
-    mapping(bytes32 => Allowance) internal allowances;
+    /// @dev Derived from `keccak256("afeth.TrackedAllowances.storage") - 1`
+    uint256 internal constant TRACKED_ALLOWANCES_SLOT =
+        0x6628618d7bc4d0dd1eb0a5bb53ba475441105535e20645110834c8c5d548ddb4;
+
+    struct TrackedAllowanceStorage {
+        /**
+         * @dev While using extra gas, the enumerable set allows all allowances to be enumerated
+         * atomatically without relying on any additional indexing or log querying. This can be
+         * particularly useful in emergencies when allowances need to be revoked en-mass with minimal
+         * effort.
+         */
+        EnumerableSet.Bytes32Set allowanceKeys;
+        mapping(bytes32 => Allowance) allowances;
+    }
 
     function _emergencyRevokeAllAllowances() internal {
-        uint256 totalAllowances = allowanceKeys.length();
+        TrackedAllowanceStorage storage s = _storage();
+        uint256 totalAllowances = s.allowanceKeys.length();
         for (uint256 i = 0; i < totalAllowances; i++) {
-            bytes32 allowanceKey = allowanceKeys.at(i);
-            Allowance storage allowance = allowances[allowanceKey];
+            bytes32 allowanceKey = s.allowanceKeys.at(i);
+            Allowance storage allowance = s.allowances[allowanceKey];
             allowance.token.safeApproveWithRetry(allowance.spender, 0);
         }
         // Could remove keys now that allowance is revoked but want to reduce gas to be spend in
@@ -38,19 +45,28 @@ abstract contract TrackedAllowances {
     }
 
     function _revokeSingleAllowance(Allowance memory allowance) internal {
+        TrackedAllowanceStorage storage s = _storage();
         bytes32 allowanceKey = _allowanceKey(allowance);
-        allowanceKeys.remove(allowanceKey);
+        s.allowanceKeys.remove(allowanceKey);
         allowance.token.safeApproveWithRetry(allowance.spender, 0);
     }
 
     function _grantAndTrackInfiniteAllowance(Allowance memory allowance) internal {
+        TrackedAllowanceStorage storage s = _storage();
         bytes32 allowanceKey = _allowanceKey(allowance);
-        allowanceKeys.add(allowanceKey);
-        allowances[allowanceKey] = allowance;
+        s.allowanceKeys.add(allowanceKey);
+        s.allowances[allowanceKey] = allowance;
         allowance.token.safeApproveWithRetry(allowance.spender, type(uint256).max);
     }
 
     function _allowanceKey(Allowance memory allowance) internal pure returns (bytes32) {
         return keccak256(abi.encode(allowance));
+    }
+
+    function _storage() internal pure returns (TrackedAllowanceStorage storage s) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            s.slot := TRACKED_ALLOWANCES_SLOT
+        }
     }
 }
