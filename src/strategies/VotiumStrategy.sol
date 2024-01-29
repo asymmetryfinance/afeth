@@ -181,10 +181,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         } else {
             locked = true;
             cumulativeUnlockThreshold = uint128(cumCvxUnlockObligations) + cvxAmount.toUint128();
-            // Don't have to worry about withdrawable being overwritten as
-            // `cumulativeCvxUnlockObligations` is stritcly increasing. Only edge case is repeated
-            // withdrawals with a `cvxAmount` of 0 in which case you'd be overwriting 0 with 0.
-            withdrawableAfterUnlocked[to][cumulativeUnlockThreshold] = cvxAmount;
+            // Have to increment in case `cvxAmount` right after another request.
+            withdrawableAfterUnlocked[to][cumulativeUnlockThreshold] += cvxAmount;
             cumulativeCvxUnlockObligations = uint128(cumulativeUnlockThreshold);
         }
 
