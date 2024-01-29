@@ -119,7 +119,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      * @notice Deposit eth to mint this token at current price
      * @return cvxAmount Amount of CVX bought
      */
-    function deposit() external payable onlyManager returns (uint256 cvxAmount) {
+    function deposit() external payable returns (uint256 cvxAmount) {
         cvxAmount = deposit(0);
     }
 
