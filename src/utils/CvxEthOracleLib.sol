@@ -28,7 +28,7 @@ library CvxEthOracleLib {
         (uint80 roundId, int256 answer, /* startedAt */, uint256 updatedAt, /* answeredInRound */ ) =
             CVX_ETH_ORACLE.latestRoundData();
 
-        if (roundId == 0 || answer < 0 || updatedAt == 0) revert InvalidOracleData();
+        if (roundId == 0 || answer < 0) revert InvalidOracleData();
 
         if (block.timestamp - updatedAt > ORACLE_STALENESS_WINDOW) revert OracleDataStale();
 

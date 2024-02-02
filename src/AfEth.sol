@@ -285,7 +285,11 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         _transfer(address(this), to, afEthOut);
     }
 
-    function quickWithdraw(uint256 amount, uint256 minOut, uint256 deadline) external override returns (uint256 ethOut) {
+    function quickWithdraw(uint256 amount, uint256 minOut, uint256 deadline)
+        external
+        override
+        returns (uint256 ethOut)
+    {
         ethOut = quickWithdraw(msg.sender, amount, minOut, deadline);
     }
 
