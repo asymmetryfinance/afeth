@@ -136,14 +136,14 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         if (cvxAmount >= totalUnlockObligations) {
             _processExpiredLocks(true);
             unchecked {
-                _lock(cvxAmount - totalUnlockObligations);
+                uint lockAmount = cvxAmount - totalUnlockObligations;
+                if (lockAmount > 0) _lock(lockAmount);
             }
         } else {
             uint256 unlocked = _unlockAvailable();
             if (unlocked > totalUnlockObligations) {
                 unchecked {
-                    uint256 lockAmount = unlocked - totalUnlockObligations;
-                    if (lockAmount > 0) _lock(lockAmount);
+                     _lock(unlocked - totalUnlockObligations);
                 }
             }
         }
