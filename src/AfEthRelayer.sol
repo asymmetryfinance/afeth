@@ -83,8 +83,7 @@ contract AfEthRelayer is Initializable {
 
         WETH.withdraw(amountToStake);
 
-        uint256 amountToTransfer = AF_ETH.deposit{value: amountToStake}(minOut, deadline);
-        AF_ETH.transfer(_owner, amountToTransfer);
+        AF_ETH.deposit{value: amountToStake}(_owner, minOut, deadline);
     }
 
     function whitelisted(address addr) public pure returns (bool) {

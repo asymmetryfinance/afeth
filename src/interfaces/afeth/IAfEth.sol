@@ -32,7 +32,8 @@ interface IAfEth is IERC20 {
         uint256 stakeFeeBps, uint256 unstakeFeeBps, uint256 maxSingleQuickStake, uint256 maxSingleQuickUnstake
     );
 
-    function deposit(uint256, uint256) external payable returns (uint256);
+    function deposit(uint256 minDepositValue, uint256 deadline) external payable returns (uint256 shares);
+    function deposit(address to, uint256 minDepositValue, uint256 deadline) external payable returns (uint256 shares);
 
     /**
      * @param cvxPerEthMin Minimum accepted CVX/ETH price when converting ETH to CVX.
