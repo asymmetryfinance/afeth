@@ -19,6 +19,10 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     uint256 internal constant UNLOCK_REWARDS_OVER = 2 weeks;
     uint256 internal constant ONE_BPS = 10000;
 
+    /// @dev Use uint248 max to save on calldata cost. Owner can pass 0xff00000.... to indicate
+    /// max amount while only paying for 1 non-zero calldata byte.
+    uint256 internal constant USE_MAX_AMOUNT = type(uint248).max;
+
     IVotiumStrategy public immutable VOTIUM;
 
     address public rewarder;
@@ -234,15 +238,13 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
     function depositForQuickActions(uint256 afEthAmount) external payable onlyOwner {
         /// @dev Use uint248 max to save on calldata cost. Owner can pass 0xff00000.... to indicate
         /// max amount while only paying for 1 non-zero calldata byte.
-        _transfer(msg.sender, address(this), afEthAmount > type(uint248).max ? balanceOf(msg.sender) : afEthAmount);
+        _transfer(msg.sender, address(this), afEthAmount > USE_MAX_AMOUNT ? balanceOf(msg.sender) : afEthAmount);
     }
 
     function withdrawOwnerFunds(uint256 afEthAmount, uint256 ethAmount) external onlyOwner {
-        /// @dev Use uint248 max to save on calldata cost. Owner can pass 0xff00000.... to indicate
-        /// max amount while only paying for 1 non-zero calldata byte.
-        _transfer(address(this), msg.sender, afEthAmount > type(uint248).max ? balanceOf(address(this)) : afEthAmount);
+        _transfer(address(this), msg.sender, afEthAmount > USE_MAX_AMOUNT ? balanceOf(address(this)) : afEthAmount);
         uint256 maxEthAmount = ethOwedToOwner();
-        if (ethAmount == 0) {
+        if (ethAmount > USE_MAX_AMOUNT) {
             ethAmount = maxEthAmount;
         } else if (ethAmount > maxEthAmount) {
             revert WithdrawingLockedRewards();
