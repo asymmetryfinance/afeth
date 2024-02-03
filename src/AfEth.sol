@@ -165,10 +165,10 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         }
 
         uint256 sfrxDepositValue = mulBps(msg.value, sfrxStrategyShareBps);
-        uint256 mintedSfrxEth = SfrxEthStrategy.deposit(sfrxDepositValue);
+        uint256 mintedSfrxEth = sfrxDepositValue > 0 ? SfrxEthStrategy.deposit(sfrxDepositValue) : 0;
 
         uint256 votiumDepositValue = msg.value - sfrxDepositValue;
-        uint256 mintedCvx = VOTIUM.deposit{value: votiumDepositValue}();
+        uint256 mintedCvx = votiumDepositValue > 0 ? VOTIUM.deposit{value: votiumDepositValue}() : 0;
 
         // Calculate the user's deposit value, makes system slippage agnostic (depositor responsible
         // for slippage based on their set `minOut`).
