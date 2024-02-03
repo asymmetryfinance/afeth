@@ -142,7 +142,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
             uint256 unlocked = _unlockAvailable();
             if (unlocked > totalUnlockObligations) {
                 unchecked {
-                    _lock(unlocked - totalUnlockObligations);
+                    uint256 lockAmount = unlocked - totalUnlockObligations;
+                    if (lockAmount > 0) _lock(lockAmount);
                 }
             }
         }
@@ -266,10 +267,12 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         // rewards and allow the rewarder to drain any unlocked CVX.
         uint256 newRewards = CVX.balanceOf(address(this)) - cvxBalanceBefore;
 
-        unprocessedRewards += newRewards;
-        // CVX is already liquid, just ensures that withdraw/deposit don't use the reward amount so
-        // it's already available for swapping.
-        cumulativeCvxUnlockObligations += newRewards.toUint128();
+        if (newRewards > 0) {
+            unprocessedRewards += newRewards;
+            // CVX is already liquid, just ensures that withdraw/deposit don't use the reward amount so
+            // it's already available for swapping.
+            cumulativeCvxUnlockObligations += newRewards.toUint128();
+        }
     }
 
     /**
