@@ -49,6 +49,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     /// @dev Tracks the total amount of CVX that has ever been unlocked.
     uint128 public cumulativeCvxUnlocked;
 
+    uint256 internal unprocessedRewards;
+
     mapping(address => mapping(uint256 => uint256)) public withdrawableAfterUnlocked;
 
     receive() external payable {}
@@ -174,7 +176,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         if (unlockedCvx >= totalUnlockObligations) {
             ethOutNow = unsafeSellCvx(cvxAmount);
             unchecked {
-                _lock(unlockedCvx - totalUnlockObligations);
+                uint256 lockAmount = unlockedCvx - totalUnlockObligations;
+                if (lockAmount > 0) _lock(lockAmount);
             }
         } else {
             locked = true;
@@ -207,6 +210,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         (uint256 cumCvxUnlocked,, uint256 totalUnlockObligations) = _getObligations();
 
         uint256 unlockedCvx = _unlockAvailable();
+        // Check if unlock threshold has already been reached, otherwise ensure there's sufficient
+        // liquid CVX to cover the delta.
         if (cumulativeUnlockThreshold > cumCvxUnlocked) {
             unchecked {
                 uint256 minUnlock = cumulativeUnlockThreshold - cumCvxUnlocked;
@@ -253,9 +258,18 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      * @param claimProofs - Array of claim proofs
      */
     function claimRewards(IVotiumMerkleStash.ClaimParam[] calldata claimProofs) external onlyRewarder {
+        uint256 cvxBalanceBefore = CVX.balanceOf(address(this));
         try VOTIUM_MERKLE_STASH.claimMulti(address(this), claimProofs) {} catch {}
         address[] memory emptyArray;
         try ZAP_CLAIM.claimRewards(emptyArray, emptyArray, emptyArray, emptyArray, 0, 0, 0, 0, 8) {} catch {}
+        // Assumes neither claim function can reenter, reentrancy would allow for double-counting
+        // rewards and allow the rewarder to drain any unlocked CVX.
+        uint256 newRewards = CVX.balanceOf(address(this)) - cvxBalanceBefore;
+
+        unprocessedRewards += newRewards;
+        // CVX is already liquid, just ensures that withdraw/deposit don't use the reward amount so
+        // it's already available for swapping.
+        cumulativeCvxUnlockObligations += newRewards.toUint128();
     }
 
     /**
@@ -300,16 +314,22 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         for (uint256 i = 0; i < totalSwaps; i++) {
             Swap calldata swap = swaps[i];
             address target = swap.target;
-            // Ensure compromised rewarder can't directly steal CVX.
-            if (target == manager_ || target == address(LOCKED_CVX) || target == address(CVX)) {
-                revert UnauthorizedTarget();
-            }
+            _checkTargetAuthorized(manager_, target);
             (bool success,) = target.call(swap.callData);
             if (!success) emit FailedToSell(i);
         }
 
         // Ensure CVX isn't indirectly stolen via approved addresses.
-        if (CVX.balanceOf(address(this)) != cvxBalanceBefore) revert CvxBalanceChanged();
+        uint256 cvxBalanceAfter = CVX.balanceOf(address(this));
+        if (cvxBalanceBefore > cvxBalanceAfter) {
+            uint256 cvxSwapped;
+            unchecked {
+                cvxSwapped = cvxBalanceBefore - cvxBalanceAfter;
+            }
+            // Implicit underflow check ensures only rewards are spent.
+            unprocessedRewards -= cvxSwapped;
+            cumulativeCvxUnlocked += cvxSwapped.toUint128();
+        }
 
         IAfEth(manager_).depositRewardsAndRebalance{value: address(this).balance}(
             IAfEth.RebalanceParams({
@@ -322,8 +342,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     }
 
     /**
-     * @notice The amount of cvx in the entire system
-     * @return Amount of cvx in the entire system
+     * @notice The amount of CVX in the entire system
+     * @return Amount of CVX in the entire system
      */
     function availableCvx() public view returns (uint256) {
         (,, uint256 totalUnlockObligations) = _getObligations();
@@ -374,11 +394,9 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     }
 
     function _lock(uint256 amount) internal {
-        if (amount > 0) {
-            try LOCKED_CVX.lock(address(this), amount, 0) {}
-            catch Error(string memory err) {
-                if (err.hash() != LCVX_SHUTDOWN_ERROR_HASH) revert UnexpectedLockedCvxError();
-            }
+        try LOCKED_CVX.lock(address(this), amount, 0) {}
+        catch Error(string memory err) {
+            if (err.hash() != LCVX_SHUTDOWN_ERROR_HASH) revert UnexpectedLockedCvxError();
         }
     }
 
@@ -392,6 +410,13 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
             catch Error(string memory err) {
                 if (err.hash() != LCVX_NO_EXP_LOCKS_ERROR_HASH) revert UnexpectedLockedCvxError();
             }
+        }
+    }
+
+    function _checkTargetAuthorized(address manager_, address target) internal view {
+        // Ensure compromised rewarder can't directly steal CVX.
+        if (target == manager_ || target == address(LOCKED_CVX) || target == address(CVX) || target == address(this)) {
+            revert UnauthorizedTarget();
         }
     }
 }
