@@ -16,11 +16,6 @@ import {console2 as console} from "forge-std/console2.sol";
 contract AfEthTest is BaseTest {
     using SafeTransferLib for address;
 
-    function testDefaultPrice() public {
-        assertEq(afEth.price(), 1e18);
-        assertEq(afEth.totalSupply(), 0);
-    }
-
     function testFirstMint() public {
         address user = makeAddr("user");
         startHoax(user, 2 ether);
@@ -126,8 +121,8 @@ contract AfEthTest is BaseTest {
 
         assertApproxEqRelDecimal(sfrxRatio, 0.7e18, 0.005e18, 18, "sfrxETH:votium ratio not close to 70%");
 
-        assertEq(locked, reward);
-        assertEq(unlocked, 0);
+        assertEq(locked, reward, "locked amount not equal to reward");
+        assertEq(unlocked, 0, "default unlocked isn't 0");
 
         MockOracle cvxOracle = overwriteOracle(address(CvxEthOracleLib.CVX_ETH_ORACLE));
 
@@ -135,13 +130,13 @@ contract AfEthTest is BaseTest {
 
         cvxOracle.update();
 
-        assertEq(lockedRewards(), reward / 4);
+        assertEq(lockedRewards(), reward / 4, "Not exactly 3/4 of rewards unlocked of 3/4 of the time");
         cvxOracle.update(cvxOracle.price() * 88 / 100);
 
         uint256 addedLock = 3 ether;
         hoax(rewarder, addedLock);
         afEth.depositRewardsAndRebalance{value: addedLock}(IAfEth.RebalanceParams(0, 0, 0, block.timestamp));
-        assertEq(lockedRewards(), reward / 4 + addedLock);
+        assertEq(lockedRewards(), reward / 4 + addedLock, "Extra amount not added to lock");
     }
 
     function testRewardDistributionAccruesFees() public {
@@ -156,11 +151,11 @@ contract AfEthTest is BaseTest {
         afEth.depositRewardsAndRebalance{value: reward}(IAfEth.RebalanceParams(0, 0, 0, block.timestamp));
 
         uint256 accruedFee = reward * fee / 1e4;
-        assertEq(afEth.ethOwedToOwner(), accruedFee);
+        assertEq(afEth.ethOwedToOwner(), accruedFee, "accrued fee not owed to owner");
 
         uint256 balanceBefore = owner.balance;
         vm.prank(owner);
-        afEth.withdrawOwnerFunds(0, 0);
+        afEth.withdrawOwnerFunds(USE_MAX, USE_MAX);
         uint256 received = owner.balance - balanceBefore;
         assertEq(received, accruedFee);
     }

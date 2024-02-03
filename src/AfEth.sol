@@ -18,6 +18,9 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
 
     uint256 internal constant UNLOCK_REWARDS_OVER = 2 weeks;
     uint256 internal constant ONE_BPS = 10000;
+    uint16 internal constant START_SFRX_TO_VOTIUM_RATIO = 0.7e4;
+
+    uint256 internal constant MIN_START_VALUE = 1e7;
 
     /// @dev Use uint248 max to save on calldata cost. Owner can pass 0xff00000.... to indicate
     /// max amount while only paying for 1 non-zero calldata byte.
@@ -52,9 +55,11 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
 
     /**
      * @notice Initialize values for the contracts
-     * @dev This replaces the constructor for upgradeable contracts
+     * @dev This replaces the constructor for upgradeable contracts. Any ETH sent to the initializer
+     * will be used to mint immediately burnt afETH, do not send much <0.000001 ETH should be
+     * sufficient.
      */
-    function initialize(address initialOwner, address initialRewarder) external initializer {
+    function initialize(address initialOwner, address initialRewarder) external payable initializer {
         __ERC20_init("Asymmetry Finance AfEth", "afETH");
         _initializeOwner(initialOwner);
         emit SetRewarder(rewarder = initialRewarder);
@@ -63,7 +68,20 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         SfrxEthStrategy.init();
 
         // Configure default ratio to of sfrxETH to locked CVX to 70/30.
-        emit SetSfrxStrategyShare(sfrxStrategyShareBps = 0.7e4);
+        emit SetSfrxStrategyShare(sfrxStrategyShareBps = START_SFRX_TO_VOTIUM_RATIO);
+
+        // Prevent admins from fat fingering initialization amount if they mistake it for an actual
+        // deposit.
+        if (msg.value > 30 gwei) revert TooMuchInitializationEth();
+        // Manually deposit as deposit methods don't work when supply is 0.
+        uint256 sfrxValue = mulBps(msg.value, START_SFRX_TO_VOTIUM_RATIO);
+        uint256 votiumValue = msg.value - sfrxValue;
+        SfrxEthStrategy.deposit(sfrxValue);
+        VOTIUM.deposit{value: votiumValue}(0);
+        uint256 recognizedValue = totalEthValue();
+        if (recognizedValue < MIN_START_VALUE) revert InitialDepositBelowMinOut();
+        // Bootstrap unburnable supply to ensure totalSupply is always strictly non-zero.
+        _mint(address(0xdead), recognizedValue);
     }
 
     modifier latestAt(uint256 deadline) {
@@ -112,27 +130,39 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         emit EmergencyShutdown();
     }
 
+    function deposit(uint256 minDepositValue, uint256 deadline) public payable returns (uint256 amount) {
+        amount = deposit(msg.sender, minDepositValue, deadline);
+    }
+
     /**
      * @notice Deposits into each strategy
      * @dev This is the entry into the protocol
+     * @param to Address to receive shares.
      * @param minDepositValue Minimum ETH value of deposit (in sfrxETH & CVX), defacto slippage.
      * @param deadline Sets a deadline for the deposit
      * @return amount afETH shares minted.
      */
-    function deposit(uint256 minDepositValue, uint256 deadline)
-        external
+    function deposit(address to, uint256 minDepositValue, uint256 deadline)
+        public
         payable
         whileNotPaused
         latestAt(deadline)
         returns (uint256 amount)
     {
-        // Assumes that the price sources doesn't change atomically based on on-chain conditions
-        // e.g. a chainlink price oracle. Determine value *before* actual deposit to avoid
-        // miscalculating deposit shares.
-        (uint256 sfrxStrategyValue, uint256 ethSfrxPrice) = SfrxEthStrategy.totalEthValue();
-        (uint256 votiumValue, uint256 cvxEthPrice) = VOTIUM.totalEthValue();
-        (, uint256 unlockedRewards) = _unlockedRewards();
-        uint256 totalValue = sfrxStrategyValue + votiumValue + unlockedRewards;
+        uint256 ethSfrxPrice;
+        uint256 cvxEthPrice;
+        uint256 totalValue;
+        {
+            // Assumes that the price sources doesn't change atomically based on on-chain conditions
+            // e.g. a chainlink price oracle. Determine value *before* actual deposit to avoid
+            // miscalculating deposit shares.
+            uint256 sfrxStrategyValue;
+            uint256 votiumValue;
+            (sfrxStrategyValue, ethSfrxPrice) = SfrxEthStrategy.totalEthValue();
+            (votiumValue, cvxEthPrice) = VOTIUM.totalEthValue();
+            (, uint256 unlockedRewards) = _unlockedRewards();
+            totalValue = sfrxStrategyValue + votiumValue + unlockedRewards;
+        }
 
         uint256 sfrxDepositValue = mulBps(msg.value, sfrxStrategyShareBps);
         uint256 mintedSfrxEth = SfrxEthStrategy.deposit(sfrxDepositValue);
@@ -145,11 +175,10 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
         uint256 depositValue = mintedSfrxEth.mulWad(ethSfrxPrice) + mintedCvx.mulWad(cvxEthPrice);
         if (depositValue < minDepositValue) revert BelowMinOut();
 
-        uint256 supply = totalSupply();
-        amount = supply == 0 ? depositValue : depositValue * supply / totalValue;
-        _mint(msg.sender, amount);
+        amount = depositValue * totalSupply() / totalValue;
+        _mint(to, amount);
 
-        emit Deposit(msg.sender, amount, msg.value);
+        emit Deposit(to, amount, msg.value);
     }
 
     /**
@@ -318,10 +347,7 @@ contract AfEth is IAfEth, Ownable, ERC20Upgradeable {
      * @return Price of afEth
      */
     function price() public view returns (uint256) {
-        uint256 totalSupply_ = totalSupply();
-        if (totalSupply_ == 0) return 1e18;
-
-        return totalEthValue().divWad(totalSupply_);
+        return totalEthValue().divWad(totalSupply());
     }
 
     function ethOwedToOwner() public view returns (uint256) {

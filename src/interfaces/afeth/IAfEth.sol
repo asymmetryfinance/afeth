@@ -13,6 +13,8 @@ interface IAfEth is IERC20 {
     error StaleAction();
     error NotAuthorizedToRebalance();
     error InvalidShare();
+    error InitialDepositBelowMinOut();
+    error TooMuchInitializationEth();
 
     error AboveActionMax();
 

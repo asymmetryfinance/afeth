@@ -10,6 +10,8 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 
 /// @author philogy <https://github.com/philogy>
 abstract contract BaseTest is Test {
+    uint256 internal constant USE_MAX = 1 << 255;
+
     address internal immutable deployer = makeAddr("DEPLOYER");
     address internal immutable owner = makeAddr("OWNER");
     address internal immutable rewarder = makeAddr("REWARDER");
@@ -34,7 +36,7 @@ abstract contract BaseTest is Test {
         _votiumImplementation = new VotiumStrategy(afEthProxyAddr);
         _afEthImplementation = new AfEth(votiumProxyAddr);
 
-        vm.startPrank(deployer);
+        startHoax(deployer, 1 ether);
         votium = VotiumStrategy(
             payable(
                 factory.deployDeterministicAndCall(
@@ -47,7 +49,7 @@ abstract contract BaseTest is Test {
         );
         afEth = AfEth(
             payable(
-                factory.deployDeterministicAndCall(
+                factory.deployDeterministicAndCall{value: 1 gwei}(
                     address(_afEthImplementation), owner, afEthSalt, abi.encodeCall(AfEth.initialize, (owner, rewarder))
                 )
             )
