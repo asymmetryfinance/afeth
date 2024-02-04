@@ -45,11 +45,11 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     address public rewarder;
 
     /// @dev Tracks the total amount of CVX unlock obligations the contract has ever had.
-    uint128 public cumulativeCvxUnlockObligations;
+    uint128 internal cumulativeCvxUnlockObligations;
     /// @dev Tracks the total amount of CVX that has ever been unlocked.
-    uint128 public cumulativeCvxUnlocked;
+    uint128 internal cumulativeCvxUnlocked;
 
-    uint256 internal unprocessedRewards;
+    uint256 public unprocessedRewards;
 
     mapping(address => mapping(uint256 => uint256)) public withdrawableAfterUnlocked;
 
@@ -132,18 +132,18 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     function deposit(uint256 cvxMinOut) public payable onlyManager returns (uint256 cvxAmount) {
         cvxAmount = unsafeBuyCvx(msg.value);
         if (cvxAmount < cvxMinOut) revert ExchangeOutputBelowMin();
-        (,, uint256 totalUnlockObligations) = _getObligations();
+        (,, uint256 totalUnlockObligations) = getObligations();
         if (cvxAmount >= totalUnlockObligations) {
             _processExpiredLocks(true);
             unchecked {
-                uint lockAmount = cvxAmount - totalUnlockObligations;
+                uint256 lockAmount = cvxAmount - totalUnlockObligations;
                 if (lockAmount > 0) _lock(lockAmount);
             }
         } else {
             uint256 unlocked = _unlockAvailable();
             if (unlocked > totalUnlockObligations) {
                 unchecked {
-                     _lock(unlocked - totalUnlockObligations);
+                    _lock(unlocked - totalUnlockObligations);
                 }
             }
         }
@@ -165,7 +165,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     {
         if (share == 0) return (false, 0, 0);
 
-        (, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations) = _getObligations();
+        (, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations) = getObligations();
 
         uint256 unlockedCvx = _unlockAvailable();
         uint256 lockedCvx = _lockedBalance();
@@ -208,7 +208,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         uint256 cvxAmount = withdrawableAfterUnlocked[msg.sender][cumulativeUnlockThreshold];
         if (cvxAmount == 0) return ethReceived;
 
-        (uint256 cumCvxUnlocked,, uint256 totalUnlockObligations) = _getObligations();
+        (uint256 cumCvxUnlocked,, uint256 totalUnlockObligations) = getObligations();
 
         uint256 unlockedCvx = _unlockAvailable();
         // Check if unlock threshold has already been reached, otherwise ensure there's sufficient
@@ -245,7 +245,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      * happening to prevent receiving losses from kick penalties.
      */
     function processAndRelock() external {
-        (,, uint256 totalUnlockObligations) = _getObligations();
+        (,, uint256 totalUnlockObligations) = getObligations();
         uint256 unlockedCvx = _unlockAvailable();
         if (unlockedCvx > totalUnlockObligations) {
             unchecked {
@@ -349,7 +349,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      * @return Amount of CVX in the entire system
      */
     function availableCvx() public view returns (uint256) {
-        (,, uint256 totalUnlockObligations) = _getObligations();
+        (,, uint256 totalUnlockObligations) = getObligations();
         uint256 lockedCvx = _lockedBalance();
         uint256 unlockedCvx = CVX.balanceOf(address(this));
         return lockedCvx + unlockedCvx - totalUnlockObligations;
@@ -358,6 +358,16 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
     function totalEthValue() external view returns (uint256 value, uint256 price) {
         price = CvxEthOracleLib.ethCvxPrice();
         value = availableCvx().mulWad(price);
+    }
+
+    function getObligations()
+        public
+        view
+        returns (uint256 cumCvxUnlocked, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations)
+    {
+        cumCvxUnlocked = cumulativeCvxUnlocked;
+        cumCvxUnlockObligations = cumulativeCvxUnlockObligations;
+        totalUnlockObligations = cumCvxUnlockObligations - cumCvxUnlocked;
     }
 
     /**
@@ -379,16 +389,6 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
      */
     function unsafeSellCvx(uint256 cvxAmountIn) internal returns (uint256 ethAmountOut) {
         ethAmountOut = CVX_ETH_POOL.exchange_underlying(CVX_COIN_INDEX, ETH_COIN_INDEX, cvxAmountIn, 0);
-    }
-
-    function _getObligations()
-        internal
-        view
-        returns (uint256 cumCvxUnlocked, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations)
-    {
-        cumCvxUnlocked = cumulativeCvxUnlocked;
-        cumCvxUnlockObligations = cumulativeCvxUnlockObligations;
-        totalUnlockObligations = cumCvxUnlockObligations - cumCvxUnlocked;
     }
 
     function _unlockAvailable() internal returns (uint256 totalUnlocked) {

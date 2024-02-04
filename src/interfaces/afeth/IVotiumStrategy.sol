@@ -25,4 +25,9 @@ interface IVotiumStrategy {
     function deposit(uint256 cvxMinOut) external payable returns (uint256 cvxAmount);
 
     function totalEthValue() external view returns (uint256 totalValue, uint256 ethCvxPrice);
+
+    function getObligations()
+        external
+        view
+        returns (uint256 cumCvxUnlocked, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations);
 }
