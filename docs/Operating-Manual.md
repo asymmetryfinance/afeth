@@ -11,6 +11,12 @@ permissionless actions that are accessible by anyone.
 > this will pause all deposit/withdrawal functions as well as disable the votium strategy, note that
 > this method may consume quite a bit of gas.
 
+### Who?
+
+- Owner (`AfEth::owner()`, `Votium::owner()`)
+
+### Configuring Parameters
+
 
 ## User
 
@@ -106,9 +112,9 @@ With arguments (in order):
 - `uint256 cumulativeUnlockThreshold`: The unlock threshold parameter initially returned from the
   call to `AfEth::requestWithdraw`.
 - `uint256 minOut`: The minimum ETH to receive when swapping the unlocked CVX for ETH.
-    > [!IMPORTANT]
-    > Exactly `0` can be specified to indicate that the underlyling CVX itself should be withdrawn
-    > intsead of swapping it for ETH, in this case slippage doesn't matter as no swaps are occuring.
+> [!IMPORTANT]
+> Exactly `0` can be specified to indicate that the underlyling CVX itself should be withdrawn
+> intsead of swapping it for ETH, in this case slippage doesn't matter as no swaps are occuring.
 - `uint256 deadline`: The timestamp after which the transaction reverts.
 
 Return value:

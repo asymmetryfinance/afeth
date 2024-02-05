@@ -1,5 +1,8 @@
 # AfEth
 
+For docs on AfEth's various functions see the ["Operating Manual"](./docs/Operating-Manual.md). For
+technical details on internal works view ["AfEth"](./docs/AfEth.md).
+
 
 ## Deployed Addresses
 
