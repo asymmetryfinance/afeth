@@ -4,6 +4,13 @@ This document documents how the protocol is meant to be interacted with and main
 into two main sections: admin and user. "Admin" refers to any priviledged roles and "user" is any
 permissionless actions that are accessible by anyone.
 
+## Admin
+
+> [!CAUTION]
+> In case of an on-going exploit or other emergency invoke the `AfEth::emergencyShutdown()` method,
+> this will pause all deposit/withdrawal functions as well as disable the votium strategy, note that
+> this method may consume quite a bit of gas.
+
 
 ## User
 
