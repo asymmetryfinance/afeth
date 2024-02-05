@@ -52,13 +52,6 @@ don't have control over.
 
 As the owner call `setRewarder(address)` with the address of the new rewarder.
 
-
-### Configuring Parameters
-
-- Configure sfrxETH / Votium ratio: `AfEth::setSfrxEthStrategyShare(uint16 bps)`
-
-
-
 ## User
 
 ### Depositing
