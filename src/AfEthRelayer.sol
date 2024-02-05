@@ -14,6 +14,8 @@ contract AfEthRelayer is Initializable {
     ISafEth public constant SAF_ETH = ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5);
     IAfEth public constant AF_ETH = IAfEth(0x00000000fbAA96B36A2AcD4B7B36385c426B119D);
 
+    address internal immutable THIS_ = address(this);
+
     address internal constant ZERO_X_EXCHANGE = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
     address internal constant ZERO_X_ERC20_PROXY = 0x95E6F48254609A6ee006F7D493c8e5fB97094ceF;
 
@@ -23,7 +25,7 @@ contract AfEthRelayer is Initializable {
         bytes swapCallData;
     }
 
-    error NotWhitelisted();
+    error InnerCallFailed();
     error SwapFailed();
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
@@ -75,6 +77,20 @@ contract AfEthRelayer is Initializable {
         AF_ETH.quickDeposit{value: address(this).balance}(msg.sender, minOut, deadline);
     }
 
+    /**
+     * @dev Enables a new sell token by doing the one-time infinite approval from the relayer,
+     * allows for an optional nested call to an actual deposit transaction.
+     */
+    function enableNewSellToken(address sellToken, bytes calldata innerCall) external payable {
+        sellToken.safeApproveWithRetry(ZERO_X_ERC20_PROXY, type(uint256).max);
+        if (innerCall.length > 0) {
+            // Delegate to `THIS_` (implementation address) to avoid proxy overhead, functionally
+            // equivalent to calling address(this).
+            (bool success,) = THIS_.delegatecall(innerCall);
+            if (!success) revert InnerCallFailed();
+        }
+    }
+
     function _swapToEth(SwapParams calldata params) internal {
         _fillQuote(params);
         uint256 totalBal = WETH.balanceOf(address(this));
@@ -84,7 +100,6 @@ contract AfEthRelayer is Initializable {
     /// @dev Swaps ERC20->ERC20 tokens held by this contract using a 0x-API quote.
     function _fillQuote(SwapParams calldata params) private {
         params.sellToken.safeTransferFrom(msg.sender, address(this), params.amount);
-        params.sellToken.safeApproveWithRetry(ZERO_X_ERC20_PROXY, params.amount);
 
         (bool success,) = ZERO_X_EXCHANGE.call(params.swapCallData);
         if (!success) revert SwapFailed();
