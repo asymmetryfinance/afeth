@@ -5,26 +5,31 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IAfEth} from "./interfaces/afeth/IAfEth.sol";
 import {ISafEth} from "./interfaces/safeth/ISafEth.sol";
-import {WETH} from "./interfaces/IWETH.sol";
+import {IWETH, WETH} from "./interfaces/IWETH.sol";
 
 // AfEth is the strategy manager for safEth and votium strategies
 contract AfEthRelayer is Initializable {
     using SafeTransferLib for address;
 
     ISafEth public constant SAF_ETH = ISafEth(0x6732Efaf6f39926346BeF8b821a04B6361C4F3e5);
-    IAfEth public immutable AF_ETH;
+    IAfEth public constant AF_ETH = IAfEth(0x00000000fbAA96B36A2AcD4B7B36385c426B119D);
 
     address internal constant ZERO_X_EXCHANGE = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
     address internal constant ZERO_X_ERC20_PROXY = 0x95E6F48254609A6ee006F7D493c8e5fB97094ceF;
+
+    struct SwapParams {
+        address sellToken;
+        uint256 amount;
+        bytes swapCallData;
+    }
 
     error NotWhitelisted();
     error SwapFailed();
 
     // As recommended by https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address afEth) {
+    constructor() {
         _disableInitializers();
-        AF_ETH = IAfEth(afEth);
     }
 
     // Payable fallback to allow this contract to receive protocol fee refunds.
@@ -37,76 +42,51 @@ contract AfEthRelayer is Initializable {
     function initialize() external initializer {}
 
     /**
-     * @notice - Deposits into the SafEth contract and relay to owner address
-     * @param minOut - Minimum amount of SafEth to mint
-     * @param to - Owner of the SafEth
+     * @notice Deposits into the SafEth contract and relay to owner address
+     * @param minOut Minimum amount of safETH to mint
+     * @param params Parameters passed to zerox
      */
-    function depositSafEth(
-        uint256 minOut,
-        address to,
-        address sellToken,
-        uint256 sellAmount,
-        address allowanceTarget,
-        address swapTarget,
-        bytes calldata swapData
-    ) external {
-        uint256 balanceBefore = WETH.balanceOf(address(this));
-        fillQuote(sellToken, sellAmount, allowanceTarget, swapTarget, swapData);
-        uint256 balanceAfter = WETH.balanceOf(address(this));
-        uint256 amountToStake = balanceAfter - balanceBefore;
-        WETH.withdraw(amountToStake);
+    function depositSafEth(uint256 minOut, SwapParams calldata params) external payable {
+        _swapToEth(params);
 
-        uint256 amountToTransfer = SAF_ETH.stake{value: amountToStake}(minOut);
-        address(SAF_ETH).safeTransfer(to, amountToTransfer);
+        uint256 amountToTransfer = SAF_ETH.stake{value: address(this).balance}(minOut);
+        address(SAF_ETH).safeTransfer(msg.sender, amountToTransfer);
     }
 
     /**
-     * @notice - Deposits into the AfEth contract and relay to owner address
-     * @param minOut - Minimum amount of AfEth to mint
-     * @param deadline - Time before transaction expires
-     * @param _owner - Owner of the AfEth
+     * @notice Does a direct deposit into the AfEth contract and relay to caller
+     * @param minOut Minimum amount of afETH to mint
+     * @param deadline Time before transaction expires
+     * @param params Owner of the AfEth
      */
-    function depositAfEth(
-        uint256 minOut,
-        uint256 deadline,
-        address _owner,
-        address _sellToken,
-        uint256 _amount,
-        address _allowanceTarget,
-        address payable _to,
-        bytes calldata _swapCallData
-    ) external {
-        uint256 balanceBefore = WETH.balanceOf(address(this));
-        fillQuote(_sellToken, _amount, _allowanceTarget, _to, _swapCallData);
-        uint256 balanceAfter = WETH.balanceOf(address(this));
-        uint256 amountToStake = balanceAfter - balanceBefore;
-
-        WETH.withdraw(amountToStake);
-
-        AF_ETH.deposit{value: amountToStake}(_owner, minOut, deadline);
+    function depositAfEth(uint256 minOut, uint256 deadline, SwapParams calldata params) external payable {
+        _swapToEth(params);
+        AF_ETH.deposit{value: address(this).balance}(msg.sender, minOut, deadline);
     }
 
-    function whitelisted(address addr) public pure returns (bool) {
-        return addr == ZERO_X_EXCHANGE || addr == ZERO_X_ERC20_PROXY;
+    /**
+     * @notice Does a quick deposit into the AfEth contract and relay to caller
+     * @param minOut Minimum amount of afETH to mint
+     * @param deadline Time before transaction expires
+     * @param params Owner of the AfEth
+     */
+    function quickDepositAfEth(uint256 minOut, uint256 deadline, SwapParams calldata params) external payable {
+        _swapToEth(params);
+        AF_ETH.quickDeposit{value: address(this).balance}(msg.sender, minOut, deadline);
+    }
+
+    function _swapToEth(SwapParams calldata params) internal {
+        _fillQuote(params);
+        uint256 totalBal = WETH.balanceOf(address(this));
+        IWETH(WETH).withdraw(totalBal);
     }
 
     /// @dev Swaps ERC20->ERC20 tokens held by this contract using a 0x-API quote.
-    function fillQuote(
-        address sellToken,
-        uint256 amount,
-        address spender,
-        address swapTarget,
-        bytes calldata swapCallData
-    ) private {
-        if (!whitelisted(swapTarget) || !whitelisted(spender)) {
-            revert NotWhitelisted();
-        }
-        sellToken.safeTransferFrom(msg.sender, address(this), amount);
-        sellToken.safeApproveWithRetry(spender, amount);
+    function _fillQuote(SwapParams calldata params) private {
+        params.sellToken.safeTransferFrom(msg.sender, address(this), params.amount);
+        params.sellToken.safeApproveWithRetry(ZERO_X_ERC20_PROXY, params.amount);
 
-        // Arbitrary call ok because `swapTarget` needs to be one of the hardcoded whitelisted
-        // addresses.
-        (bool success,) = swapTarget.call(swapCallData);
+        (bool success,) = ZERO_X_EXCHANGE.call(params.swapCallData);
         if (!success) revert SwapFailed();
     }
 }
