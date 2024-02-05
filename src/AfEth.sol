@@ -71,7 +71,7 @@ contract AfEth is IAfEth, Ownable, ERC20PermitUpgradeable {
         SfrxEthStrategy.init();
 
         // Configure default ratio to of sfrxETH to locked CVX to 70/30.
-        emit SetSfrxStrategyShare(sfrxStrategyShareBps = START_SFRX_TO_VOTIUM_RATIO);
+        _setSfrxEthStrategyShare(0.7e4);
 
         // Prevent admins from fat fingering initialization amount if they mistake it for an actual
         // deposit.
@@ -112,9 +112,7 @@ contract AfEth is IAfEth, Ownable, ERC20PermitUpgradeable {
      * @param newShareBps New share of the sfrxETH strategy (votium's share is automatically 100% - sfrxStrategyShare)
      */
     function setSfrxEthStrategyShare(uint16 newShareBps) external onlyOwner {
-        if (newShareBps > ONE_BPS) revert InvalidShare();
-        sfrxStrategyShareBps = newShareBps;
-        emit SetSfrxStrategyShare(newShareBps);
+        _setSfrxEthStrategyShare(newShareBps);
     }
 
     /**
@@ -398,6 +396,12 @@ contract AfEth is IAfEth, Ownable, ERC20PermitUpgradeable {
     function _lockRewards(uint256 newLockedRewards) internal {
         lastLockedRewards = newLockedRewards.toUint128();
         lastUpdatedLocked = uint32(block.timestamp);
+    }
+
+    function _setSfrxEthStrategyShare(uint16 newShareBps) internal {
+        if (newShareBps > ONE_BPS) revert InvalidShare();
+        sfrxStrategyShareBps = newShareBps;
+        emit SetSfrxStrategyShare(newShareBps);
     }
 
     function mulBps(uint256 value, uint256 bps) internal pure returns (uint256) {
