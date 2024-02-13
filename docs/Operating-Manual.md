@@ -11,12 +11,46 @@ permissionless actions that are accessible by anyone.
 > this will pause all deposit/withdrawal functions as well as disable the votium strategy, note that
 > this method may consume quite a bit of gas.
 
+### Reward Claiming & Rebalancing
+
+In the following steps `Votium` is short for the `VotiumStrategy` contract.
+
+1. As the rewarder: Claim the rewards using the `Votium::claimRewards(IVotiumMerkleStash.ClaimParam[] claimProofs)` method
+2. (One-time setup) As the owner: Grant allowances on behalf of the Votium contract to addresses
+   you'd like to use to swap through by calling `Votium::grantAddedAllowances(Allowance[] allowances)`
+3. As the rewarder: Swap the rewards using the `Votium::swapRewards(Swap[] swaps, uint256 cvxPerEthMin, uint256 sfrxPerEthMin, uint256 ethPerSfrxMin, uint256 deadline)` be sure to provide accurate values for `cvxPerEthMin`, `sfrxPerEthMin` and `ethPerSfrxMin` as they'll set the slippage for the rebalance / reward distribution callback.
+4. (Additionally) As the rewarder / owner: Call `AfEth::depositRewardsAndRebalance(IAfEth.RebalanceParams params)` at set intervals to ensure the trickle unlocked rewards are swapped for CVX & sfrxETH and are available for actual withdrawal (Note: Not entirely necessary as `swapRewards` also triggers this).
+
+### Managing the Quick Action Reserves
+
+These calls are only available to the owner. Note that fees will accrue directly to the quick action
+reserves. You can immediately withdraw them after triggering a rebalance / reward distribution via
+`swapRewards` or `depositRewardsAndRebalance` to avoid this.
+
+- Deposit afETH + ETH: `AfEth::depositForQuickActions(uint256 afEthAmount) payable`. Note you can
+set `afEthAmount` to `1 << 255` to indicate you'd like to deposit the owner's entire afETH balance.
+- Withdraw afETH + ETH: `AfEth::withdrawOwnerFunds(uint256 afEthAmount, uint256 ethAmount)`. Similar
+  to the deposit for quick actions methods you can specify `1 << 255` for either input to indicate
+  you'd like to withdraw everything.
+
 ### Who?
 
-- Owner (`AfEth::owner()`, `Votium::owner()`)
+- Owner (`AfEth::owner()`, `Votium::owner()`): Is allow
 
-### Configuring Parameters
+### Configuring Roles
 
+**Changing the owner (AfEth & Votium)**
+
+1. The new owner needs to call `requestOwnershipHandover()` this will request a handover.
+2. The current owner will then have 48h to call `completeOwnershipHandover(address newOwner)` to
+   confirm the handover.
+
+This process is recommended as it ensures you don't accidentally transfer ownership to a wallet you
+don't have control over.
+
+**Changing the rewarder (AfEth & Votium)**
+
+As the owner call `setRewarder(address)` with the address of the new rewarder.
 
 ## User
 
