@@ -23,7 +23,6 @@ contract DeployMainnetScript is Test, Script {
 
         // TODO: Not the recommended way of loading private key.
         uint256 pk = vm.envUint("PRIV_KEY");
-        address me = vm.addr(pk);
 
         vm.startBroadcast(pk);
 

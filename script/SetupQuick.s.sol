@@ -13,7 +13,6 @@ contract SetupQuickScript is Test, Script {
 
     function run() public {
         uint256 pk = vm.envUint("TEST1_KEY");
-        address me = vm.addr(pk);
 
         vm.startBroadcast(pk);
 
