@@ -17,7 +17,6 @@ contract AfEthRelayer is Initializable {
     address internal immutable THIS_ = address(this);
 
     address internal constant ZERO_X_EXCHANGE = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
-    address internal constant ZERO_X_ERC20_PROXY = 0x95E6F48254609A6ee006F7D493c8e5fB97094ceF;
 
     struct SwapParams {
         address sellToken;
@@ -82,7 +81,7 @@ contract AfEthRelayer is Initializable {
      * allows for an optional nested call to an actual deposit transaction.
      */
     function enableNewSellToken(address sellToken, bytes calldata innerCall) external payable {
-        sellToken.safeApproveWithRetry(ZERO_X_ERC20_PROXY, type(uint256).max);
+        sellToken.safeApproveWithRetry(ZERO_X_EXCHANGE, type(uint256).max);
         if (innerCall.length > 0) {
             // Delegate to `THIS_` (implementation address) to avoid proxy overhead, functionally
             // equivalent to calling address(this).
