@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Ownable} from "solady/src/auth/Ownable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {TrackedAllowances, Allowance} from "../utils/TrackedAllowances.sol";
 import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
@@ -22,7 +22,7 @@ import {IAfEth} from "../interfaces/afeth/IAfEth.sol";
 
 /// @title Votium Strategy Token
 /// @author Asymmetry Finance
-contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initializable {
+contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgradeable {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
     using SafeCastLib for uint256;
@@ -87,6 +87,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
         ISnapshotDelegationRegistry(SNAPSHOT_DELEGATE_REGISTRY).setDelegate(VOTE_DELEGATION_ID, VOTE_PROXY);
         rewarder = initialRewarder;
         _initializeOwner(initialOwner);
+        __UUPSUpgradeable_init();
 
         // Approve once to save gas later by avoiding having to re-approve every time.
         _grantAndTrackInfiniteAllowance(Allowance({spender: address(LOCKED_CVX), token: CVX}));
@@ -94,6 +95,11 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, Initiali
 
         emit RewarderSet(initialRewarder);
     }
+
+    /**
+     * @dev Allows the owner of the contract to upgrade to *any* new address.
+     */
+    function _authorizeUpgrade(address /* newImplementation */ ) internal view override onlyOwner {}
 
     /**
      * @notice - Function to set the address of the rewarder account that periodically claims rewards

@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {ERC20PermitUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IAfEth} from "./interfaces/afeth/IAfEth.sol";
 import {Ownable} from "solady/src/auth/Ownable.sol";
 import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
@@ -12,7 +13,7 @@ import {IVotiumStrategy} from "./interfaces/afeth/IVotiumStrategy.sol";
 import {SfrxEthStrategy} from "./strategies/SfrxEthStrategy.sol";
 
 /// @dev AfEth is the strategy manager for the sfrxETH and votium strategies
-contract AfEth is IAfEth, Ownable, ERC20PermitUpgradeable {
+contract AfEth is IAfEth, Ownable, ERC20PermitUpgradeable, UUPSUpgradeable {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
     using SafeCastLib for uint256;
@@ -64,6 +65,7 @@ contract AfEth is IAfEth, Ownable, ERC20PermitUpgradeable {
         string memory name_ = "Asymmetry Finance afETH";
         __ERC20_init(name_, "afETH");
         __ERC20Permit_init(name_);
+        __UUPSUpgradeable_init();
         _initializeOwner(initialOwner);
         emit SetRewarder(rewarder = initialRewarder);
 
@@ -86,6 +88,11 @@ contract AfEth is IAfEth, Ownable, ERC20PermitUpgradeable {
         // Bootstrap unburnable supply to ensure totalSupply is always strictly non-zero.
         _mint(address(0xdead), recognizedValue);
     }
+
+    /**
+     * @dev Allows the owner of the contract to upgrade to *any* new address.
+     */
+    function _authorizeUpgrade(address /* newImplementation */ ) internal view override onlyOwner {}
 
     modifier latestAt(uint256 deadline) {
         if (block.timestamp > deadline) revert StaleAction();

@@ -232,6 +232,36 @@ contract AfEthTest is BaseTest {
         assertApproxEqRel(ethOut, amount, 0.005e18, "unlocked ETH not equal to amount");
     }
 
+    function testOwnerCanUpgrade() public {
+        address newImpl = makeAddr("new_impl");
+        vm.etch(
+            newImpl,
+            hex"7f360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc3d52593d3d3560e01c6352d1902d0361003557f35bfd"
+        );
+
+        vm.prank(owner);
+        afEth.upgradeToAndCall(newImpl, new bytes(0));
+
+        (bool success, bytes memory errorData) = address(afEth).call(hex"01020304");
+        assertFalse(success);
+        assertEq(abi.decode(errorData, (bytes32)), 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+    }
+
+    function testOnlyOwnerCanUpgrade() public {
+        address newImpl = makeAddr("new_impl");
+        vm.etch(
+            newImpl,
+            hex"7f360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc3d52593d3d3560e01c6352d1902d0361003557f35bfd"
+        );
+
+        vm.prank(owner);
+        afEth.upgradeToAndCall(newImpl, new bytes(0));
+
+        (bool success, bytes memory errorData) = address(afEth).call(hex"01020304");
+        assertFalse(success);
+        assertEq(abi.decode(errorData, (bytes32)), 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+    }
+
     function _deposit(string memory label, uint256 amount) internal returns (uint256 amountOut) {
         hoax(makeAddr(label), amount);
         amountOut = afEth.deposit{value: amount}(0, block.timestamp);

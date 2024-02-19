@@ -1,0 +1,20 @@
+#define constant SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
+
+#define function proxiableUUID() view returns (bytes32)
+
+
+#define macro _MAIN(z0) = takes(0) returns(0) {
+    [SLOT] <z0> mstore
+
+    msize <z0>
+
+    <z0> calldataload 0xe0 shr
+    __FUNC_SIG(proxiableUUID) sub error jumpi
+        return
+    error:
+        revert
+}
+
+#define macro MAIN() = takes(0) returns(0) {
+    _MAIN(returndatasize)
+}
