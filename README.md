@@ -8,9 +8,9 @@ technical details on internal works view ["AfEth"](./docs/AfEth.md).
 
 |Description|Address + Link|
 |-----------|--------------|
-|The AfEth ERC1967 proxy, deployed using Solady's [ERC1967 Factory](https://etherscan.io/address/0x0000000000006396FF2a80c067f99B3d2Ab4Df24#readContract).| [`0x00000000fbAA96B36A2AcD4B7B36385c426B119D`](https://etherscan.io/address/0x00000000fbAA96B36A2AcD4B7B36385c426B119D)|
-|The Votium ERC1967 proxy, also deployed using Solady's [ERC1967 Factory](https://etherscan.io/address/0x0000000000006396FF2a80c067f99B3d2Ab4Df24#readContract)|[`0x000000004c4bb6e0a169FE3A9228cd0F70873CdE`](https://etherscan.io/address/0x000000004c4bb6e0a169FE3A9228cd0F70873CdE)|
-|Votium Implementation Contract|[`0xCf687792a1e65bB41793cc938Cf8e27E5D1B678b`](https://etherscan.io/address/0xCf687792a1e65bB41793cc938Cf8e27E5D1B678b)|
-|AfEth Implementation Contract|[`0x1a0A62AA8A9471a6a726B5cDc24192Be3a3DBc7B`](https://etherscan.io/address/0x1a0A62AA8A9471a6a726B5cDc24192Be3a3DBc7B)|
-|AfEthRelayer, also deployed using Solady's [ERC1967 Factory](https://etherscan.io/address/0x0000000000006396FF2a80c067f99B3d2Ab4Df24#readContract)|[`0x00000000b8791985c4bd2cbc4584cee89c4e95ef`](https://etherscan.io/address/0x00000000b8791985c4bd2cbc4584cee89c4e95ef)|
+|The AfEth ERC1967 proxy| [`0x0000000016E6Cb3038203c1129c8B4aEE7af7a11`](https://etherscan.io/address/0x0000000016e6cb3038203c1129c8b4aee7af7a11)|
+|The Votium ERC1967 proxy|[`0x00000069aBbB0B1Ad6975bcF753eEe15D318A0BF`](https://etherscan.io/address/0x00000069abbb0b1ad6975bcf753eee15d318a0bf)|
+|Votium Implementation Contract|[`0x01e111D815261c8ad6A1271861970E804E4282E4`](https://etherscan.io/address/0x01e111d815261c8ad6a1271861970e804e4282e4)|
+|AfEth Implementation Contract|[`0x0A36224486D4E49dEB27b489233c6B64e0241D6A`](https://etherscan.io/address/0x0a36224486d4e49deb27b489233c6b64e0241d6a)|
+|AfEthRelayer|[`0x0000005aC28De2cbda005a8500A9578921FDB7da`](https://etherscan.io/address/0x0000005aC28De2cbda005a8500A9578921FDB7da)|
 
