@@ -278,8 +278,6 @@ contract AfEthTest is BaseTest {
         vm.prank(owner);
         afEth.setSfrxEthStrategyShare(0);
 
-        MockLockedCvx lockedCvx = overwriteLockedCvx();
-
         address user = makeAddr("user");
         uint256 amount = 3 ether;
         hoax(user, amount);

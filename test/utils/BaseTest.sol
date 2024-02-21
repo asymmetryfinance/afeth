@@ -21,7 +21,6 @@ abstract contract BaseTest is Test {
     address internal immutable owner = makeAddr("OWNER");
     address internal immutable rewarder = makeAddr("REWARDER");
 
-    MockOracle internal immutable baseOracle = new MockOracle();
     SimpleProxyFactory internal immutable factory = new SimpleProxyFactory();
 
     VotiumStrategy private _votiumImplementation;
@@ -65,15 +64,14 @@ abstract contract BaseTest is Test {
 
     function overwriteOracle(address oracle) internal returns (MockOracle overwritten) {
         (, int256 lastPrice,,,) = AggregatorV3Interface(oracle).latestRoundData();
-        vm.etch(oracle, address(baseOracle).code);
+        vm.etch(oracle, type(MockOracle).runtimeCode);
         overwritten = MockOracle(oracle);
         overwritten.update(lastPrice);
     }
 
     function overwriteLockedCvx() internal returns (MockLockedCvx) {
         address lockedCvx = address(LOCKED_CVX);
-        MockLockedCvx mock = new MockLockedCvx();
-        vm.etch(lockedCvx, address(mock).code);
+        vm.etch(lockedCvx, type(MockLockedCvx).runtimeCode);
         return MockLockedCvx(lockedCvx);
     }
 
