@@ -139,18 +139,10 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
         cvxAmount = unsafeBuyCvx(msg.value);
         if (cvxAmount < cvxMinOut) revert ExchangeOutputBelowMin();
         (,, uint256 totalUnlockObligations) = getObligations();
-        if (cvxAmount >= totalUnlockObligations) {
-            _processExpiredLocks(true);
+        uint256 unlocked = _unlockAvailable();
+        if (unlocked > totalUnlockObligations) {
             unchecked {
-                uint256 lockAmount = cvxAmount - totalUnlockObligations;
-                if (lockAmount > 0) _lock(lockAmount);
-            }
-        } else {
-            uint256 unlocked = _unlockAvailable();
-            if (unlocked > totalUnlockObligations) {
-                unchecked {
-                    _lock(unlocked - totalUnlockObligations);
-                }
+                _lock(unlocked - totalUnlockObligations);
             }
         }
     }
