@@ -8,6 +8,7 @@ import {CvxEthOracleLib} from "../src/utils/CvxEthOracleLib.sol";
 import {CVX} from "../src/interfaces/curve-convex/Constants.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {MockOracle} from "./mocks/MockOracle.sol";
+import {MockLockedCvx} from "./mocks/MockLockedCvx.sol";
 import {CvxEthOracleLib} from "../src/utils/CvxEthOracleLib.sol";
 
 import {console2 as console} from "forge-std/console2.sol";
@@ -260,6 +261,97 @@ contract AfEthTest is BaseTest {
         (bool success, bytes memory errorData) = address(afEth).call(hex"01020304");
         assertFalse(success);
         assertEq(abi.decode(errorData, (bytes32)), 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+    }
+
+    function testDepositWithZeroSfrx() public {
+        vm.prank(owner);
+        afEth.setSfrxEthStrategyShare(0);
+
+        uint256 amount = 3 ether;
+        uint256 amountOut = _deposit("user", amount);
+        emit log_named_decimal_uint("amountOut", amountOut, 18);
+
+        assertApproxEqRel(amount, amountOut, 0.003e18, "total value not equal to amount of shares (within 1 bps)");
+    }
+
+    function testRequestWithdrawAccounting() public {
+        vm.prank(owner);
+        afEth.setSfrxEthStrategyShare(0);
+
+        MockLockedCvx lockedCvx = overwriteLockedCvx();
+
+        address user = makeAddr("user");
+        uint256 amount = 3 ether;
+        hoax(user, amount);
+        uint256 shares = afEth.deposit{value: amount}(0, block.timestamp);
+
+        uint256 withdrawAmount = shares / 3;
+        vm.prank(user);
+        (, bool locked, uint256 threshold) = afEth.requestWithdraw(withdrawAmount, 0, 0, block.timestamp);
+        assertEq(CVX.balanceOf(address(votium)), 0, "has CVX");
+        assertTrue(locked, "not locked");
+
+        {
+            (uint256 cumCvxUnlocked, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations) =
+                votium.getObligations();
+            assertEq(cumCvxUnlocked, 0, "cumulative unlocked not 0");
+            assertEq(cumCvxUnlockObligations, threshold, "cumulative obligations not equal threshold");
+            assertEq(totalUnlockObligations, threshold, "net obligations not equal threshold");
+        }
+
+        vm.prank(user);
+        vm.expectRevert(IVotiumStrategy.WithdrawalStillLocked.selector);
+        votium.withdrawLocked(threshold, 0, block.timestamp);
+
+        address other = makeAddr("other");
+        amount = 10 ether;
+        hoax(other, amount);
+        afEth.deposit{value: amount}(0, block.timestamp);
+
+        assertEq(CVX.balanceOf(address(votium)), threshold, "kept free (deposit 1)");
+
+        {
+            (uint256 cumCvxUnlocked, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations) =
+                votium.getObligations();
+            assertEq(cumCvxUnlocked, 0);
+            assertEq(cumCvxUnlockObligations, threshold);
+            assertEq(totalUnlockObligations, threshold);
+        }
+
+        amount = 3 ether;
+        hoax(other, amount);
+        afEth.deposit{value: amount}(0, block.timestamp);
+
+        {
+            (uint256 cumCvxUnlocked, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations) =
+                votium.getObligations();
+            assertEq(cumCvxUnlocked, 0);
+            assertEq(cumCvxUnlockObligations, threshold);
+            assertEq(totalUnlockObligations, threshold);
+        }
+
+        {
+            uint256 votiumBalance = CVX.balanceOf(address(votium));
+            assertEq(votiumBalance, threshold, "kept free (deposit 2)");
+
+            deal(CVX, address(votium), votiumBalance + 1 wei);
+        }
+
+        vm.prank(user);
+        uint256 ethOut = votium.withdrawLocked(threshold, 0, block.timestamp);
+        assertEq(ethOut, 0);
+
+        {
+            (uint256 cumCvxUnlocked, uint256 cumCvxUnlockObligations, uint256 totalUnlockObligations) =
+                votium.getObligations();
+            assertEq(cumCvxUnlocked, threshold);
+            assertEq(cumCvxUnlockObligations, threshold);
+            assertEq(totalUnlockObligations, 0);
+        }
+
+        assertEq(CVX.balanceOf(address(votium)), 0);
+
+        assertEq(CVX.balanceOf(user), threshold);
     }
 
     function _deposit(string memory label, uint256 amount) internal returns (uint256 amountOut) {

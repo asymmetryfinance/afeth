@@ -6,6 +6,8 @@ import {SimpleProxyFactory} from "../../src/utils/SimpleProxyFactory.sol";
 import {VotiumStrategy} from "../../src/strategies/VotiumStrategy.sol";
 import {AfEth} from "../../src/AfEth.sol";
 import {MockOracle} from "../mocks/MockOracle.sol";
+import {MockLockedCvx} from "../mocks/MockLockedCvx.sol";
+import {LOCKED_CVX} from "../../src/interfaces/curve-convex/ILockedCvx.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /// @author philogy <https://github.com/philogy>
@@ -66,6 +68,13 @@ abstract contract BaseTest is Test {
         vm.etch(oracle, address(baseOracle).code);
         overwritten = MockOracle(oracle);
         overwritten.update(lastPrice);
+    }
+
+    function overwriteLockedCvx() internal returns (MockLockedCvx) {
+        address lockedCvx = address(LOCKED_CVX);
+        MockLockedCvx mock = new MockLockedCvx();
+        vm.etch(lockedCvx, address(mock).code);
+        return MockLockedCvx(lockedCvx);
     }
 
     function lockedRewards() internal view returns (uint256 locked) {
