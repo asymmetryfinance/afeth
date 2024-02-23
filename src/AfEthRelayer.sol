@@ -65,7 +65,7 @@ contract AfEthRelayer is Ownable, UUPSUpgradeable {
 
     /**
      * @notice Does a direct deposit into the AfEth contract and relay to caller
-     * @param minOut Minimum amount of afETH to mint
+     * @param minOut Minimum amount of ETH to mint
      * @param deadline Time before transaction expires
      * @param params Owner of the AfEth
      */
