@@ -11,11 +11,11 @@ import {SafeCastLib} from "solady/src/utils/SafeCastLib.sol";
 import {HashLib} from "../utils/HashLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ILockedCvx, LOCKED_CVX} from "../interfaces/curve-convex/ILockedCvx.sol";
+import {ICvxRewardsPool, CVX_REWARDS_POOL} from "../interfaces/curve-convex/ICvxRewardsPool.sol";
 import {IVotiumStrategy} from "../interfaces/afeth/IVotiumStrategy.sol";
 import {IVotiumMerkleStash, VOTIUM_MERKLE_STASH} from "../interfaces/curve-convex/IVotiumMerkleStash.sol";
 import {ISnapshotDelegationRegistry} from "../interfaces/curve-convex/ISnapshotDelegationRegistry.sol";
 import {CVX_ETH_POOL, ETH_COIN_INDEX, CVX_COIN_INDEX} from "../interfaces/curve-convex/ICvxEthPool.sol";
-import {LOCKED_CVX} from "../interfaces/curve-convex/ILockedCvx.sol";
 import {ZAP_CLAIM} from "../interfaces/IClaimZap.sol";
 import {CVX} from "../interfaces/curve-convex/Constants.sol";
 import {IAfEth} from "../interfaces/afeth/IAfEth.sol";
@@ -31,9 +31,15 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
     address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     bytes32 internal constant VOTE_DELEGATION_ID = "cvx.eth";
     address internal constant VOTE_PROXY = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
+    /// @dev rewardsDuration in CvxLockerV2 contact
+    uint256 internal constant CVX_REWARDS_DURATION = 1 weeks;
+    /// @dev the time window before the next Convex epoch that determines whether CRX should be locked or staked
+    uint256 internal constant CVX_NEXT_EPOCH_THRESHOLD = 1 hours;
 
     bytes32 internal immutable LCVX_NO_EXP_LOCKS_ERROR_HASH = keccak256("no exp locks");
     bytes32 internal immutable LCVX_SHUTDOWN_ERROR_HASH = keccak256("shutdown");
+    bytes32 internal immutable CVX_REWARDS_CANNOT_STAKE_ZERO_ERROR_HASH = keccak256("RewardPool : Cannot stake 0");
+    bytes32 internal immutable CVX_REWARDS_CANNOT_WITHDRAW_ZERO_ERROR_HASH = keccak256("RewardPool : Cannot withdraw 0");
 
     struct Swap {
         address target;
@@ -92,6 +98,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
         // Approve once to save gas later by avoiding having to re-approve every time.
         _grantAndTrackInfiniteAllowance(Allowance({spender: address(LOCKED_CVX), token: CVX}));
         _grantAndTrackInfiniteAllowance(Allowance({spender: address(CVX_ETH_POOL), token: CVX}));
+        _grantAndTrackInfiniteAllowance(Allowance({spender: address(CVX_REWARDS_POOL), token: CVX}));
 
         emit RewarderSet(initialRewarder);
     }
@@ -132,7 +139,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
     }
 
     /**
-     * @notice Sells amount of ETH from votium contract for CVX.
+     * @notice Sells amount of ETH from votium contract for CVX. Then either stakes or locks it,
+     * depending on how close the current timestamp is to the next Convex Epoch.
      * @param cvxMinOut Minimum amount of CVX to receive
      */
     function deposit(uint256 cvxMinOut) public payable onlyManager returns (uint256 cvxAmount) {
@@ -143,13 +151,13 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
             _processExpiredLocks(true);
             unchecked {
                 uint256 lockAmount = cvxAmount - totalUnlockObligations;
-                if (lockAmount > 0) _lock(lockAmount);
+                if (lockAmount > 0) _stakeOrLock(lockAmount);
             }
         } else {
             uint256 unlocked = _unlockAvailable();
             if (unlocked > totalUnlockObligations) {
                 unchecked {
-                    _lock(unlocked - totalUnlockObligations);
+                    _stakeOrLock(unlocked - totalUnlockObligations);
                 }
             }
         }
@@ -175,8 +183,9 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
 
         uint256 unlockedCvx = _unlockAvailable();
         uint256 lockedCvx = _lockedBalance();
+        uint256 stakedCvx = _stakedBalance();
 
-        uint256 netCvx = lockedCvx + unlockedCvx - totalUnlockObligations;
+        uint256 netCvx = lockedCvx + unlockedCvx + stakedCvx - totalUnlockObligations;
         uint256 cvxAmount = netCvx.mulWad(share);
         totalUnlockObligations += cvxAmount;
 
@@ -351,6 +360,18 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
     }
 
     /**
+     * @notice A function called by an owner to unstake CRX stacked in CRX Rewads Pool contract
+     * and lock it in CVX Locker contract before the next Epoch begins
+     */
+    function unstakeAndLock() external onlyOwner() {
+        uint256 totalStacked = _stakedBalance();
+        if (totalStacked > 0) {
+            _unstake();
+            _lock(totalStacked);
+        }
+    }
+
+    /**
      * @notice The amount of CVX in the entire system
      * @return Amount of CVX in the entire system
      */
@@ -358,7 +379,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
         (,, uint256 totalUnlockObligations) = getObligations();
         uint256 lockedCvx = _lockedBalance();
         uint256 unlockedCvx = CVX.balanceOf(address(this));
-        return lockedCvx + unlockedCvx - totalUnlockObligations;
+        uint256 stakedCvx = _stakedBalance();
+        return lockedCvx + unlockedCvx + stakedCvx - totalUnlockObligations;
     }
 
     function totalEthValue() external view returns (uint256 value, uint256 price) {
@@ -426,6 +448,41 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
         // Ensure compromised rewarder can't directly steal CVX.
         if (target == manager_ || target == address(LOCKED_CVX) || target == address(CVX) || target == address(this)) {
             revert UnauthorizedTarget();
+        }
+    }
+
+    function _nextEpoch(uint256 timestamp) internal pure returns (uint256) {
+        return (timestamp / CVX_REWARDS_DURATION) * CVX_REWARDS_DURATION + CVX_REWARDS_DURATION;
+    }
+
+    function _timeUntilNextEpoch(uint256 timestamp) internal pure returns (uint256) {
+        return _nextEpoch(timestamp) - timestamp;
+    }
+
+    function _stakedBalance() internal view returns (uint256) {
+        return CVX_REWARDS_POOL.balanceOf(address(this));
+    }
+
+    function _stakeOrLock(uint256 amount) internal {
+        if (_timeUntilNextEpoch(block.timestamp) > CVX_NEXT_EPOCH_THRESHOLD) {
+            _stake(amount);
+        }
+        else {
+            _lock(amount);
+        }
+    }
+
+    function _stake(uint256 amount) internal {
+        try CVX_REWARDS_POOL.stake(amount) {}
+        catch Error(string memory err) {
+            if (err.hash() != CVX_REWARDS_CANNOT_STAKE_ZERO_ERROR_HASH) revert UnexpectedCvxRewardsPoolError();
+        }
+    }
+
+    function _unstake() internal {
+        try CVX_REWARDS_POOL.withdrawAll(true) {}
+        catch Error(string memory err) {
+            if (err.hash() != CVX_REWARDS_CANNOT_WITHDRAW_ZERO_ERROR_HASH) revert UnexpectedCvxRewardsPoolError();
         }
     }
 }

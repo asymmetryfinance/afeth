@@ -10,6 +10,7 @@ interface IVotiumStrategy {
     error StaleAction();
     error WithdrawalStillLocked();
     error UnexpectedLockedCvxError();
+    error UnexpectedCvxRewardsPoolError();
     error UnauthorizedTarget();
     error NonRewardCvxSpent();
     error Shutdown();

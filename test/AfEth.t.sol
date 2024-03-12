@@ -100,6 +100,10 @@ contract AfEthTest is BaseTest {
             "Received value not approx. staked value (within 0.5%)"
         );
 
+        _skipUntilNextEpoch();
+        vm.prank(owner);
+        votium.unstakeAndLock();
+
         skip(20 weeks);
 
         uint256 cvxBefore = CVX.balanceOf(user);
@@ -221,9 +225,15 @@ contract AfEthTest is BaseTest {
         startHoax(user, amount);
         uint256 sharesOut = afEth.deposit{value: amount}(0, block.timestamp);
         assertEq(afEth.balanceOf(user), sharesOut, "didn't receive shares");
+        vm.stopPrank();
 
+        _skipUntilNextEpoch();
+        vm.prank(owner);
+        votium.unstakeAndLock();
+        
         skip(30 weeks);
 
+        startHoax(user);
         (uint256 ethOut, bool locked, uint256 unlockThreshold) = afEth.requestWithdraw(sharesOut, 0, 0, block.timestamp);
         assertEq(afEth.balanceOf(user), 0, "shares weren't redeemed");
         assertFalse(locked, "locked");
@@ -265,5 +275,13 @@ contract AfEthTest is BaseTest {
     function _deposit(string memory label, uint256 amount) internal returns (uint256 amountOut) {
         hoax(makeAddr(label), amount);
         amountOut = afEth.deposit{value: amount}(0, block.timestamp);
+    }
+
+    function _skipUntilNextEpoch() internal {
+        uint256 timestamp = block.timestamp;
+        uint256 nextEpoch = (timestamp / 1 weeks) * 1 weeks + 1 weeks;
+        if (nextEpoch - timestamp > 1 minutes) {
+            skip(nextEpoch - timestamp - 1 minutes);
+        }
     }
 }
