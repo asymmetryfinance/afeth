@@ -11,11 +11,11 @@ import {SafeCastLib} from "solady/src/utils/SafeCastLib.sol";
 import {HashLib} from "../utils/HashLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ILockedCvx, LOCKED_CVX} from "../interfaces/curve-convex/ILockedCvx.sol";
+import {ICvxRewardsPool, CVX_REWARDS_POOL} from "../interfaces/curve-convex/ICvxRewardsPool.sol";
 import {IVotiumStrategy} from "../interfaces/afeth/IVotiumStrategy.sol";
 import {IVotiumMerkleStash, VOTIUM_MERKLE_STASH} from "../interfaces/curve-convex/IVotiumMerkleStash.sol";
 import {ISnapshotDelegationRegistry} from "../interfaces/curve-convex/ISnapshotDelegationRegistry.sol";
 import {CVX_ETH_POOL, ETH_COIN_INDEX, CVX_COIN_INDEX} from "../interfaces/curve-convex/ICvxEthPool.sol";
-import {LOCKED_CVX} from "../interfaces/curve-convex/ILockedCvx.sol";
 import {ZAP_CLAIM} from "../interfaces/IClaimZap.sol";
 import {CVX} from "../interfaces/curve-convex/Constants.sol";
 import {IAfEth} from "../interfaces/afeth/IAfEth.sol";
@@ -31,9 +31,15 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
     address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     bytes32 internal constant VOTE_DELEGATION_ID = "cvx.eth";
     address internal constant VOTE_PROXY = 0xde1E6A7ED0ad3F61D531a8a78E83CcDdbd6E0c49;
+    /// @dev rewardsDuration in CvxLockerV2 contact
+    uint256 internal constant CVX_REWARDS_DURATION = 1 weeks;
+    /// @dev the period before the next epoch during which the deposited CVX isn't staked, but left in the contract.
+    uint256 internal constant IDLE_PERIOD_BEFORE_NEXT_EPOCH = 3 days;
 
     bytes32 internal immutable LCVX_NO_EXP_LOCKS_ERROR_HASH = keccak256("no exp locks");
     bytes32 internal immutable LCVX_SHUTDOWN_ERROR_HASH = keccak256("shutdown");
+    bytes32 internal immutable CVX_REWARDS_CANNOT_STAKE_ZERO_ERROR_HASH = keccak256("RewardPool : Cannot stake 0");
+    bytes32 internal immutable CVX_REWARDS_CANNOT_WITHDRAW_ZERO_ERROR_HASH = keccak256("RewardPool : Cannot withdraw 0");
 
     struct Swap {
         address target;
@@ -92,6 +98,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
         // Approve once to save gas later by avoiding having to re-approve every time.
         _grantAndTrackInfiniteAllowance(Allowance({spender: address(LOCKED_CVX), token: CVX}));
         _grantAndTrackInfiniteAllowance(Allowance({spender: address(CVX_ETH_POOL), token: CVX}));
+        _grantAndTrackInfiniteAllowance(Allowance({spender: address(CVX_REWARDS_POOL), token: CVX}));
 
         emit RewarderSet(initialRewarder);
     }
@@ -132,24 +139,31 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
     }
 
     /**
-     * @notice Sells amount of ETH from votium contract for CVX.
+     * @notice Sells amount of ETH from votium contract for CVX. Then either stakes or keeps it in the contract,
+     * depending on how close the current timestamp is to the next Convex Epoch.
      * @param cvxMinOut Minimum amount of CVX to receive
      */
     function deposit(uint256 cvxMinOut) public payable onlyManager returns (uint256 cvxAmount) {
         cvxAmount = unsafeBuyCvx(msg.value);
         if (cvxAmount < cvxMinOut) revert ExchangeOutputBelowMin();
+        
+        // If the current `block.timestamp` is within a period specified by `IDLE_PERIOD_BEFORE_NEXT_EPOCH` 
+        // from the next epoch the purchased CVX is left in the contract to be used for withdrawals 
+        // and locked later before the next epoch starts.
+        if (_timeUntilNextEpoch(block.timestamp) <= IDLE_PERIOD_BEFORE_NEXT_EPOCH) return cvxAmount;
+
         (,, uint256 totalUnlockObligations) = getObligations();
         if (cvxAmount >= totalUnlockObligations) {
             _processExpiredLocks(true);
             unchecked {
-                uint256 lockAmount = cvxAmount - totalUnlockObligations;
-                if (lockAmount > 0) _lock(lockAmount);
+                uint256 stakeAmount = cvxAmount - totalUnlockObligations;
+                if (stakeAmount > 0) _stake(stakeAmount);
             }
         } else {
             uint256 unlocked = _unlockAvailable();
             if (unlocked > totalUnlockObligations) {
                 unchecked {
-                    _lock(unlocked - totalUnlockObligations);
+                    _stake(unlocked - totalUnlockObligations);
                 }
             }
         }
@@ -157,7 +171,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
 
     /**
      * @notice Request to withdraw from strategy emits event with eligible withdraw epoch
-     * @notice Burns afEth tokens and determines equivilent amount of cvx to start unlocking
+     * @notice Burns afEth tokens and determines equivalent amount of CVX to start unlocking
      * @param share Share of total CVX to be withdrawn in WAD.
      * @return locked Whether the amount to withdraw is still locked.
      * @return ethOutNow The amount of ETH that was withdrawn now (0 if locked).
@@ -175,17 +189,19 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
 
         uint256 unlockedCvx = _unlockAvailable();
         uint256 lockedCvx = _lockedBalance();
+        uint256 stakedCvx = _stakedBalance();
 
-        uint256 netCvx = lockedCvx + unlockedCvx - totalUnlockObligations;
+        uint256 netCvx = lockedCvx + unlockedCvx + stakedCvx - totalUnlockObligations;
         uint256 cvxAmount = netCvx.mulWad(share);
         totalUnlockObligations += cvxAmount;
 
-        if (unlockedCvx >= totalUnlockObligations) {
-            ethOutNow = unsafeSellCvx(cvxAmount);
+        if (unlockedCvx + stakedCvx >= totalUnlockObligations) {
             unchecked {
-                uint256 lockAmount = unlockedCvx - totalUnlockObligations;
-                if (lockAmount > 0) _lock(lockAmount);
+                // unstake the necessary amount if there isn't enough unlocked CVX to fulfill the withdrawal
+                if (unlockedCvx < totalUnlockObligations)
+                    _unstake(totalUnlockObligations - unlockedCvx, false);
             }
+            ethOutNow = unsafeSellCvx(cvxAmount);
         } else {
             locked = true;
             cumulativeUnlockThreshold = uint128(cumCvxUnlockObligations) + cvxAmount.toUint128();
@@ -214,8 +230,11 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
         uint256 cvxAmount = withdrawableAfterUnlocked[msg.sender][cumulativeUnlockThreshold];
         if (cvxAmount == 0) return ethReceived;
 
-        (uint256 cumCvxUnlocked,, uint256 totalUnlockObligations) = getObligations();
+        (uint256 cumCvxUnlocked,,) = getObligations();
 
+        if (_stakedBalance() > 0) {
+            _unstakeAll();
+        }
         uint256 unlockedCvx = _unlockAvailable();
         // Check if unlock threshold has already been reached, otherwise ensure there's sufficient
         // liquid CVX to cover the delta.
@@ -228,12 +247,6 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
 
         delete withdrawableAfterUnlocked[msg.sender][cumulativeUnlockThreshold];
         cumulativeCvxUnlocked = uint128(cumCvxUnlocked) + cvxAmount.toUint128();
-
-        if (unlockedCvx > totalUnlockObligations) {
-            unchecked {
-                _lock(unlockedCvx - totalUnlockObligations);
-            }
-        }
 
         if (minOut == 0) {
             CVX.safeTransfer(msg.sender, cvxAmount);
@@ -250,7 +263,7 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
      * @dev Needs to be called every few weeks if regular deposits / withdrawals aren't
      * happening to prevent receiving losses from kick penalties.
      */
-    function processAndRelock() external {
+    function processAndRelock() public {
         (,, uint256 totalUnlockObligations) = getObligations();
         uint256 unlockedCvx = _unlockAvailable();
         if (unlockedCvx > totalUnlockObligations) {
@@ -258,6 +271,20 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
                 _lock(unlockedCvx - totalUnlockObligations);
             }
         }
+    }
+
+    /**
+     * @notice Unstakes CVX from CVX Rewards Pool contract and locks it.
+     * @dev Anybody can call this function within 24 hours before the next epoch.
+     * To maximize the rewards it should be called as close as possible to 00:00 UTC
+     */
+    function unstakeAndLock() external {
+        if (_timeUntilNextEpoch(block.timestamp) > 1 days) return;
+
+        if (_stakedBalance() > 0) {
+            _unstakeAll();
+        }
+        processAndRelock();
     }
 
     /**
@@ -358,7 +385,8 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
         (,, uint256 totalUnlockObligations) = getObligations();
         uint256 lockedCvx = _lockedBalance();
         uint256 unlockedCvx = CVX.balanceOf(address(this));
-        return lockedCvx + unlockedCvx - totalUnlockObligations;
+        uint256 stakedCvx = _stakedBalance();
+        return lockedCvx + unlockedCvx + stakedCvx - totalUnlockObligations;
     }
 
     function totalEthValue() external view returns (uint256 value, uint256 price) {
@@ -426,6 +454,39 @@ contract VotiumStrategy is IVotiumStrategy, Ownable, TrackedAllowances, UUPSUpgr
         // Ensure compromised rewarder can't directly steal CVX.
         if (target == manager_ || target == address(LOCKED_CVX) || target == address(CVX) || target == address(this)) {
             revert UnauthorizedTarget();
+        }
+    }
+
+    function _nextEpoch(uint256 timestamp) internal pure returns (uint256) {
+        return (timestamp / CVX_REWARDS_DURATION) * CVX_REWARDS_DURATION + CVX_REWARDS_DURATION;
+    }
+
+    function _timeUntilNextEpoch(uint256 timestamp) internal pure returns (uint256) {
+        return _nextEpoch(timestamp) - timestamp;
+    }
+
+    function _stakedBalance() internal view returns (uint256) {
+        return CVX_REWARDS_POOL.balanceOf(address(this));
+    }
+
+    function _stake(uint256 amount) internal {
+        try CVX_REWARDS_POOL.stake(amount) {}
+        catch Error(string memory err) {
+            if (err.hash() != CVX_REWARDS_CANNOT_STAKE_ZERO_ERROR_HASH) revert UnexpectedCvxRewardsPoolError();
+        }
+    }
+
+    function _unstake(uint256 amount, bool claim) internal {
+        try CVX_REWARDS_POOL.withdraw(amount, claim) {}
+        catch Error(string memory err) {
+            if (err.hash() != CVX_REWARDS_CANNOT_WITHDRAW_ZERO_ERROR_HASH) revert UnexpectedCvxRewardsPoolError();
+        }
+    }
+
+    function _unstakeAll() internal {
+        try CVX_REWARDS_POOL.withdrawAll(true) {}
+        catch Error(string memory err) {
+            if (err.hash() != CVX_REWARDS_CANNOT_WITHDRAW_ZERO_ERROR_HASH) revert UnexpectedCvxRewardsPoolError();
         }
     }
 }

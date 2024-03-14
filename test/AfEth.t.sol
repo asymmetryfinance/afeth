@@ -9,7 +9,7 @@ import {CVX} from "../src/interfaces/curve-convex/Constants.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {MockOracle} from "./mocks/MockOracle.sol";
 import {CvxEthOracleLib} from "../src/utils/CvxEthOracleLib.sol";
-
+import {ICvxRewardsPool, CVX_REWARDS_POOL} from "../src/interfaces/curve-convex/ICvxRewardsPool.sol";
 import {console2 as console} from "forge-std/console2.sol";
 
 /// @author philogy <https://github.com/philogy>
@@ -31,6 +31,48 @@ contract AfEthTest is BaseTest {
         assertApproxEqRel(
             afEth.totalEthValue(), amountOut, 0.0001e18, "total value not equal to amount of shares (within 1 bps)"
         );
+    }
+
+    function testStakeCvxOnDeposit() public {
+        uint256 depositAmount = 2 ether;
+        address user = makeAddr("user");
+
+        uint256 balanceBefore = CVX.balanceOf(address(votium));
+        uint256 stakedBalanceBefore = CVX_REWARDS_POOL.balanceOf(address(votium));
+
+        // deposit at the beginning of the new epoch
+        skip(_nextEpoch() - block.timestamp + 1);
+        hoax(user, depositAmount);
+        afEth.deposit{value: depositAmount}(0, block.timestamp);
+
+        uint256 balanceAfter = CVX.balanceOf(address(votium));
+        uint256 stakedBalanceAfter = CVX_REWARDS_POOL.balanceOf(address(votium));
+        uint256 left = balanceAfter - balanceBefore;
+        uint256 staked = stakedBalanceAfter - stakedBalanceBefore;
+
+        assertEq(0, left, "CVX left in the contact");
+        assertTrue(staked > 0, "No CVX staked");
+    }
+
+    function testLeaveCvxOnDeposit() public {
+        uint256 depositAmount = 2 ether;
+        address user = makeAddr("user");
+
+        uint256 balanceBefore = CVX.balanceOf(address(votium));
+        uint256 stakedBalanceBefore = CVX_REWARDS_POOL.balanceOf(address(votium));
+
+        // deposit at the end of the current epoch
+        skip(_nextEpoch() - block.timestamp - 1);
+        hoax(user, depositAmount);
+        afEth.deposit{value: depositAmount}(0, block.timestamp);
+
+        uint256 balanceAfter = CVX.balanceOf(address(votium));
+        uint256 stakedBalanceAfter = CVX_REWARDS_POOL.balanceOf(address(votium));
+        uint256 left = balanceAfter - balanceBefore;
+        uint256 staked = stakedBalanceAfter - stakedBalanceBefore;
+
+        assertTrue(left > 0, "No CVX left in the contract");
+        assertEq(0, staked, "CVX staked");
     }
 
     function testMintedSharesOnDepositProportionalToValue() public {
@@ -71,15 +113,44 @@ contract AfEthTest is BaseTest {
         afEth.deposit{value: depositAmount}(amountOut + 1, block.timestamp);
     }
 
-    function testSimpleWithdrawLockedCvx() public {
+    function testSimpleWithdrawStakedCvx() public {
         address user = makeAddr("user");
         uint256 value = 1.45 ether;
-        hoax(user, value);
+        startHoax(user, value);
         uint256 amountOut = afEth.deposit{value: value}(0, block.timestamp);
 
         uint256 redeemAmount = amountOut / 3;
 
-        vm.prank(user);
+        uint256 balBefore = user.balance;
+        (uint256 ethOut, bool locked,) =
+            afEth.requestWithdraw(redeemAmount, 0, 0, block.timestamp);
+        uint256 ethReceived = user.balance - balBefore;
+
+        // withdrawal is fulfilled using unlocked CVX or unstaking the required amount
+        assertEq(ethOut, ethReceived);
+        assertApproxEqRelDecimal(
+            ethReceived,
+            redeemAmount,
+            0.005e18,
+            18,
+            "Received value not approx. requested value (within 0.5%)"
+        );
+
+        assertFalse(locked);
+    }
+
+    function testSimpleWithdrawLockedCvx() public {
+        address user = makeAddr("user");
+        uint256 value = 1.45 ether;
+        startHoax(user, value);
+        uint256 amountOut = afEth.deposit{value: value}(0, block.timestamp);
+
+        // lock CXV
+        skip(_nextEpoch() - block.timestamp - 1);
+        votium.unstakeAndLock();
+
+        uint256 redeemAmount = amountOut / 3;
+
         uint256 balBefore = user.balance;
         (uint256 ethOut, bool locked, uint256 cumulativeUnlockThreshold) =
             afEth.requestWithdraw(redeemAmount, 0, 0, block.timestamp);
@@ -103,7 +174,6 @@ contract AfEthTest is BaseTest {
         skip(20 weeks);
 
         uint256 cvxBefore = CVX.balanceOf(user);
-        vm.prank(user);
         votium.withdrawLocked(cumulativeUnlockThreshold, 0, block.timestamp);
         uint256 cvxAfter = CVX.balanceOf(user);
 
@@ -222,6 +292,10 @@ contract AfEthTest is BaseTest {
         uint256 sharesOut = afEth.deposit{value: amount}(0, block.timestamp);
         assertEq(afEth.balanceOf(user), sharesOut, "didn't receive shares");
 
+        // lock CVX
+        skip(_nextEpoch() - block.timestamp - 1);
+        votium.unstakeAndLock();
+        
         skip(30 weeks);
 
         (uint256 ethOut, bool locked, uint256 unlockThreshold) = afEth.requestWithdraw(sharesOut, 0, 0, block.timestamp);
@@ -265,5 +339,9 @@ contract AfEthTest is BaseTest {
     function _deposit(string memory label, uint256 amount) internal returns (uint256 amountOut) {
         hoax(makeAddr(label), amount);
         amountOut = afEth.deposit{value: amount}(0, block.timestamp);
+    }
+
+    function _nextEpoch() internal view returns (uint256) {
+        return (block.timestamp / 1 weeks) * 1 weeks + 1 weeks;
     }
 }
